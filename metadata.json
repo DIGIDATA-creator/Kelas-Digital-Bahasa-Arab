@@ -1,0 +1,6 @@
+{
+  "name": "Kelas Digital Bahasa Arab",
+  "description": "Aplikasi LMS Pembelajaran Digital Bahasa Arab dengan modul Guru/Admin dan Siswa, dilengkapi fitur unggah PDF, materi Qowaid, Hiwar, Kosakata, Mahfudzot, kuis interaktif, dan pelacakan progres belajar.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
