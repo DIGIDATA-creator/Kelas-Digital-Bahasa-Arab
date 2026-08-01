@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Materi, CategoryType, Student } from '../../types';
-import { BookOpen, MessageSquare, List, Quote, FileText, CheckCircle2, Play, Volume2, Search, Sparkles, RefreshCw, ChevronRight, HardDriveDownload, WifiOff, Check } from 'lucide-react';
+import { BookOpen, MessageSquare, List, Quote, FileText, CheckCircle2, Play, Volume2, Search, Sparkles, RefreshCw, ChevronRight, HardDriveDownload, WifiOff, Check, Maximize2, Minimize2, Eye, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { AudioPlayerButton } from '../common/AudioPlayerButton';
 import { PdfViewerModal } from '../common/PdfViewerModal';
 import { HiwarView } from '../guru/materi/HiwarView';
@@ -32,6 +32,20 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
   // Offline Cache Notification
   const [offlineToast, setOfflineToast] = useState<string | null>(null);
   const [cachedIds, setCachedIds] = useState<string[]>([]);
+
+  // Focus Mode State
+  const [isFocusMode, setIsFocusMode] = useState<boolean>(false);
+  const [readerFontSize, setReaderFontSize] = useState<'normal' | 'large' | 'xlarge'>('normal');
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFocusMode) {
+        setIsFocusMode(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFocusMode]);
 
   useEffect(() => {
     setCachedIds(storageService.getOfflineCachedMateriIds());
@@ -181,6 +195,15 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
 
                 <div className="flex flex-col items-end gap-2">
                   <div className="flex flex-wrap items-center gap-2">
+                    {/* Mode Fokus Button */}
+                    <button
+                      onClick={() => setIsFocusMode(true)}
+                      className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
+                      title="Baca materi tanpa distraksi navigasi atau sidebar"
+                    >
+                      <Maximize2 size={14} /> Mode Fokus
+                    </button>
+
                     {/* Offline Cache Button */}
                     <button
                       onClick={() => currentMateri && handleToggleOfflineCache(currentMateri)}
@@ -338,6 +361,218 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
         title={flashcardModalState.title}
         items={flashcardModalState.items}
       />
+
+      {/* Mode Fokus Distraction-Free Reader Overlay */}
+      {isFocusMode && currentMateri && (
+        <div className="fixed inset-0 z-50 bg-slate-950/95 text-slate-100 overflow-y-auto backdrop-blur-md flex flex-col p-4 sm:p-8 animate-fade-in">
+          {/* Focus Mode Sticky Toolbar */}
+          <div className="max-w-5xl w-full mx-auto bg-slate-900 border border-slate-800 rounded-2xl p-4 mb-6 shadow-2xl flex flex-wrap items-center justify-between gap-4 sticky top-0 z-10">
+            <div className="flex items-center gap-3">
+              <span className="px-2.5 py-1 rounded-full text-[11px] font-extrabold uppercase bg-emerald-950 text-emerald-400 border border-emerald-800/50">
+                Mode Fokus
+              </span>
+              <div className="hidden sm:block">
+                <h4 className="font-bold text-sm text-slate-200">{currentMateri.title}</h4>
+                {currentMateri.arabicTitle && (
+                  <span className="font-arabic text-emerald-400 text-sm">{currentMateri.arabicTitle}</span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Font Size Adjuster */}
+              <div className="flex items-center bg-slate-800 p-1 rounded-xl border border-slate-700 gap-1 text-xs">
+                <span className="text-slate-400 px-2 font-semibold">Teks:</span>
+                <button
+                  onClick={() => setReaderFontSize('normal')}
+                  className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
+                    readerFontSize === 'normal' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  A
+                </button>
+                <button
+                  onClick={() => setReaderFontSize('large')}
+                  className={`px-2.5 py-1 rounded-lg font-extrabold text-sm transition-all ${
+                    readerFontSize === 'large' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  A+
+                </button>
+                <button
+                  onClick={() => setReaderFontSize('xlarge')}
+                  className={`px-2.5 py-1 rounded-lg font-black text-base transition-all ${
+                    readerFontSize === 'xlarge' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  A++
+                </button>
+              </div>
+
+              {/* Completion Action */}
+              {isCompleted ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-950 text-emerald-300 border border-emerald-800 rounded-xl font-bold text-xs">
+                  <CheckCircle2 size={16} /> Selesai (+50 XP)
+                </span>
+              ) : (
+                <button
+                  onClick={() => onMarkComplete(currentMateri.id)}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 shadow-md cursor-pointer"
+                >
+                  <CheckCircle2 size={16} /> Tandai Selesai (+50 XP)
+                </button>
+              )}
+
+              {/* Exit Focus Mode Button */}
+              <button
+                onClick={() => setIsFocusMode(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 rounded-xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-xs"
+                title="Keluar dari Mode Fokus (Tekan Esc)"
+              >
+                <Minimize2 size={16} />
+                <span>Keluar (Esc)</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Focus Mode Main Reading Container */}
+          <div className="max-w-4xl w-full mx-auto bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-12 shadow-2xl space-y-8 my-auto">
+            {/* Header */}
+            <div className="border-b border-slate-800 pb-6 space-y-2">
+              <div className="flex items-center justify-between text-xs text-slate-400">
+                <span>Modul {categoryInfo[currentMateri.category]?.label || currentMateri.category}</span>
+                <span>Tingkat {currentMateri.level} • Oleh {currentMateri.authorName}</span>
+              </div>
+              <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight">
+                {currentMateri.title}
+              </h1>
+              {currentMateri.arabicTitle && (
+                <h2 className="font-arabic text-3xl sm:text-4xl text-emerald-400 font-bold pt-2 leading-relaxed">
+                  {currentMateri.arabicTitle}
+                </h2>
+              )}
+              {currentMateri.description && (
+                <p className="text-sm text-slate-400 leading-relaxed pt-2">
+                  {currentMateri.description}
+                </p>
+              )}
+            </div>
+
+            {/* Reading Content Area with Dynamic Font Size */}
+            <div className={`space-y-6 ${
+              readerFontSize === 'normal' ? 'text-base leading-relaxed' :
+              readerFontSize === 'large' ? 'text-lg leading-loose' :
+              'text-xl leading-loose'
+            }`}>
+              {/* Category 1: QOWAID */}
+              {currentMateri.category === 'qowaid' && (
+                <div className="bg-slate-950/80 p-6 sm:p-8 rounded-2xl border border-slate-800 text-slate-200 whitespace-pre-line font-sans tracking-wide">
+                  {currentMateri.content}
+                </div>
+              )}
+
+              {/* Category 2: HIWAR */}
+              {currentMateri.category === 'hiwar' && (
+                <div className="space-y-4">
+                  <HiwarView
+                    materiList={[currentMateri]}
+                    isEditable={false}
+                  />
+                </div>
+              )}
+
+              {/* Category 3: KOSAKATA */}
+              {currentMateri.category === 'kosakata' && (
+                <div className="space-y-4">
+                  <KosakataTableView
+                    title={currentMateri.title}
+                    arabicTitle={currentMateri.arabicTitle}
+                    babNumber={currentMateri.babNumber}
+                    vocabularies={currentMateri.vocabularies || []}
+                    onLaunchFlashcard={() => {
+                      const vocabs = currentMateri.vocabularies || [];
+                      const items: FlashcardItem[] = vocabs.map(v => ({
+                        id: v.id,
+                        frontArabic: v.word,
+                        backTranslation: v.meaning,
+                        latin: v.latin,
+                      }));
+                      setFlashcardModalState({
+                        isOpen: true,
+                        title: `Flashcard Kosakata - ${currentMateri.title}`,
+                        items,
+                      });
+                    }}
+                    isEditable={false}
+                  />
+                </div>
+              )}
+
+              {/* Category 4: MAHFUDZOT */}
+              {currentMateri.category === 'mahfudzot' && currentMateri.mahfudzot && (
+                <div className="space-y-6">
+                  <div className="p-8 sm:p-12 bg-gradient-to-br from-amber-950/30 via-amber-900/10 to-slate-950 rounded-3xl border-2 border-amber-800/50 text-center space-y-6 shadow-xl">
+                    <Quote size={40} className="mx-auto text-amber-500" />
+                    <div className="space-y-3">
+                      <p className="font-arabic text-3xl sm:text-5xl text-amber-100 leading-loose font-bold">
+                        {currentMateri.mahfudzot.arabic}
+                      </p>
+                      <AudioPlayerButton arabicText={currentMateri.mahfudzot.arabic} size="lg" className="mx-auto" />
+                    </div>
+
+                    <div className="pt-6 border-t border-amber-900/50 max-w-xl mx-auto space-y-2">
+                      <p className="text-base font-bold text-amber-400 font-mono italic">
+                        "{currentMateri.mahfudzot.latin}"
+                      </p>
+                      <p className="text-lg font-bold text-slate-200">
+                        {currentMateri.mahfudzot.translation}
+                      </p>
+                    </div>
+                  </div>
+
+                  {currentMateri.mahfudzot.explanation && (
+                    <div className="p-6 bg-slate-950 rounded-2xl border border-slate-800 space-y-2">
+                      <h4 className="font-bold text-xs uppercase text-amber-500 tracking-wider">Kandungan Hikmah & Penjelasan</h4>
+                      <p className="text-sm text-slate-300 leading-relaxed">
+                        {currentMateri.mahfudzot.explanation}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Quick Next/Prev Topic Navigation inside Focus Mode */}
+            <div className="pt-8 border-t border-slate-800 flex items-center justify-between text-xs font-bold text-slate-400">
+              <button
+                disabled={categoryFiltered.findIndex(m => m.id === currentMateri.id) <= 0}
+                onClick={() => {
+                  const idx = categoryFiltered.findIndex(m => m.id === currentMateri.id);
+                  if (idx > 0) setActiveMateriId(categoryFiltered[idx - 1].id);
+                }}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:pointer-events-none rounded-xl text-slate-200 flex items-center gap-1 transition-all cursor-pointer"
+              >
+                ← Topik Sebelumnya
+              </button>
+
+              <span className="text-slate-500">
+                Topik {categoryFiltered.findIndex(m => m.id === currentMateri.id) + 1} dari {categoryFiltered.length}
+              </span>
+
+              <button
+                disabled={categoryFiltered.findIndex(m => m.id === currentMateri.id) >= categoryFiltered.length - 1}
+                onClick={() => {
+                  const idx = categoryFiltered.findIndex(m => m.id === currentMateri.id);
+                  if (idx < categoryFiltered.length - 1) setActiveMateriId(categoryFiltered[idx + 1].id);
+                }}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:pointer-events-none rounded-xl text-slate-200 flex items-center gap-1 transition-all cursor-pointer"
+              >
+                Topik Selanjutnya →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
