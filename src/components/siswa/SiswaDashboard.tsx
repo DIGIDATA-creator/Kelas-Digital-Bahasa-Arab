@@ -2,6 +2,7 @@ import React from 'react';
 import { Student, Materi, Penilaian } from '../../types';
 import { BookOpen, Award, CheckCircle2, Play, Flame, ArrowRight, Sparkles, FileCheck, Trophy } from 'lucide-react';
 import { SiswaDashboardSkeleton } from '../common/Skeleton';
+import { MahfudzotOfTheDayCard } from '../common/MahfudzotOfTheDayCard';
 
 interface SiswaDashboardProps {
   currentStudent: Student;
@@ -109,6 +110,9 @@ export const SiswaDashboard: React.FC<SiswaDashboardProps> = ({
         </div>
 
       </div>
+
+      {/* Mahfudzot Hari Ini Card (Rotasi 24 Jam) */}
+      <MahfudzotOfTheDayCard materiList={materiList} onNavigate={onNavigate} />
 
       {/* Next Lesson Recommendation Card */}
       {nextMaterial && (

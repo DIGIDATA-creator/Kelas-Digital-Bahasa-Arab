@@ -7,6 +7,7 @@ export interface FlashcardItem {
   backTranslation: string;
   latin?: string;
   detail?: string;
+  number?: number;
 }
 
 interface FlashcardModalProps {
@@ -29,6 +30,13 @@ export const FlashcardModal: React.FC<FlashcardModalProps> = ({
   const [unmemorizedIds, setUnmemorizedIds] = useState<Set<string>>(new Set());
   const [isCompleted, setIsCompleted] = useState(false);
 
+  // Shuffle modal range selection state
+  const [showShuffleModal, setShowShuffleModal] = useState(false);
+  const [shuffleType, setShuffleType] = useState<'all' | 'range'>('all');
+  const [startNum, setStartNum] = useState<number>(1);
+  const [endNum, setEndNum] = useState<number>(items.length || 1);
+  const [activeShuffleLabel, setActiveShuffleLabel] = useState<string | null>(null);
+
   useEffect(() => {
     setCardList(items);
     setCurrentIndex(0);
@@ -36,6 +44,9 @@ export const FlashcardModal: React.FC<FlashcardModalProps> = ({
     setMemorizedIds(new Set());
     setUnmemorizedIds(new Set());
     setIsCompleted(false);
+    setStartNum(1);
+    setEndNum(items.length || 1);
+    setActiveShuffleLabel(null);
   }, [items]);
 
   if (!isOpen || cardList.length === 0) return null;
@@ -85,12 +96,34 @@ export const FlashcardModal: React.FC<FlashcardModalProps> = ({
     setCurrentIndex((prev) => (prev - 1 + cardList.length) % cardList.length);
   };
 
-  const handleShuffle = () => {
+  const handleExecuteShuffle = () => {
     setIsFlipped(false);
-    const shuffled = [...cardList].sort(() => Math.random() - 0.5);
-    setCardList(shuffled);
-    setCurrentIndex(0);
-    setIsCompleted(false);
+    if (shuffleType === 'all') {
+      const shuffled = [...items].sort(() => Math.random() - 0.5);
+      setCardList(shuffled);
+      setCurrentIndex(0);
+      setIsCompleted(false);
+      setActiveShuffleLabel('Mengacak Semua Nomor');
+    } else {
+      const min = Math.min(startNum, endNum);
+      const max = Math.max(startNum, endNum);
+      const filtered = items.filter((item, index) => {
+        const itemNum = item.number || (index + 1);
+        return itemNum >= min && itemNum <= max;
+      });
+
+      if (filtered.length === 0) {
+        alert(`Tidak ditemukan kartu dalam rentang nomor ${min} sampai ${max}.`);
+        return;
+      }
+
+      const shuffled = [...filtered].sort(() => Math.random() - 0.5);
+      setCardList(shuffled);
+      setCurrentIndex(0);
+      setIsCompleted(false);
+      setActiveShuffleLabel(`Rentang No. ${min} - ${max} (${shuffled.length} Kartu)`);
+    }
+    setShowShuffleModal(false);
   };
 
   const handleRestartAll = () => {
@@ -100,6 +133,7 @@ export const FlashcardModal: React.FC<FlashcardModalProps> = ({
     setMemorizedIds(new Set());
     setUnmemorizedIds(new Set());
     setIsCompleted(false);
+    setActiveShuffleLabel(null);
   };
 
   const handleRetryUnmemorized = () => {
@@ -287,30 +321,49 @@ export const FlashcardModal: React.FC<FlashcardModalProps> = ({
             </div>
 
             {/* Footer Actions */}
-            <div className="p-4 bg-slate-900 border-t border-slate-800 flex items-center justify-between gap-3">
-              <button
-                onClick={handleShuffle}
-                className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
-              >
-                <RotateCw size={14} /> Acak Kartu
-              </button>
+            <div className="p-4 bg-slate-900 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowShuffleModal(true)}
+                  className="px-3.5 py-2 bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
+                >
+                  <RotateCw size={14} /> Acak Kartu...
+                </button>
+
+                {activeShuffleLabel && (
+                  <div className="flex items-center gap-1 bg-purple-950/80 border border-purple-500/50 text-purple-200 px-2.5 py-1 rounded-lg text-[11px] font-bold">
+                    <span>🔀 {activeShuffleLabel}</span>
+                    <button
+                      type="button"
+                      onClick={handleRestartAll}
+                      className="text-purple-300 hover:text-white p-0.5"
+                      title="Reset Ke Semua Kartu Urut"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                )}
+              </div>
 
               <div className="flex items-center gap-2">
                 <button
+                  type="button"
                   onClick={handlePrev}
-                  className="p-2.5 bg-slate-800 hover:bg-emerald-600 text-white rounded-xl transition-all shadow-md"
+                  className="p-2.5 bg-slate-800 hover:bg-emerald-600 text-white rounded-xl transition-all shadow-md cursor-pointer"
                   title="Sebelumnya"
                 >
                   <ChevronLeft size={18} />
                 </button>
 
-                <span className="text-xs font-mono text-slate-400 px-2 font-bold">
+                <span className="text-xs font-mono text-slate-300 px-2 font-bold">
                   {currentIndex + 1} / {cardList.length}
                 </span>
 
                 <button
+                  type="button"
                   onClick={handleNext}
-                  className="p-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl transition-all shadow-md"
+                  className="p-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl transition-all shadow-md cursor-pointer"
                   title="Selanjutnya"
                 >
                   <ChevronRight size={18} />
@@ -318,6 +371,123 @@ export const FlashcardModal: React.FC<FlashcardModalProps> = ({
               </div>
             </div>
           </>
+        )}
+
+        {/* Modal Options Shuffle Rentang Nomor */}
+        {showShuffleModal && (
+          <div className="absolute inset-0 z-50 bg-slate-950/90 backdrop-blur-md p-6 flex items-center justify-center animate-fadeIn">
+            <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-sm w-full space-y-5 shadow-2xl text-left">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h4 className="font-extrabold text-sm text-white flex items-center gap-2">
+                  <RotateCw size={18} className="text-purple-400" />
+                  <span>Pengaturan Acak Kartu</span>
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => setShowShuffleModal(false)}
+                  className="p-1 text-slate-400 hover:text-white rounded-lg"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                <label
+                  onClick={() => setShuffleType('all')}
+                  className={`p-3.5 rounded-2xl border flex items-center gap-3 cursor-pointer transition-all ${
+                    shuffleType === 'all'
+                      ? 'bg-purple-950/80 border-purple-500 text-white shadow-md'
+                      : 'bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-800'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="shuffleType"
+                    checked={shuffleType === 'all'}
+                    onChange={() => setShuffleType('all')}
+                    className="w-4 h-4 text-purple-600 accent-purple-600"
+                  />
+                  <div>
+                    <div className="font-bold text-xs">Acak Semua Kartu</div>
+                    <div className="text-[11px] text-slate-400">
+                      Mengacak seluruh {items.length} kartu yang tersedia
+                    </div>
+                  </div>
+                </label>
+
+                <label
+                  onClick={() => setShuffleType('range')}
+                  className={`p-3.5 rounded-2xl border flex items-col gap-3 cursor-pointer transition-all ${
+                    shuffleType === 'range'
+                      ? 'bg-purple-950/80 border-purple-500 text-white shadow-md'
+                      : 'bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-800'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="shuffleType"
+                    checked={shuffleType === 'range'}
+                    onChange={() => setShuffleType('range')}
+                    className="w-4 h-4 text-purple-600 accent-purple-600 mt-0.5 shrink-0"
+                  />
+                  <div className="space-y-2 w-full">
+                    <div className="font-bold text-xs">Acak Rentang Nomor Spesifik</div>
+                    <div className="text-[11px] text-slate-400">
+                      Pilih nomor kartu dari sampai nomor tertentu
+                    </div>
+
+                    {shuffleType === 'range' && (
+                      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-purple-800/50" onClick={e => e.stopPropagation()}>
+                        <div>
+                          <span className="text-[10px] font-bold text-purple-300 block mb-1">
+                            Dari Nomor:
+                          </span>
+                          <input
+                            type="number"
+                            min={1}
+                            max={items.length}
+                            value={startNum}
+                            onChange={e => setStartNum(parseInt(e.target.value) || 1)}
+                            className="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-hidden focus:border-purple-400 font-bold"
+                          />
+                        </div>
+                        <div>
+                          <span className="text-[10px] font-bold text-purple-300 block mb-1">
+                            Sampai Nomor:
+                          </span>
+                          <input
+                            type="number"
+                            min={1}
+                            max={items.length}
+                            value={endNum}
+                            onChange={e => setEndNum(parseInt(e.target.value) || items.length)}
+                            className="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-hidden focus:border-purple-400 font-bold"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </label>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowShuffleModal(false)}
+                  className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExecuteShuffle}
+                  className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl text-xs font-extrabold shadow-md cursor-pointer flex items-center gap-1.5"
+                >
+                  <RotateCw size={14} /> Terapkan & Acak
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
       </div>

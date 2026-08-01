@@ -1,4 +1,5 @@
 import { Materi, Penilaian, Student, ActivityLog, ForumPost } from '../types';
+import { createMahfudzotMateriList } from './mahfudzotData';
 
 // Sample PDF Base64 fallback or data helper
 export const SAMPLE_PDF_BASE64 = `data:application/pdf;base64,JVBERi0xLjQKJcOkw7zDtsOfCjIgMCBvYmoKPDwvTGVuZ3RoIDMgMCBSL0ZpbHRlci9GbGF0ZURlY29kZT4+CnN0cmVhbXgNc3RhdHVzIG9rCmVuZHN0cmVhbQplbmRvYmoKMyAwIG9iagoxOQplbmRvYmoKMSAwIG9iago8PC9UeXBlL0NhdGFsb2cvUGFnZXMgNCAwIFI+PgplbmRvYmoKNCAwIG9iago8PC9UeXBlL1BhZ2VzL0NvdW50IDEvS2lkc1sgNSAwIFJdPj4KZW5kb2JqCjUgMCBvYmoKPDwvVHlwZS9QYWdlL1BhcmVudCA0IDAgUi9SZXNvdXJjZXM8PC9Gb250PDwvRjEgNiAwIFI+Pj4+L01lZGlhQm94WzAgMCA1OTUgODQyXS9Db250ZW50cyAyIDAgUj4+CmVuZG9iaiA2IDAgb2JqCjw8L1R5cGUvRm9udC9TdWJ0eXBlL1R5cGUxL0Jhc2VGb250L0hlbHZldGljYT4+CmVuZG9iagp0cmFpbGVyCjw8L1NpemUgNy9Sb290IDEgMCBSPj4KJSVFT0Y=`;
@@ -115,49 +116,8 @@ Jumlah Ismiyyah adalah kalimat yang diawali oleh Isim. Dua rukun utamanya adalah
     updatedAt: '2026-07-15T08:00:00Z',
   },
 
-  // 4. MAHFUDZOT
-  {
-    id: 'mat-mahfudzot-1',
-    title: 'Man Jadda Wajada (Kesungguhan Belajar)',
-    arabicTitle: 'مَنْ جَدَّ وَجَدَ',
-    category: 'mahfudzot',
-    level: 'Dasar',
-    description: 'Kata mutiara hikmah tentang pentingnya ikhtiar dan kesungguhan dalam menuntut ilmu.',
-    content: 'Mahfudzot populer yang mengajarkan bahwa barangsiapa yang bersungguh-sungguh, maka ia akan meraih cita-citanya.',
-    mahfudzot: {
-      arabic: 'مَنْ جَدَّ وَجَدَ ، وَمَنْ زَرَعَ حَصَدَ',
-      latin: 'Man jadda wajada, wa man zara\'a hashada',
-      translation: 'Barangsiapa bersungguh-sungguh maka ia akan berhasil, dan barangsiapa menanam maka ia akan memanen.',
-      explanation: 'Pepatah ini menekankan bahwa hasil akhir yang manis adalah buah dari kerja keras dan ketekunan yang konsisten tanpa pantang menyerah.'
-    },
-    pdfFileName: 'Modul_Mahfudzot_Pilihan.pdf',
-    pdfUrl: SAMPLE_PDF_BASE64,
-    pdfPageCount: 2,
-    authorName: 'Ust. Ahmad Dahlan, M.Pd.',
-    createdAt: '2026-07-14T08:00:00Z',
-    updatedAt: '2026-07-14T08:00:00Z',
-  },
-  {
-    id: 'mat-mahfudzot-2',
-    title: 'Keutamaan Waktu (الوقت أثمن من الذهب)',
-    arabicTitle: 'الوَقْتُ أَثْمَنُ مِنَ الذَّهَبِ',
-    category: 'mahfudzot',
-    level: 'Menengah',
-    description: 'Kata hikmah tentang pentingnya menghargai setiap detik waktu dalam kehidupan.',
-    content: 'Mahfudzot mengenai betapa berharga dan mahalnya kesempatan waktu.',
-    mahfudzot: {
-      arabic: 'الوَقْتُ أَثْمَنُ مِنَ الذَّهَبِ ، وَإِذَا مَضَى لاَ يَعُودُ',
-      latin: 'Al-waqtu atsmanu minad-dzahabi, wa idzaa madhaa laa ya\'uudu',
-      translation: 'Waktu itu lebih berharga daripada emas, dan apabila telah berlalu ia tidak akan pernah kembali lagi.',
-      explanation: 'Waktu adalah modal berharga yang tidak bisa dibeli kembali dengan uang sebanyak apa pun.'
-    },
-    pdfFileName: 'Keutamaan_Waktu_Mahfudzot.pdf',
-    pdfUrl: SAMPLE_PDF_BASE64,
-    pdfPageCount: 3,
-    authorName: 'Ust. Ahmad Dahlan, M.Pd.',
-    createdAt: '2026-07-16T08:00:00Z',
-    updatedAt: '2026-07-16T08:00:00Z',
-  }
+  // 4. MAHFUDZOT LENGKAP (1 - 87 KELAS 1 SAMPAI KELAS 5)
+  ...createMahfudzotMateriList()
 ];
 
 export const INITIAL_PENILAIAN: Penilaian[] = [

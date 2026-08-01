@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Shield, Mail, Phone, Edit3, Lock, Check, Key, UserCheck, Camera, Save, CheckCircle2, AlertCircle } from 'lucide-react';
 import { db } from '../../firebase/config';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { uploadToSupabaseStorage } from '../../lib/supabase';
 
 const docGuruProfile = doc(db, 'app_collections', 'guru_profile');
 
@@ -78,19 +79,62 @@ export const GuruProfile: React.FC = () => {
     setTimeout(() => setProfileMsg(null), 3000);
   };
 
-  // Profile image file upload handler
-  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Profile image file upload handler with canvas compression & Supabase upload
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setProfileFormData(prev => ({
-          ...prev,
-          avatar: reader.result as string,
-        }));
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    try {
+      const { publicUrl } = await uploadToSupabaseStorage(
+        file,
+        `guru_avatar_${Date.now()}.jpg`,
+        'avatars'
+      );
+      if (publicUrl && !publicUrl.startsWith('data:')) {
+        setProfileFormData(prev => ({ ...prev, avatar: publicUrl }));
+        return;
+      }
+    } catch (err) {
+      console.warn('Supabase storage upload bypassed for guru profile:', err);
     }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const rawUrl = event.target?.result as string;
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_SIZE = 200;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_SIZE) {
+            height = Math.round(height * (MAX_SIZE / width));
+            width = MAX_SIZE;
+          }
+        } else {
+          if (height > MAX_SIZE) {
+            width = Math.round(width * (MAX_SIZE / height));
+            height = MAX_SIZE;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.70);
+          setProfileFormData(prev => ({ ...prev, avatar: compressedDataUrl }));
+        } else {
+          setProfileFormData(prev => ({ ...prev, avatar: rawUrl }));
+        }
+      };
+      img.onerror = () => setProfileFormData(prev => ({ ...prev, avatar: rawUrl }));
+      img.src = rawUrl;
+    };
+    reader.readAsDataURL(file);
   };
 
   // Save username & password edits

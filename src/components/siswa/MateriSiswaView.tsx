@@ -5,6 +5,7 @@ import { AudioPlayerButton } from '../common/AudioPlayerButton';
 import { PdfViewerModal } from '../common/PdfViewerModal';
 import { HiwarView } from '../guru/materi/HiwarView';
 import { KosakataTableView } from '../guru/materi/KosakataTableView';
+import { MahfudzotView } from '../guru/materi/MahfudzotView';
 import { FlashcardModal, FlashcardItem } from '../common/FlashcardModal';
 import { storageService } from '../../services/storage';
 
@@ -301,36 +302,49 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
               )}
 
               {/* CATEGORY 4: MAHFUDZOT GALLERY */}
-              {currentMateri.category === 'mahfudzot' && currentMateri.mahfudzot && (
+              {currentMateri.category === 'mahfudzot' && (
                 <div className="space-y-6">
-                  <div className="p-8 bg-gradient-to-br from-amber-500/10 via-amber-100/30 to-orange-50 rounded-2xl border-2 border-amber-300 text-center space-y-4 shadow-xs">
-                    <Quote size={32} className="mx-auto text-amber-600" />
+                  {currentMateri.mahfudzot && (
+                    <div className="p-6 bg-gradient-to-br from-purple-500/10 via-indigo-100/30 to-purple-50 rounded-2xl border-2 border-purple-200 text-center space-y-4 shadow-xs">
+                      <Quote size={28} className="mx-auto text-purple-600" />
 
-                    <div className="space-y-2">
-                      <p className="font-arabic text-3xl sm:text-4xl text-slate-900 leading-loose font-bold">
-                        {currentMateri.mahfudzot.arabic}
-                      </p>
-                      <AudioPlayerButton arabicText={currentMateri.mahfudzot.arabic} size="md" className="mx-auto" />
-                    </div>
+                      <div className="space-y-2">
+                        <p className="font-arabic text-3xl sm:text-4xl text-slate-900 leading-loose font-bold dir-rtl">
+                          {currentMateri.mahfudzot.arabic}
+                        </p>
+                        <AudioPlayerButton arabicText={currentMateri.mahfudzot.arabic} size="md" className="mx-auto" />
+                      </div>
 
-                    <div className="pt-4 border-t border-amber-200 max-w-xl mx-auto space-y-2">
-                      <p className="text-sm font-bold text-amber-900 font-mono italic">
-                        "{currentMateri.mahfudzot.latin}"
-                      </p>
-                      <p className="text-base font-bold text-slate-800">
-                        {currentMateri.mahfudzot.translation}
-                      </p>
-                    </div>
-                  </div>
-
-                  {currentMateri.mahfudzot.explanation && (
-                    <div className="p-5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                      <h4 className="font-bold text-xs uppercase text-slate-500 tracking-wider">Kandungan Hikmah & Penjelasan</h4>
-                      <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
-                        {currentMateri.mahfudzot.explanation}
-                      </p>
+                      <div className="pt-3 border-t border-purple-200 max-w-xl mx-auto space-y-1">
+                        <p className="text-sm font-bold text-slate-800">
+                          "{currentMateri.mahfudzot.translation}"
+                        </p>
+                      </div>
                     </div>
                   )}
+
+                  <MahfudzotView
+                    materiList={materiList}
+                    onEditMateri={() => {}}
+                    onDeleteMateri={() => {}}
+                    onLaunchFlashcards={(filteredList) => {
+                      const listToUse = filteredList || materiList.filter(m => m.category === 'mahfudzot');
+                      const items: FlashcardItem[] = listToUse.map((m, idx) => ({
+                        id: m.id,
+                        frontArabic: m.mahfudzot?.arabic || m.content,
+                        backTranslation: m.mahfudzot?.translation || m.description,
+                        latin: m.mahfudzot?.latin,
+                        detail: `Mahfudzot No. ${m.mahfudzot?.number || m.babNumber || idx + 1}`,
+                        number: m.mahfudzot?.number || m.babNumber || idx + 1,
+                      }));
+                      setFlashcardModalState({
+                        isOpen: true,
+                        title: `Flashcard Kumpulan Mahfudzot (${items.length} Kata Mutiara)`,
+                        items,
+                      });
+                    }}
+                    isEditable={false}
+                  />
                 </div>
               )}
 

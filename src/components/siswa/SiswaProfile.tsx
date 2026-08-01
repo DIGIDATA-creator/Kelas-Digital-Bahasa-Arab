@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Student, Materi } from '../../types';
+import { uploadToSupabaseStorage } from '../../lib/supabase';
 import {
   GraduationCap,
   Award,
@@ -14,7 +15,8 @@ import {
   Building2,
   Users,
   User,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 
 interface SiswaProfileProps {
@@ -36,6 +38,17 @@ export const SiswaProfile: React.FC<SiswaProfileProps> = ({
   const [className, setClassName] = useState(currentStudent.className || '');
   const [rombelName, setRombelName] = useState(currentStudent.rombelName || '');
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  // Sync state whenever currentStudent changes
+  useEffect(() => {
+    setName(currentStudent.name || '');
+    setAvatar(currentStudent.avatar || '');
+    setGender(currentStudent.gender || 'Laki-laki');
+    setSchoolName(currentStudent.schoolName || '');
+    setClassName(currentStudent.className || '');
+    setRombelName(currentStudent.rombelName || '');
+  }, [currentStudent]);
 
   const completedCount = currentStudent.completedMaterials?.length || 0;
   const totalMateri = materiList.length || 1;
@@ -50,20 +63,89 @@ export const SiswaProfile: React.FC<SiswaProfileProps> = ({
     'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
   ];
 
-  // Handle avatar image file upload
-  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle avatar image file upload with Supabase CDN or high-efficiency compressed canvas data URL
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 3 * 1024 * 1024) {
-        setMsg({ type: 'error', text: 'Ukuran foto maksimal 3MB' });
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      setMsg({ type: 'error', text: 'Ukuran foto maksimal 10MB' });
+      return;
+    }
+
+    setIsUploading(true);
+    setMsg(null);
+
+    try {
+      // 1. Attempt uploading directly to Supabase storage CDN
+      const { publicUrl } = await uploadToSupabaseStorage(
+        file,
+        `student_${currentStudent.id}_${Date.now()}.jpg`,
+        'avatars'
+      );
+
+      if (publicUrl && !publicUrl.startsWith('data:')) {
+        setAvatar(publicUrl);
+        setIsUploading(false);
+        setMsg({ type: 'success', text: 'Foto profil berhasil diunggah ke cloud storage!' });
+        setTimeout(() => setMsg(null), 3000);
         return;
       }
-      const reader = new FileReader();
-      reader.onload = () => {
-        setAvatar(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    } catch (err) {
+      console.warn('Supabase storage upload bypassed, using high-compression canvas data URL:', err);
     }
+
+    // 2. High-efficiency Canvas Compression Fallback (<=180px, Jpeg 0.70)
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const rawUrl = event.target?.result as string;
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_SIZE = 180;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_SIZE) {
+            height = Math.round(height * (MAX_SIZE / width));
+            width = MAX_SIZE;
+          }
+        } else {
+          if (height > MAX_SIZE) {
+            width = Math.round(width * (MAX_SIZE / height));
+            height = MAX_SIZE;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.70);
+          setAvatar(compressedDataUrl);
+        } else {
+          setAvatar(rawUrl);
+        }
+        setIsUploading(false);
+        setMsg({ type: 'success', text: 'Foto profil dikompresi dan siap disimpan!' });
+        setTimeout(() => setMsg(null), 3000);
+      };
+
+      img.onerror = () => {
+        setAvatar(rawUrl);
+        setIsUploading(false);
+      };
+      img.src = rawUrl;
+    };
+
+    reader.onerror = () => {
+      setIsUploading(false);
+      setMsg({ type: 'error', text: 'Gagal membaca berkas foto.' });
+    };
+
+    reader.readAsDataURL(file);
   };
 
   const handleSave = (e: React.FormEvent) => {
@@ -88,8 +170,8 @@ export const SiswaProfile: React.FC<SiswaProfileProps> = ({
     }
 
     setIsEditing(false);
-    setMsg({ type: 'success', text: 'Data profil berhasil diperbarui!' });
-    setTimeout(() => setMsg(null), 3000);
+    setMsg({ type: 'success', text: 'Data profil & foto berhasil diperbarui dan tersimpan ke Firestore Cloud!' });
+    setTimeout(() => setMsg(null), 4000);
   };
 
   return (
@@ -115,21 +197,21 @@ export const SiswaProfile: React.FC<SiswaProfileProps> = ({
           </div>
         </div>
 
-        <div className="px-6 pb-6 relative pt-0">
+        <div className="px-4 sm:px-6 pb-6 relative pt-0">
           <div className="flex flex-col sm:flex-row items-center sm:items-end justify-between -mt-16 mb-4 gap-4">
-            <div className="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
-              <div className="relative group">
+            <div className="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left w-full sm:w-auto">
+              <div className="relative group shrink-0">
                 <img
                   src={currentStudent.avatar}
                   alt={currentStudent.name}
                   className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover border-4 border-white dark:border-slate-900 shadow-md bg-slate-100 dark:bg-slate-800"
                 />
               </div>
-              <div>
-                <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-slate-100 flex items-center justify-center sm:justify-start gap-2">
-                  <span>{currentStudent.name}</span>
+              <div className="w-full sm:w-auto">
+                <h2 className="text-lg sm:text-2xl font-extrabold text-slate-900 dark:text-slate-100 flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                  <span className="break-words">{currentStudent.name}</span>
                   {currentStudent.gender && (
-                    <span className={`text-xs px-2 py-0.5 rounded-md font-bold ${
+                    <span className={`text-xs px-2 py-0.5 rounded-md font-bold whitespace-nowrap ${
                       currentStudent.gender === 'Laki-laki'
                         ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
                         : 'bg-pink-50 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300 border border-pink-200 dark:border-pink-800'
@@ -138,21 +220,21 @@ export const SiswaProfile: React.FC<SiswaProfileProps> = ({
                     </span>
                   )}
                 </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5 break-words">
                   {currentStudent.schoolName || 'Tanpa Sekolah'} • {currentStudent.className} ({currentStudent.rombelName || 'Rombel General'})
                 </p>
                 
                 {/* Arabic Title Badge with proper spacing to prevent collisions */}
                 <div className="mt-2.5 flex items-center justify-center sm:justify-start">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800 rounded-xl font-arabic font-bold text-sm sm:text-base leading-relaxed tracking-wide shadow-2xs">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800 rounded-xl font-arabic font-bold text-xs sm:text-base leading-relaxed tracking-wide shadow-2xs">
                     🎓 طَالِبُ اللُّغَةِ الْعَرَبِيَّةِ
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <div className="px-3.5 py-2 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 rounded-xl text-xs font-bold flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2 w-full sm:w-auto">
+              <div className="px-3.5 py-2 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0">
                 <Award size={18} className="text-amber-600 dark:text-amber-400" /> {currentStudent.totalXP} Poin XP
               </div>
               <button
@@ -166,33 +248,33 @@ export const SiswaProfile: React.FC<SiswaProfileProps> = ({
                   setRombelName(currentStudent.rombelName || '');
                   setIsEditing(!isEditing);
                 }}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shrink-0"
               >
                 <Edit3 size={15} /> {isEditing ? 'Batal Edit' : 'Edit Profil'}
               </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-4 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300">
-            <div className="flex items-center gap-2.5 p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-800">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300">
+            <div className="flex items-center gap-2.5 p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-800 min-w-0">
               <Mail size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <div>
+              <div className="min-w-0 truncate">
                 <div className="text-[10px] text-slate-400 font-medium">Alamat Email</div>
-                <div className="font-semibold text-slate-800 dark:text-slate-200">{currentStudent.email}</div>
+                <div className="font-semibold text-slate-800 dark:text-slate-200 truncate">{currentStudent.email}</div>
               </div>
             </div>
-            <div className="flex items-center gap-2.5 p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-2.5 p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-800 min-w-0">
               <Hash size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <div>
+              <div className="min-w-0 truncate">
                 <div className="text-[10px] text-slate-400 font-medium">NISN Siswa</div>
-                <div className="font-semibold text-slate-800 dark:text-slate-200">{currentStudent.nisn}</div>
+                <div className="font-semibold text-slate-800 dark:text-slate-200 truncate">{currentStudent.nisn}</div>
               </div>
             </div>
-            <div className="flex items-center gap-2.5 p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-2.5 p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-800 min-w-0">
               <Building2 size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <div>
+              <div className="min-w-0 truncate">
                 <div className="text-[10px] text-slate-400 font-medium">Asal Sekolah</div>
-                <div className="font-semibold text-slate-800 dark:text-slate-200">{currentStudent.schoolName || 'Tanpa Sekolah'}</div>
+                <div className="font-semibold text-slate-800 dark:text-slate-200 truncate">{currentStudent.schoolName || 'Tanpa Sekolah'}</div>
               </div>
             </div>
           </div>
@@ -201,8 +283,8 @@ export const SiswaProfile: React.FC<SiswaProfileProps> = ({
 
       {/* Edit Form Mode */}
       {isEditing && (
-        <form onSubmit={handleSave} className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+        <form onSubmit={handleSave} className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 gap-1">
             <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm flex items-center gap-2">
               <Edit3 size={16} className="text-emerald-600 dark:text-emerald-400" /> Edit Data Profil Siswa
             </h3>
@@ -274,7 +356,7 @@ export const SiswaProfile: React.FC<SiswaProfileProps> = ({
             </div>
 
             {/* Kelas & Rombel */}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
                 <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">
                   Kelas
@@ -303,62 +385,81 @@ export const SiswaProfile: React.FC<SiswaProfileProps> = ({
           </div>
 
           {/* Foto Profil / Avatar Selection & File Upload */}
-          <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800">
             <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
               Foto Profil / Avatar
             </label>
-            <div className="flex flex-col sm:flex-row items-center gap-4">
-              <img
-                src={avatar || currentStudent.avatar}
-                alt="Preview Avatar"
-                className="w-16 h-16 rounded-2xl object-cover border-2 border-emerald-500 shadow-xs shrink-0"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center bg-slate-50/50 dark:bg-slate-800/30 p-3.5 sm:p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+              {/* Photo Preview Column */}
+              <div className="sm:col-span-3 lg:col-span-2 flex flex-col items-center justify-center gap-1">
+                <img
+                  src={avatar || currentStudent.avatar}
+                  alt="Preview Avatar"
+                  className="w-20 h-20 rounded-2xl object-cover border-2 border-emerald-500 shadow-xs shrink-0"
+                />
+                <span className="text-[10px] font-semibold text-slate-400">Pratinjau Foto</span>
+              </div>
               
-              <div className="flex-grow space-y-2 w-full">
-                <div className="flex items-center gap-2">
-                  <label className="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer hover:bg-emerald-100 transition-colors">
-                    <Camera size={14} /> Unggah Foto Baru
+              {/* Controls Column */}
+              <div className="sm:col-span-9 lg:col-span-10 space-y-3 w-full">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                  <label className="px-3.5 py-2 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer hover:bg-emerald-100 transition-colors shrink-0">
+                    {isUploading ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin text-emerald-600" />
+                        <span>Mengompres Foto...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Camera size={14} /> Unggah Foto Baru
+                      </>
+                    )}
                     <input
                       type="file"
                       accept="image/*"
+                      disabled={isUploading}
                       onChange={handleAvatarUpload}
                       className="hidden"
                     />
                   </label>
-                  <span className="text-[11px] text-slate-400">Pilih berkas foto dari HP/Laptop (Maks 3MB)</span>
+                  <span className="text-[11px] text-slate-400 text-center sm:text-left leading-tight">
+                    Pilih berkas foto dari HP/Laptop (Otomatis Ditingkatkan & Disinkronkan)
+                  </span>
                 </div>
 
                 {/* Preset Avatar Fast Selectors */}
-                <div className="flex items-center gap-2 pt-1">
-                  <span className="text-[11px] text-slate-400 font-medium">Atau pilih avatar:</span>
-                  {presetAvatars.map((url, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => setAvatar(url)}
-                      className={`w-7 h-7 rounded-full overflow-hidden border-2 cursor-pointer transition-transform hover:scale-110 ${
-                        avatar === url ? 'border-emerald-600 scale-110 shadow-xs' : 'border-transparent opacity-70'
-                      }`}
-                    >
-                      <img src={url} alt={`Preset ${idx + 1}`} className="w-full h-full object-cover" />
-                    </button>
-                  ))}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+                  <span className="text-[11px] text-slate-400 font-medium shrink-0">Atau pilih avatar:</span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {presetAvatars.map((url, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setAvatar(url)}
+                        className={`w-8 h-8 rounded-full overflow-hidden border-2 cursor-pointer transition-transform hover:scale-110 shrink-0 ${
+                          avatar === url ? 'border-emerald-600 scale-110 shadow-xs ring-2 ring-emerald-500/20' : 'border-transparent opacity-70'
+                        }`}
+                      >
+                        <img src={url} alt={`Preset ${idx + 1}`} className="w-full h-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button
               type="button"
               onClick={() => setIsEditing(false)}
-              className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold cursor-pointer"
+              className="w-full sm:w-auto px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold cursor-pointer text-center"
             >
               Batal
             </button>
             <button
               type="submit"
-              className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer"
+              className="w-full sm:w-auto px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <Save size={15} /> Simpan Perubahan Profil
             </button>

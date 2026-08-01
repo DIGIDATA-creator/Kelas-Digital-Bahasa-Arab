@@ -3,6 +3,7 @@ import { Materi, Penilaian, Student, ActivityLog } from '../../types';
 import { Users, BookOpen, FileCheck2, Award, Plus, FileUp, Sparkles, TrendingUp, Clock, CheckCircle2 } from 'lucide-react';
 import { DistribusiKemahiranChart } from './DistribusiKemahiranChart';
 import { GuruDashboardSkeleton } from '../common/Skeleton';
+import { MahfudzotOfTheDayCard } from '../common/MahfudzotOfTheDayCard';
 
 interface GuruDashboardProps {
   materiList: Materi[];
@@ -137,6 +138,9 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({
 
       {/* Bar Chart: Student Proficiency Distribution by School & Class */}
       <DistribusiKemahiranChart students={students} />
+
+      {/* Mahfudzot Hari Ini Card (Rotasi 24 Jam) */}
+      <MahfudzotOfTheDayCard materiList={materiList} onNavigate={onNavigate} />
 
       {/* Main Grid: Category Distribution & Recent Submissions */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

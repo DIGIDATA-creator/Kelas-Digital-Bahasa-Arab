@@ -38,6 +38,7 @@ export interface MahfudzotQuote {
   arabic: string;
   latin: string;
   translation: string;
+  categoryTag?: string; // e.g. 'Akhlak', 'Ilmu', 'Persahabatan', 'Kesungguhan', 'Waktu & Disiplin', 'Kebijaksanaan'
   explanation?: string;
 }
 
@@ -47,6 +48,7 @@ export interface Materi {
   arabicTitle?: string;
   category: CategoryType;
   qowaidCategory?: 'قواعد' | 'النحو' | 'الصرف' | string;
+  mahfudzotCategory?: string; // e.g. 'Akhlak', 'Ilmu', 'Persahabatan', 'Kesungguhan', 'Waktu & Disiplin', 'Kebijaksanaan'
   babNumber?: number;
   learningTargets?: string[];
   level?: 'Dasar' | 'Menengah' | 'Lanjut';
@@ -123,6 +125,18 @@ export type TingkatType = 'Dasar' | 'Menengah Pertama' | 'Menengah Akhir' | 'Umu
 
 export type StudentStatus = 'pending' | 'disetujui' | 'ditolak' | 'aktif' | 'nonaktif';
 
+export interface MahfudzotChecklist {
+  hafalanArab: boolean;
+  hafalanTerjemah: boolean;
+  pengetahuanKosakata: boolean;
+  pemahamanMateri: boolean;
+}
+
+export interface StudentHafalanProgress {
+  kosakataIds?: Record<string, boolean>; // vocabId -> boolean
+  mahfudzotChecklist?: Record<string, MahfudzotChecklist>; // mahfudzotId -> MahfudzotChecklist
+}
+
 export interface Student {
   id: string;
   name: string;
@@ -141,6 +155,7 @@ export interface Student {
   status: StudentStatus;
   lastActive: string;
   registeredAt?: string;
+  hafalanProgress?: StudentHafalanProgress;
 }
 
 export interface ActivityLog {

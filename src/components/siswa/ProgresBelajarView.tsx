@@ -1,5 +1,5 @@
 import React from 'react';
-import { Student, Materi, Penilaian } from '../../types';
+import { Student, Materi, Penilaian, MahfudzotChecklist } from '../../types';
 import { BookOpen, Award, CheckCircle2, TrendingUp, BarChart3, Clock } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
@@ -111,6 +111,43 @@ export const ProgresBelajarView: React.FC<ProgresBelajarViewProps> = ({
           </div>
         </div>
 
+      </div>
+
+      {/* Offline Setoran Hafalan Status (Diverifikasi Guru) */}
+      <div className="bg-gradient-to-r from-purple-900 to-slate-900 p-6 rounded-2xl border border-purple-800 text-white shadow-md space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-extrabold text-sm flex items-center gap-2 text-purple-200">
+            <CheckCircle2 size={18} className="text-purple-400" /> Status Setoran Hafalan Offline (Verifikasi Guru)
+          </h3>
+          <span className="px-2.5 py-0.5 bg-purple-950 text-purple-300 border border-purple-700 text-[11px] font-bold rounded-full">
+            Sistem Setoran Direct
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="p-4 bg-slate-900/80 border border-purple-800/60 rounded-xl space-y-1">
+            <div className="text-xs text-purple-300 font-semibold">Setoran Mahfudzot Tuntas</div>
+            <div className="text-2xl font-black text-white">
+              {Object.values(currentStudent.hafalanProgress?.mahfudzotChecklist || {}).filter(
+                (c: MahfudzotChecklist) => c && c.hafalanArab && c.hafalanTerjemah && c.pengetahuanKosakata && c.pemahamanMateri
+              ).length} <span className="text-xs font-normal text-purple-400">Kata Mutiara (4/4 Kriteria)</span>
+            </div>
+            <p className="text-[11px] text-slate-400">
+              Lafal Arab, Terjemahan, Kosakata, dan Pemahaman telah diverifikasi oleh guru.
+            </p>
+          </div>
+
+          <div className="p-4 bg-slate-900/80 border border-purple-800/60 rounded-xl space-y-1">
+            <div className="text-xs text-emerald-300 font-semibold">Setoran Kosakata (Mufrodat)</div>
+            <div className="text-2xl font-black text-white">
+              {Object.values(currentStudent.hafalanProgress?.kosakataIds || {}).filter(Boolean).length}{' '}
+              <span className="text-xs font-normal text-emerald-400">Mufrodat Hafal</span>
+            </div>
+            <p className="text-[11px] text-slate-400">
+              Hafalan mufrodat bahasa Arab disetorkan secara tatap muka dengan guru.
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Quiz Attempt History Table */}

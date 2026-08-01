@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Materi, CategoryType, VocabularyItem } from '../../types';
-import { Plus, Edit3, Trash2, Eye, FileText, BookOpen, Quote, List, Sparkles, Play, Search, CheckCircle, MessageSquare, AlertTriangle, X } from 'lucide-react';
+import { Plus, Edit3, Trash2, Eye, FileText, BookOpen, Quote, List, Sparkles, Play, Search, CheckCircle, MessageSquare, AlertTriangle, X, FileSpreadsheet } from 'lucide-react';
 import { PdfViewerModal } from '../common/PdfViewerModal';
 import { QowaidFormModal } from './materi/QowaidFormModal';
 import { HiwarFormModal } from './materi/HiwarFormModal';
@@ -32,6 +32,7 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
   const [isHiwarModalOpen, setIsHiwarModalOpen] = useState(false);
   const [isKosakataModalOpen, setIsKosakataModalOpen] = useState(false);
   const [isMahfudzotModalOpen, setIsMahfudzotModalOpen] = useState(false);
+  const [mahfudzotModalTab, setMahfudzotModalTab] = useState<'single' | 'sheet'>('single');
 
   // Currently Editing Item
   const [editingMateri, setEditingMateri] = useState<Materi | null>(null);
@@ -57,14 +58,22 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
 
   const handleOpenAddModal = () => {
     setEditingMateri(null);
+    setMahfudzotModalTab('single');
     if (activeCategory === 'qowaid') setIsQowaidModalOpen(true);
     else if (activeCategory === 'hiwar') setIsHiwarModalOpen(true);
     else if (activeCategory === 'kosakata') setIsKosakataModalOpen(true);
     else if (activeCategory === 'mahfudzot') setIsMahfudzotModalOpen(true);
   };
 
+  const handleOpenSheetModal = () => {
+    setEditingMateri(null);
+    setMahfudzotModalTab('sheet');
+    setIsMahfudzotModalOpen(true);
+  };
+
   const handleOpenEditModal = (materi: Materi) => {
     setEditingMateri(materi);
+    setMahfudzotModalTab('single');
     if (materi.category === 'qowaid') setIsQowaidModalOpen(true);
     else if (materi.category === 'hiwar') setIsHiwarModalOpen(true);
     else if (materi.category === 'kosakata') setIsKosakataModalOpen(true);
@@ -74,8 +83,9 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
   // Delete confirmation modal state
   const [deleteConfirmation, setDeleteConfirmation] = useState<{
     isOpen: boolean;
-    type: 'materi' | 'vocab' | 'clear_all';
+    type: 'materi' | 'vocab' | 'clear_all' | 'multiple_materi';
     materiId?: string;
+    materiIds?: string[];
     vocabId?: string;
     title: string;
     message: string;
@@ -93,6 +103,16 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
       materiId: materi.id,
       title: `Hapus Materi "${materi.title}"`,
       message: `Apakah Anda yakin ingin menghapus materi Bab ${materi.babNumber || 1} (${materi.category.toUpperCase()}) ini? Data materi yang dihapus tidak dapat dikembalikan.`,
+    });
+  };
+
+  const requestDeleteMultipleMateri = (ids: string[]) => {
+    setDeleteConfirmation({
+      isOpen: true,
+      type: 'multiple_materi',
+      materiIds: ids,
+      title: `Hapus ${ids.length} Materi Terpilih`,
+      message: `Apakah Anda yakin ingin menghapus ${ids.length} materi terpilih secara massal? Tindakan ini tidak dapat dibatalkan.`,
     });
   };
 
@@ -124,6 +144,10 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
     } else if (deleteConfirmation.type === 'materi' && deleteConfirmation.materiId) {
       const updated = materiList.filter(m => m.id !== deleteConfirmation.materiId);
       onSaveMateri(updated);
+    } else if (deleteConfirmation.type === 'multiple_materi' && deleteConfirmation.materiIds) {
+      const idsToDelete = new Set(deleteConfirmation.materiIds);
+      const updated = materiList.filter(m => !idsToDelete.has(m.id));
+      onSaveMateri(updated);
     } else if (deleteConfirmation.type === 'vocab' && deleteConfirmation.materiId && deleteConfirmation.vocabId) {
       const updated = materiList.map(m => {
         if (m.id === deleteConfirmation.materiId) {
@@ -146,7 +170,35 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
     });
   };
 
-  const handleSaveModalMateri = (partial: Partial<Materi>) => {
+  const handleSaveModalMateri = (partial: Partial<Materi> | Partial<Materi>[], isBulkMode?: 'append' | 'overwrite') => {
+    if (Array.isArray(partial)) {
+      const newItems: Materi[] = partial.map((item, index) => ({
+        id: `mat-mahfudzot-${Date.now()}-${index}`,
+        title: item.title || `Mahfudzot No. ${item.babNumber || index + 1}`,
+        arabicTitle: item.arabicTitle || item.mahfudzot?.arabic || '',
+        category: 'mahfudzot',
+        babNumber: item.babNumber || index + 1,
+        learningTargets: [],
+        content: item.content || '',
+        description: item.description || '',
+        pdfUrl: '',
+        pdfFileName: '',
+        vocabularies: [],
+        mahfudzot: item.mahfudzot,
+        authorName: 'Ust. Ahmad Dahlan, M.Pd.',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }));
+
+      if (isBulkMode === 'overwrite') {
+        const remaining = materiList.filter(m => m.category !== 'mahfudzot');
+        onSaveMateri([...remaining, ...newItems]);
+      } else {
+        onSaveMateri([...materiList, ...newItems]);
+      }
+      return;
+    }
+
     if (editingMateri) {
       // Update
       const updated = materiList.map(m => {
@@ -205,23 +257,28 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
     });
   };
 
-  // Launch Flashcards for all Mahfudzot
-  const handleLaunchMahfudzotFlashcards = () => {
-    const mahfudzotMateri = materiList.filter(m => m.category === 'mahfudzot');
-    if (mahfudzotMateri.length === 0) {
-      alert('Belum ada data Mahfudzot.');
+  // Launch Flashcards for Mahfudzot (supports filtered list)
+  const handleLaunchMahfudzotFlashcards = (filteredList?: Materi[]) => {
+    const listToUse = filteredList && filteredList.length > 0
+      ? filteredList
+      : materiList.filter(m => m.category === 'mahfudzot');
+
+    if (listToUse.length === 0) {
+      alert('Belum ada data Mahfudzot untuk ditampilkan.');
       return;
     }
-    const items: FlashcardItem[] = mahfudzotMateri.map((m, idx) => ({
+    const items: FlashcardItem[] = listToUse.map((m, idx) => ({
       id: m.id,
       frontArabic: m.mahfudzot?.arabic || m.content,
       backTranslation: m.mahfudzot?.translation || m.description,
-      detail: `Mahfudzot ${m.babNumber || idx + 1}`,
+      latin: m.mahfudzot?.latin,
+      detail: `Mahfudzot No. ${m.mahfudzot?.number || m.babNumber || idx + 1}`,
+      number: m.mahfudzot?.number || m.babNumber || idx + 1,
     }));
 
     setFlashcardModalState({
       isOpen: true,
-      title: 'Flashcard Kumpulan Mahfudzot (Kata Mutiara)',
+      title: `Flashcard Mahfudzot (${listToUse.length} Kata Mutiara)`,
       items,
     });
   };
@@ -239,7 +296,15 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {activeCategory === 'mahfudzot' && (
+              <button
+                onClick={handleOpenSheetModal}
+                className="px-3.5 py-2.5 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+              >
+                <FileSpreadsheet size={16} className="text-purple-700" /> Upload Sheet Massal
+              </button>
+            )}
             {materiList.length > 0 && (
               <button
                 onClick={requestClearAllDummy}
@@ -448,7 +513,9 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
             const mat = materiList.find(m => m.id === id);
             if (mat) requestDeleteMateri(mat);
           }}
+          onDeleteMultipleMateri={requestDeleteMultipleMateri}
           onLaunchFlashcards={handleLaunchMahfudzotFlashcards}
+          onOpenSheetModal={handleOpenSheetModal}
           isEditable={true}
         />
       )}
@@ -484,6 +551,7 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
         editingMateri={editingMateri}
         existingMateriList={materiList}
         onSave={handleSaveModalMateri}
+        defaultTab={mahfudzotModalTab}
       />
 
       {/* Flashcard Player Modal */}

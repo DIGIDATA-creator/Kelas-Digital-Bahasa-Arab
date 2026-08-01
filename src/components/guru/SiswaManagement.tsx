@@ -24,9 +24,11 @@ import {
   ListFilter,
   AlertTriangle,
   UserCheck,
-  ChevronRight
+  ChevronRight,
+  CheckSquare
 } from 'lucide-react';
 import { PendaftaranSiswaForm } from '../auth/PendaftaranSiswaForm';
+import { CeklisHafalanModal } from './CeklisHafalanModal';
 
 interface SiswaManagementProps {
   students: Student[];
@@ -47,6 +49,7 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
   const [viewMode, setViewMode] = useState<'grouped' | 'flat'>('grouped');
 
   const [selectedStudentForDetail, setSelectedStudentForDetail] = useState<Student | null>(null);
+  const [studentForHafalanChecklist, setStudentForHafalanChecklist] = useState<Student | null>(null);
 
   // Bulk selection state
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
@@ -794,7 +797,15 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                                             <option value="ditolak">✕ Ditolak</option>
                                           </select>
 
-                                          <div className="flex items-center gap-0.5">
+                                          <div className="flex items-center gap-1">
+                                            <button
+                                              onClick={() => setStudentForHafalanChecklist(std)}
+                                              className="px-2 py-1 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-lg text-[11px] font-extrabold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                                              title="Ceklis Setoran Hafalan Kosakata & Mahfudzot"
+                                            >
+                                              <CheckSquare size={13} className="text-purple-600" />
+                                              <span>Ceklis</span>
+                                            </button>
                                             <button
                                               onClick={() => setSelectedStudentForDetail(std)}
                                               className="p-1 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg cursor-pointer"
@@ -972,6 +983,14 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                         </td>
                         <td className="py-3.5 px-3 sm:px-4 text-right">
                           <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => setStudentForHafalanChecklist(std)}
+                              className="px-2 py-1 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-lg text-xs font-extrabold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                              title="Ceklis Setoran Hafalan Kosakata & Mahfudzot"
+                            >
+                              <CheckSquare size={14} className="text-purple-600" />
+                              <span>Ceklis</span>
+                            </button>
                             <button
                               onClick={() => setSelectedStudentForDetail(std)}
                               className="p-1 sm:p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
@@ -1188,6 +1207,20 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
             </motion.div>
           </motion.div>
         )}
+        {/* Modal Ceklis Hafalan Setoran Offline */}
+        <CeklisHafalanModal
+          isOpen={!!studentForHafalanChecklist}
+          onClose={() => setStudentForHafalanChecklist(null)}
+          student={studentForHafalanChecklist}
+          materiList={materiList}
+          onSaveStudent={(updatedStudent) => {
+            const nextList = students.map(s => s.id === updatedStudent.id ? updatedStudent : s);
+            onSaveStudents(nextList);
+            if (selectedStudentForDetail?.id === updatedStudent.id) {
+              setSelectedStudentForDetail(updatedStudent);
+            }
+          }}
+        />
       </AnimatePresence>
     </div>
   );

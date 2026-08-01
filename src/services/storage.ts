@@ -186,6 +186,66 @@ export const storageService = {
     cachedStudents = list;
     saveLocal(KEYS.STUDENTS, list);
     setDoc(docStudents, { items: list }).catch(err => console.error('Error syncing Students to Firestore:', err));
+
+    // Also update cached forum posts authorAvatar and authorName if any student profile changed
+    let forumUpdated = false;
+    const updatedForum = cachedForum.map(post => {
+      let postChanged = false;
+      const authorStudent = list.find(s => s.id === post.authorId);
+      let newAuthorAvatar = post.authorAvatar;
+      let newAuthorName = post.authorName;
+
+      if (authorStudent) {
+        if (authorStudent.avatar && post.authorAvatar !== authorStudent.avatar) {
+          newAuthorAvatar = authorStudent.avatar;
+          postChanged = true;
+        }
+        if (authorStudent.name && post.authorName !== authorStudent.name) {
+          newAuthorName = authorStudent.name;
+          postChanged = true;
+        }
+      }
+
+      const updatedReplies = post.replies.map(r => {
+        const replyStudent = list.find(s => s.id === r.authorId);
+        if (replyStudent) {
+          let replyChanged = false;
+          let rAvatar = r.authorAvatar;
+          let rName = r.authorName;
+          if (replyStudent.avatar && r.authorAvatar !== replyStudent.avatar) {
+            rAvatar = replyStudent.avatar;
+            replyChanged = true;
+          }
+          if (replyStudent.name && r.authorName !== replyStudent.name) {
+            rName = replyStudent.name;
+            replyChanged = true;
+          }
+          if (replyChanged) {
+            postChanged = true;
+            return { ...r, authorAvatar: rAvatar, authorName: rName };
+          }
+        }
+        return r;
+      });
+
+      if (postChanged) {
+        forumUpdated = true;
+        return {
+          ...post,
+          authorAvatar: newAuthorAvatar,
+          authorName: newAuthorName,
+          replies: updatedReplies,
+        };
+      }
+      return post;
+    });
+
+    if (forumUpdated) {
+      cachedForum = updatedForum;
+      saveLocal(KEYS.FORUM, updatedForum);
+      setDoc(docForum, { items: updatedForum }).catch(err => console.error('Error syncing updated Forum avatars to Firestore:', err));
+    }
+
     notifyListeners();
   },
 
