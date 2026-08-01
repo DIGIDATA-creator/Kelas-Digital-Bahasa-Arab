@@ -52,17 +52,25 @@ export default function App() {
   const [currentStudentId, setCurrentStudentId] = useState<string>(() => storageService.getCurrentStudentId());
 
   const [selectedMateriIdForSiswa, setSelectedMateriIdForSiswa] = useState<string | undefined>(undefined);
+  const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
 
   // Real-time synchronization with Firebase Firestore across all devices
   useEffect(() => {
+    setIsLoadingData(true);
     const unsubscribe = storageService.initFirestoreSync(({ materiList, penilaianList, students, logs, forumPosts }) => {
       setMateriList(materiList);
       setPenilaianList(penilaianList);
       setStudents(students);
       setLogs(logs);
       setForumPosts(forumPosts);
+      setIsLoadingData(false);
     });
-    return () => unsubscribe();
+    // Fallback timer if offline or fast local storage load
+    const timer = setTimeout(() => setIsLoadingData(false), 800);
+    return () => {
+      unsubscribe();
+      clearTimeout(timer);
+    };
   }, []);
 
   // Sync role changes
@@ -154,6 +162,7 @@ export default function App() {
                     students={students}
                     logs={logs}
                     onNavigate={setActiveTab}
+                    isLoading={isLoadingData}
                   />
                 )}
 
@@ -210,6 +219,7 @@ export default function App() {
                     materiList={materiList}
                     penilaianList={penilaianList}
                     onNavigate={setActiveTab}
+                    isLoading={isLoadingData}
                     onSelectMateri={(id) => {
                       setSelectedMateriIdForSiswa(id);
                       setActiveTab('materi');

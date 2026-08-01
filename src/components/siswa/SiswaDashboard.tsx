@@ -1,6 +1,7 @@
 import React from 'react';
 import { Student, Materi, Penilaian } from '../../types';
 import { BookOpen, Award, CheckCircle2, Play, Flame, ArrowRight, Sparkles, FileCheck, Trophy } from 'lucide-react';
+import { SiswaDashboardSkeleton } from '../common/Skeleton';
 
 interface SiswaDashboardProps {
   currentStudent: Student;
@@ -9,6 +10,7 @@ interface SiswaDashboardProps {
   onNavigate: (tab: string) => void;
   onSelectMateri: (materiId: string) => void;
   onStartPenilaian: (penilaianId: string) => void;
+  isLoading?: boolean;
 }
 
 export const SiswaDashboard: React.FC<SiswaDashboardProps> = ({
@@ -18,8 +20,13 @@ export const SiswaDashboard: React.FC<SiswaDashboardProps> = ({
   onNavigate,
   onSelectMateri,
   onStartPenilaian,
+  isLoading = false,
 }) => {
-  const completedCount = currentStudent.completedMaterials.length;
+  if (isLoading) {
+    return <SiswaDashboardSkeleton />;
+  }
+
+  const completedCount = currentStudent.completedMaterials?.length || 0;
   const totalMateri = materiList.length || 1;
   const overallProgressPct = Math.round((completedCount / totalMateri) * 100);
 

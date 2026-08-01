@@ -34,8 +34,20 @@ export const signInWithGoogle = async () => {
     return result.user;
   } catch (error: any) {
     console.error("Firebase Google Auth error:", error);
+    if (error?.code === 'auth/unauthorized-domain') {
+      const domain = typeof window !== 'undefined' ? window.location.hostname : 'domain Anda';
+      throw new Error(
+        `Domain "${domain}" belum terdaftar di Authorized Domains Firebase Console. Silakan tambahkan domain ini di Firebase Console (Authentication > Settings > Authorized domains), atau gunakan Login Email di bawah.`
+      );
+    }
     if (error?.code === 'auth/api-key-not-valid' || error?.message?.includes('API key not valid')) {
       throw new Error("API Key Firebase tidak valid. Silakan gunakan Login Email/Password atau perbarui API Key di Firebase Console.");
+    }
+    if (error?.code === 'auth/popup-closed-by-user') {
+      throw new Error("Proses login dibatalkan karena jendela pop-up Google ditutup.");
+    }
+    if (error?.code === 'auth/popup-blocked') {
+      throw new Error("Pop-up Google diblokir oleh browser. Harap izinkan pop-up untuk situs ini.");
     }
     throw error;
   }

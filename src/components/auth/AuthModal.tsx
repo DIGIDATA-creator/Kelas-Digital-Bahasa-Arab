@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { signInWithGoogle, loginUser, registerUser, logoutUser, User } from '../../lib/firebase';
-import { LogIn, LogOut, UserPlus, Mail, Lock, Shield, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
+import { LogIn, LogOut, UserPlus, Mail, Lock, Shield, CheckCircle2, AlertCircle, Sparkles, Copy, ExternalLink, Globe, Check, ShieldAlert } from 'lucide-react';
 import { PendaftaranSiswaForm } from './PendaftaranSiswaForm';
 import { Student, TingkatType } from '../../types';
 import { storageService } from '../../services/storage';
@@ -27,6 +27,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
+  const [copiedDomain, setCopiedDomain] = useState(false);
+
+  const currentDomain = typeof window !== 'undefined' ? window.location.hostname : 'kelas-digital-bahasa-arab.vercel.app';
+
+  const handleCopyDomain = () => {
+    navigator.clipboard.writeText(currentDomain);
+    setCopiedDomain(true);
+    setTimeout(() => setCopiedDomain(false), 2000);
+  };
 
   // (Rendered using AnimatePresence below)
   const handleGoogleLogin = async () => {
@@ -229,10 +238,56 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         <div className="p-6 space-y-4 overflow-y-auto">
           {/* Messages */}
           {errorMsg && (
-            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-center gap-2">
-              <AlertCircle size={16} className="shrink-0 text-rose-500" />
-              <span>{errorMsg}</span>
-            </div>
+            (errorMsg.includes('unauthorized-domain') || errorMsg.includes('Authorized Domains')) ? (
+              <div className="p-4 bg-amber-50 dark:bg-amber-950/60 border-2 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 text-xs rounded-2xl space-y-3 shadow-xs">
+                <div className="flex items-start gap-2.5">
+                  <ShieldAlert className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <h4 className="font-extrabold text-amber-900 dark:text-amber-100 text-xs">
+                      Domain Belum Didaftarkan di Firebase Auth
+                    </h4>
+                    <p className="text-[11px] leading-relaxed text-amber-800 dark:text-amber-300">
+                      Error <code className="bg-amber-100 dark:bg-amber-900 px-1 py-0.5 rounded font-mono text-[10px]">auth/unauthorized-domain</code> terjadi karena domain web saat ini belum dimasukkan ke dalam daftar <strong>Authorized Domains</strong> Firebase.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-amber-200 dark:border-amber-800 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <Globe size={14} className="text-amber-600 shrink-0" />
+                    <span className="font-mono text-slate-800 dark:text-slate-200 font-bold truncate text-[11px]">
+                      {currentDomain}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCopyDomain}
+                    className="px-2.5 py-1 bg-amber-100 hover:bg-amber-200 dark:bg-amber-900 dark:hover:bg-amber-800 text-amber-900 dark:text-amber-100 text-[10px] font-bold rounded-lg transition-colors flex items-center gap-1 shrink-0 cursor-pointer"
+                  >
+                    {copiedDomain ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                    <span>{copiedDomain ? 'Tersalin!' : 'Salin Domain'}</span>
+                  </button>
+                </div>
+
+                <div className="text-[11px] space-y-1 text-slate-700 dark:text-slate-300 border-t border-amber-200/60 dark:border-amber-800/60 pt-2">
+                  <p className="font-bold text-amber-900 dark:text-amber-200">Cara Mengatasi (Untuk Admin / Pengembang):</p>
+                  <ol className="list-decimal list-inside space-y-0.5 pl-1">
+                    <li>Buka <a href="https://console.firebase.google.com" target="_blank" rel="noreferrer" className="text-amber-700 dark:text-amber-400 font-bold underline inline-flex items-center gap-0.5">Firebase Console <ExternalLink size={10} /></a> & pilih proyek Anda.</li>
+                    <li>Ke menu <strong>Authentication</strong> &gt; tab <strong>Settings</strong> &gt; <strong>Authorized domains</strong>.</li>
+                    <li>Klik <strong>Add domain</strong>, tempel domain di atas, lalu simpan.</li>
+                  </ol>
+                </div>
+
+                <div className="p-2 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 rounded-xl text-[11px] text-emerald-800 dark:text-emerald-300">
+                  <span>💡 <strong>Solusi Cepat Pengguna:</strong> Anda tetap bisa masuk menggunakan <strong>Login Email & Password</strong> di bawah.</span>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-center gap-2">
+                <AlertCircle size={16} className="shrink-0 text-rose-500" />
+                <span>{errorMsg}</span>
+              </div>
+            )
           )}
 
           {successMsg && (

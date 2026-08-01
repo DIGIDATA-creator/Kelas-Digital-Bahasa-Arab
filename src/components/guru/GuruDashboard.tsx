@@ -2,6 +2,7 @@ import React from 'react';
 import { Materi, Penilaian, Student, ActivityLog } from '../../types';
 import { Users, BookOpen, FileCheck2, Award, Plus, FileUp, Sparkles, TrendingUp, Clock, CheckCircle2 } from 'lucide-react';
 import { DistribusiKemahiranChart } from './DistribusiKemahiranChart';
+import { GuruDashboardSkeleton } from '../common/Skeleton';
 
 interface GuruDashboardProps {
   materiList: Materi[];
@@ -9,6 +10,7 @@ interface GuruDashboardProps {
   students: Student[];
   logs: ActivityLog[];
   onNavigate: (tab: string) => void;
+  isLoading?: boolean;
 }
 
 export const GuruDashboard: React.FC<GuruDashboardProps> = ({
@@ -17,7 +19,12 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({
   students,
   logs,
   onNavigate,
+  isLoading = false,
 }) => {
+  if (isLoading) {
+    return <GuruDashboardSkeleton />;
+  }
+
   // Compute overall stats
   const totalStudents = students.length;
   const totalMateri = materiList.length;
