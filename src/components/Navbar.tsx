@@ -221,6 +221,8 @@ export const Navbar: React.FC<NavbarProps> = ({
         onClose={() => setIsAuthModalOpen(false)}
         currentUser={firebaseUser}
         existingStudents={students}
+        onSelectStudent={onStudentChange}
+        onRoleChange={onRoleChange}
       />
     </header>
   );

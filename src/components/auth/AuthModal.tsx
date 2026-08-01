@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { signInWithGoogle, loginUser, registerUser, logoutUser, User } from '../../lib/firebase';
-import { LogIn, LogOut, UserPlus, Mail, Lock, Shield, CheckCircle2, AlertCircle, Sparkles, Copy, ExternalLink, Globe, Check, ShieldAlert } from 'lucide-react';
+import { LogIn, LogOut, UserPlus, Mail, Lock, Shield, CheckCircle2, AlertCircle, Sparkles, Copy, ExternalLink, Globe, Check, ShieldAlert, ArrowRight } from 'lucide-react';
 import { PendaftaranSiswaForm } from './PendaftaranSiswaForm';
-import { Student, TingkatType } from '../../types';
+import { Student, TingkatType, Role } from '../../types';
 import { storageService } from '../../services/storage';
 
 interface AuthModalProps {
@@ -12,6 +12,8 @@ interface AuthModalProps {
   currentUser: User | null;
   existingStudents?: Student[];
   onAddNewStudent?: (newStudent: Student) => void;
+  onSelectStudent?: (studentId: string) => void;
+  onRoleChange?: (role: Role) => void;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
@@ -20,6 +22,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   currentUser,
   existingStudents = [],
   onAddNewStudent,
+  onSelectStudent,
+  onRoleChange,
 }) => {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
@@ -28,6 +32,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const [copiedDomain, setCopiedDomain] = useState(false);
+  const [pendingGoogleUser, setPendingGoogleUser] = useState<{ name: string; email: string } | null>(null);
 
   const currentDomain = typeof window !== 'undefined' ? window.location.hostname : 'kelas-digital-bahasa-arab.vercel.app';
 
@@ -37,18 +42,75 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setTimeout(() => setCopiedDomain(false), 2000);
   };
 
-  // (Rendered using AnimatePresence below)
   const handleGoogleLogin = async () => {
     setErrorMsg('');
     setSuccessMsg('');
+    setPendingGoogleUser(null);
     setLoading(true);
+
     try {
       const user = await signInWithGoogle();
-      setSuccessMsg(`Berhasil masuk sebagai ${user.displayName || user.email}`);
+      const userEmail = user.email?.toLowerCase().trim() || '';
+
+      // 1. Check if this Google account is Guru / Admin
+      const isTeacher = userEmail.includes('guru') || userEmail.includes('admin') || userEmail === 'ruangk106@gmail.com';
+
+      if (isTeacher) {
+        if (onRoleChange) onRoleChange('guru');
+        setSuccessMsg(`Berhasil masuk dengan Google Account sebagai Guru (${user.displayName || user.email})!`);
+        setTimeout(() => onClose(), 1200);
+        return;
+      }
+
+      // 2. Check student database for registration & approval status
+      const allStudents = storageService.getStudents();
+      const matchedStudent = allStudents.find(
+        s => s.email.toLowerCase().trim() === userEmail
+      );
+
+      if (!matchedStudent) {
+        // Email is not registered at all!
+        await logoutUser(); // Revoke unapproved session
+        setPendingGoogleUser({
+          name: user.displayName || '',
+          email: user.email || '',
+        });
+        setErrorMsg(
+          `Alamat email Google (${user.email}) BELUM TERDAFTAR sebagai siswa. Silakan mendaftar terlebih dahulu pada Formulir Pendaftaran Siswa Baru dan tunggu persetujuan Guru.`
+        );
+        return;
+      }
+
+      // 3. If registered, check approval status
+      if (matchedStudent.status === 'pending') {
+        await logoutUser();
+        setErrorMsg(
+          `Akun Google (${user.email}) atas nama "${matchedStudent.name}" telah terdaftar, tetapi masih MENUNGGU ACC (Persetujuan) dari Guru. Silakan hubungi Guru Anda untuk menyetujui akun.`
+        );
+        return;
+      }
+
+      if (matchedStudent.status === 'ditolak') {
+        await logoutUser();
+        setErrorMsg(
+          `Pendaftaran akun Google (${user.email}) atas nama "${matchedStudent.name}" DITOLAK oleh Guru. Silakan hubungi Guru pengampu.`
+        );
+        return;
+      }
+
+      // 4. Status is 'disetujui' or 'aktif' -> Allow login!
+      if (onSelectStudent) {
+        onSelectStudent(matchedStudent.id);
+      }
+      if (onRoleChange) {
+        onRoleChange('siswa');
+      }
+      setSuccessMsg(`Berhasil masuk sebagai siswa ${matchedStudent.name}! Akun Google telah terverifikasi dan disetujui Guru.`);
       setTimeout(() => {
         onClose();
-      }, 1000);
+      }, 1200);
     } catch (err: any) {
+      console.error("Google Auth error:", err);
       setErrorMsg(err.message || 'Gagal masuk dengan Google.');
     } finally {
       setLoading(false);
@@ -84,6 +146,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       try {
         const user = await loginUser(email, password);
         if (user) {
+          if (studentMatch && (studentMatch.status === 'disetujui' || studentMatch.status === 'aktif')) {
+            if (onSelectStudent) onSelectStudent(studentMatch.id);
+            if (onRoleChange) onRoleChange('siswa');
+          }
           setSuccessMsg(`Berhasil masuk sebagai ${user.email}`);
           setTimeout(() => onClose(), 1000);
           return;
@@ -94,6 +160,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
       // Fallback: If student exists and is approved, allow login
       if (studentMatch && (studentMatch.status === 'disetujui' || studentMatch.status === 'aktif')) {
+        if (onSelectStudent) onSelectStudent(studentMatch.id);
+        if (onRoleChange) onRoleChange('siswa');
         setSuccessMsg(`Berhasil masuk sebagai ${studentMatch.name}!`);
         setTimeout(() => onClose(), 1000);
       } else {
@@ -283,9 +351,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </div>
               </div>
             ) : (
-              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-center gap-2">
-                <AlertCircle size={16} className="shrink-0 text-rose-500" />
-                <span>{errorMsg}</span>
+              <div className="p-3 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs rounded-xl space-y-2">
+                <div className="flex items-start gap-2">
+                  <AlertCircle size={16} className="shrink-0 text-rose-500 mt-0.5" />
+                  <span className="leading-relaxed">{errorMsg}</span>
+                </div>
+                {pendingGoogleUser && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('register');
+                      setErrorMsg('');
+                    }}
+                    className="w-full mt-2 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <UserPlus size={14} />
+                    <span>Daftarkan Akun Google ({pendingGoogleUser.email})</span>
+                    <ArrowRight size={14} />
+                  </button>
+                )}
               </div>
             )
           )}
@@ -385,6 +469,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 /* Registration Mode */
                 <PendaftaranSiswaForm
                   existingStudents={existingStudents}
+                  initialStudent={
+                    pendingGoogleUser
+                      ? ({
+                          name: pendingGoogleUser.name,
+                          email: pendingGoogleUser.email,
+                        } as Student)
+                      : undefined
+                  }
                   onRegisterSubmit={handleRegisterSubmit}
                   isLoading={loading}
                 />

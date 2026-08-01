@@ -748,7 +748,7 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                                     return (
                                       <div
                                         key={std.id}
-                                        className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-colors ${
+                                        className={`p-2.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2 transition-colors ${
                                           isSelected
                                             ? 'bg-emerald-50/90 border-emerald-300'
                                             : 'bg-slate-50 border-slate-100 hover:bg-emerald-50/50'
@@ -777,7 +777,7 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                                           </div>
                                         </div>
 
-                                        <div className="flex items-center gap-1 shrink-0">
+                                        <div className="flex items-center justify-between sm:justify-end gap-1 shrink-0 pt-1 sm:pt-0 border-t sm:border-t-0 border-slate-200/60">
                                           <select
                                             value={std.status === 'aktif' ? 'disetujui' : std.status}
                                             onChange={(e) => handleSetStudentStatus(std.id, e.target.value as StudentStatus)}
@@ -794,27 +794,29 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                                             <option value="ditolak">✕ Ditolak</option>
                                           </select>
 
-                                          <button
-                                            onClick={() => setSelectedStudentForDetail(std)}
-                                            className="p-1 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg cursor-pointer"
-                                            title="Detail Progres"
-                                          >
-                                            <Eye size={14} />
-                                          </button>
-                                          <button
-                                            onClick={() => handleOpenEditModal(std)}
-                                            className="p-1 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg cursor-pointer"
-                                            title="Edit"
-                                          >
-                                            <Edit3 size={14} />
-                                          </button>
-                                          <button
-                                            onClick={() => requestDeleteStudent(std)}
-                                            className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer"
-                                            title="Hapus"
-                                          >
-                                            <Trash2 size={14} />
-                                          </button>
+                                          <div className="flex items-center gap-0.5">
+                                            <button
+                                              onClick={() => setSelectedStudentForDetail(std)}
+                                              className="p-1 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg cursor-pointer"
+                                              title="Detail Progres"
+                                            >
+                                              <Eye size={14} />
+                                            </button>
+                                            <button
+                                              onClick={() => handleOpenEditModal(std)}
+                                              className="p-1 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg cursor-pointer"
+                                              title="Edit"
+                                            >
+                                              <Edit3 size={14} />
+                                            </button>
+                                            <button
+                                              onClick={() => requestDeleteStudent(std)}
+                                              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer"
+                                              title="Hapus"
+                                            >
+                                              <Trash2 size={14} />
+                                            </button>
+                                          </div>
                                         </div>
                                       </div>
                                     );
@@ -837,11 +839,19 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
       {/* VIEW MODE 2: FLAT TABLE */}
       {viewMode === 'flat' && (
         <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs sm:text-sm text-slate-600">
+          {/* Mobile Scroll Hint Bar */}
+          <div className="sm:hidden px-4 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-[11px] text-slate-500 font-semibold">
+            <span className="flex items-center gap-1 text-emerald-700 font-bold">
+              <Sparkles size={12} /> Tabel Responsif Seluler
+            </span>
+            <span className="text-slate-400">Geser ↔ untuk detail</span>
+          </div>
+
+          <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-slate-200">
+            <table className="w-full text-left text-xs sm:text-sm text-slate-600 min-w-[340px]">
               <thead className="bg-slate-50 text-slate-700 uppercase tracking-wider font-semibold border-b border-slate-200">
                 <tr>
-                  <th className="py-3.5 px-4 w-10 text-center">
+                  <th className="py-3.5 px-3 sm:px-4 w-10 text-center">
                     <input
                       type="checkbox"
                       checked={isAllFilteredSelected}
@@ -853,12 +863,12 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                       title="Pilih Semua Siswa yang Tampil"
                     />
                   </th>
-                  <th className="py-3.5 px-4">Siswa</th>
-                  <th className="py-3.5 px-4">Asal Sekolah</th>
-                  <th className="py-3.5 px-4">Tingkat / Kelas / Rombel</th>
-                  <th className="py-3.5 px-4 text-center">XP</th>
-                  <th className="py-3.5 px-4 text-center">Status</th>
-                  <th className="py-3.5 px-4 text-right">Aksi</th>
+                  <th className="py-3.5 px-3 sm:px-4 min-w-[140px]">Siswa</th>
+                  <th className="hidden md:table-cell py-3.5 px-4">Asal Sekolah</th>
+                  <th className="hidden sm:table-cell py-3.5 px-4">Tingkat / Kelas / Rombel</th>
+                  <th className="hidden lg:table-cell py-3.5 px-4 text-center">XP</th>
+                  <th className="py-3.5 px-3 sm:px-4 text-center">Status</th>
+                  <th className="py-3.5 px-3 sm:px-4 text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -878,7 +888,7 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                           isSelected ? 'bg-emerald-50/70' : 'hover:bg-slate-50/80'
                         }`}
                       >
-                        <td className="py-3.5 px-4 text-center">
+                        <td className="py-3.5 px-3 sm:px-4 text-center">
                           <input
                             type="checkbox"
                             checked={isSelected}
@@ -886,15 +896,15 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                             className="w-4 h-4 text-emerald-600 rounded-md border-slate-300 focus:ring-emerald-500 cursor-pointer accent-emerald-600"
                           />
                         </td>
-                        <td className="py-3.5 px-4">
-                          <div className="flex items-center gap-3">
+                        <td className="py-3.5 px-3 sm:px-4">
+                          <div className="flex items-start sm:items-center gap-2.5 sm:gap-3">
                             <img
                               src={std.avatar}
                               alt={std.name}
-                              className="w-9 h-9 rounded-full object-cover border border-slate-200"
+                              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover border border-slate-200 shrink-0 mt-0.5 sm:mt-0"
                             />
-                            <div>
-                              <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                            <div className="min-w-0">
+                              <div className="font-bold text-slate-900 flex items-center gap-1.5 flex-wrap">
                                 <span>{std.name}</span>
                                 {std.gender && (
                                   <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold ${
@@ -902,20 +912,33 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                                       ? 'bg-blue-50 text-blue-700 border border-blue-200'
                                       : 'bg-pink-50 text-pink-700 border border-pink-200'
                                   }`}>
-                                    {std.gender === 'Laki-laki' ? '👨 Laki-laki' : '👩 Perempuan'}
+                                    {std.gender === 'Laki-laki' ? '👨 L' : '👩 P'}
                                   </span>
                                 )}
                               </div>
-                              <div className="text-xs text-slate-400">{std.email}</div>
+                              <div className="text-xs text-slate-400 truncate">{std.email}</div>
+
+                              {/* Mobile Subtitle Badges for hidden table columns on small screens */}
+                              <div className="mt-1 flex flex-wrap items-center gap-1 md:hidden">
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded text-[10px] font-semibold border border-slate-200">
+                                  🏫 {std.schoolName || 'Umum'}
+                                </span>
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-emerald-50 text-emerald-800 rounded text-[10px] font-bold border border-emerald-200 sm:hidden">
+                                  📚 {std.tingkat || 'Umum'} - {std.className} {std.rombelName ? `(${std.rombelName})` : ''}
+                                </span>
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-50 text-amber-800 rounded text-[10px] font-bold border border-amber-200 lg:hidden">
+                                  <Award size={10} /> {std.totalXP} XP
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </td>
-                        <td className="py-3.5 px-4">
+                        <td className="hidden md:table-cell py-3.5 px-4">
                           <div className="font-semibold text-slate-800">
                             {std.schoolName || 'Tanpa Sekolah / Umum'}
                           </div>
                         </td>
-                        <td className="py-3.5 px-4">
+                        <td className="hidden sm:table-cell py-3.5 px-4">
                           <div className="text-xs font-bold text-emerald-800">
                             {std.tingkat || 'Umum'} - {std.className}
                           </div>
@@ -925,16 +948,16 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                             </div>
                           )}
                         </td>
-                        <td className="py-3.5 px-4 text-center">
+                        <td className="hidden lg:table-cell py-3.5 px-4 text-center">
                           <span className="inline-flex items-center gap-1 font-bold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full text-xs border border-amber-200">
                             <Award size={14} /> {std.totalXP} XP
                           </span>
                         </td>
-                        <td className="py-3.5 px-4 text-center">
+                        <td className="py-3.5 px-3 sm:px-4 text-center">
                           <select
                             value={std.status === 'aktif' ? 'disetujui' : std.status}
                             onChange={(e) => handleSetStudentStatus(std.id, e.target.value as StudentStatus)}
-                            className={`px-2.5 py-1 text-xs font-bold rounded-xl border cursor-pointer focus:outline-hidden transition-all ${
+                            className={`px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs font-bold rounded-xl border cursor-pointer focus:outline-hidden transition-all ${
                               std.status === 'disetujui' || std.status === 'aktif'
                                 ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
                                 : std.status === 'ditolak'
@@ -947,25 +970,25 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                             <option value="ditolak">✕ Ditolak</option>
                           </select>
                         </td>
-                        <td className="py-3.5 px-4 text-right">
+                        <td className="py-3.5 px-3 sm:px-4 text-right">
                           <div className="flex items-center justify-end gap-1">
                             <button
                               onClick={() => setSelectedStudentForDetail(std)}
-                              className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                              className="p-1 sm:p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                               title="Detail Progres"
                             >
                               <Eye size={16} />
                             </button>
                             <button
                               onClick={() => handleOpenEditModal(std)}
-                              className="p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                              className="p-1 sm:p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                               title="Edit Data"
                             >
                               <Edit3 size={16} />
                             </button>
                             <button
                               onClick={() => requestDeleteStudent(std)}
-                              className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                              className="p-1 sm:p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                               title="Hapus"
                             >
                               <Trash2 size={16} />
