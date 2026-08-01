@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Student, Materi, TingkatType } from '../../types';
+import { Student, StudentStatus, Materi, TingkatType } from '../../types';
 import {
   UserPlus,
   Search,
@@ -20,7 +20,8 @@ import {
   ChevronUp,
   Sparkles,
   Check,
-  ListFilter
+  ListFilter,
+  AlertTriangle
 } from 'lucide-react';
 import { PendaftaranSiswaForm } from '../auth/PendaftaranSiswaForm';
 
@@ -38,7 +39,7 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState('semua');
   const [selectedSchoolFilter, setSelectedSchoolFilter] = useState('semua');
-  const [statusTab, setStatusTab] = useState<'semua' | 'aktif' | 'pending'>('semua');
+  const [statusTab, setStatusTab] = useState<'semua' | 'pending' | 'disetujui' | 'ditolak'>('semua');
   const [viewMode, setViewMode] = useState<'grouped' | 'flat'>('grouped');
 
   const [selectedStudentForDetail, setSelectedStudentForDetail] = useState<Student | null>(null);
@@ -54,9 +55,10 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
     setCollapsedSchools(prev => ({ ...prev, [schoolKey]: !prev[schoolKey] }));
   };
 
-  // Counts
+  // Counts based on Status
   const pendingStudents = students.filter(s => s.status === 'pending');
-  const activeStudents = students.filter(s => s.status === 'aktif');
+  const approvedStudents = students.filter(s => s.status === 'disetujui' || s.status === 'aktif');
+  const rejectedStudents = students.filter(s => s.status === 'ditolak');
 
   // Extract unique schools & classes for filters
   const allSchoolNames = Array.from(
@@ -80,7 +82,9 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
 
     const matchesStatus =
       statusTab === 'semua' ||
-      (statusTab === 'pending' ? s.status === 'pending' : s.status === 'aktif');
+      (statusTab === 'pending' && s.status === 'pending') ||
+      (statusTab === 'disetujui' && (s.status === 'disetujui' || s.status === 'aktif')) ||
+      (statusTab === 'ditolak' && s.status === 'ditolak');
 
     return matchesSearch && matchesClass && matchesSchool && matchesStatus;
   });
@@ -103,10 +107,10 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
     }
   };
 
-  const handleApproveStudent = (id: string) => {
+  const handleSetStudentStatus = (id: string, newStatus: StudentStatus) => {
     const updated = students.map(s => {
       if (s.id === id) {
-        return { ...s, status: 'aktif' as const };
+        return { ...s, status: newStatus };
       }
       return s;
     });
@@ -115,23 +119,14 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
 
   const handleApproveAllPending = () => {
     if (confirm(`Setujui (ACC) seluruh ${pendingStudents.length} siswa pendaftar baru?`)) {
-      const updated = students.map(s => ({
-        ...s,
-        status: 'aktif' as const
-      }));
+      const updated = students.map(s => {
+        if (s.status === 'pending') {
+          return { ...s, status: 'disetujui' as const };
+        }
+        return s;
+      });
       onSaveStudents(updated);
     }
-  };
-
-  const handleToggleStatus = (id: string) => {
-    const updated = students.map(s => {
-      if (s.id === id) {
-        const nextStatus = s.status === 'aktif' ? 'nonaktif' as const : 'aktif' as const;
-        return { ...s, status: nextStatus };
-      }
-      return s;
-    });
-    onSaveStudents(updated);
   };
 
   const handleSaveStudentFromForm = (data: {
@@ -246,10 +241,10 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
           {/* Status Tabs */}
-          <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl">
+          <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100 rounded-xl">
             <button
               onClick={() => setStatusTab('semua')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 statusTab === 'semua'
                   ? 'bg-white text-slate-900 shadow-xs'
                   : 'text-slate-500 hover:text-slate-800'
@@ -258,24 +253,34 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
               Semua ({students.length})
             </button>
             <button
-              onClick={() => setStatusTab('aktif')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                statusTab === 'aktif'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <CheckCircle2 size={13} /> Terkonfirmasi ACC ({activeStudents.length})
-            </button>
-            <button
               onClick={() => setStatusTab('pending')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 statusTab === 'pending'
                   ? 'bg-amber-500 text-slate-950 shadow-xs'
                   : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              <Clock size={13} /> Menunggu ACC ({pendingStudents.length})
+              <Clock size={13} /> Pending ({pendingStudents.length})
+            </button>
+            <button
+              onClick={() => setStatusTab('disetujui')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                statusTab === 'disetujui'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <CheckCircle2 size={13} /> Disetujui ({approvedStudents.length})
+            </button>
+            <button
+              onClick={() => setStatusTab('ditolak')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                statusTab === 'ditolak'
+                  ? 'bg-rose-600 text-white shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <XCircle size={13} /> Ditolak ({rejectedStudents.length})
             </button>
           </div>
 
@@ -283,7 +288,7 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
           <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl">
             <button
               onClick={() => setViewMode('grouped')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 viewMode === 'grouped'
                   ? 'bg-emerald-600 text-white shadow-xs'
                   : 'text-slate-500 hover:text-slate-800'
@@ -293,7 +298,7 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
             </button>
             <button
               onClick={() => setViewMode('flat')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 viewMode === 'flat'
                   ? 'bg-emerald-600 text-white shadow-xs'
                   : 'text-slate-500 hover:text-slate-800'
@@ -453,19 +458,21 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                                       </div>
 
                                       <div className="flex items-center gap-1 shrink-0">
-                                        {std.status === 'pending' ? (
-                                          <button
-                                            onClick={() => handleApproveStudent(std.id)}
-                                            className="px-2 py-1 bg-amber-500 hover:bg-amber-600 text-slate-950 text-[10px] font-extrabold rounded-lg shadow-xs flex items-center gap-1 cursor-pointer"
-                                            title="ACC Siswa Ini"
-                                          >
-                                            <Check size={12} /> ACC
-                                          </button>
-                                        ) : (
-                                          <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-md flex items-center gap-1">
-                                            <CheckCircle2 size={10} /> ACC
-                                          </span>
-                                        )}
+                                        <select
+                                          value={std.status === 'aktif' ? 'disetujui' : std.status}
+                                          onChange={(e) => handleSetStudentStatus(std.id, e.target.value as StudentStatus)}
+                                          className={`px-2 py-1 text-[11px] font-bold rounded-lg border cursor-pointer focus:outline-hidden transition-all ${
+                                            std.status === 'disetujui' || std.status === 'aktif'
+                                              ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                              : std.status === 'ditolak'
+                                              ? 'bg-rose-50 text-rose-800 border-rose-300'
+                                              : 'bg-amber-50 text-amber-900 border-amber-300'
+                                          }`}
+                                        >
+                                          <option value="pending">⏳ Pending</option>
+                                          <option value="disetujui">✓ Disetujui</option>
+                                          <option value="ditolak">✕ Ditolak</option>
+                                        </select>
 
                                         <button
                                           onClick={() => setSelectedStudentForDetail(std)}
@@ -517,7 +524,7 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                   <th className="py-3.5 px-4">Asal Sekolah</th>
                   <th className="py-3.5 px-4">Tingkat / Kelas / Rombel</th>
                   <th className="py-3.5 px-4 text-center">XP</th>
-                  <th className="py-3.5 px-4 text-center">Status ACC</th>
+                  <th className="py-3.5 px-4 text-center">Status</th>
                   <th className="py-3.5 px-4 text-right">Aksi</th>
                 </tr>
               </thead>
@@ -566,29 +573,21 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                           </span>
                         </td>
                         <td className="py-3.5 px-4 text-center">
-                          {std.status === 'pending' ? (
-                            <button
-                              onClick={() => handleApproveStudent(std.id)}
-                              className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-full shadow-xs inline-flex items-center gap-1 cursor-pointer"
-                            >
-                              <Clock size={12} /> ACC Sekarang
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => handleToggleStatus(std.id)}
-                              className={`px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider inline-flex items-center gap-1 cursor-pointer ${
-                                std.status === 'aktif'
-                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                  : 'bg-rose-50 text-rose-700 border border-rose-200'
-                              }`}
-                            >
-                              {std.status === 'aktif' ? (
-                                <><CheckCircle2 size={12} /> Terkonfirmasi (ACC)</>
-                              ) : (
-                                <><XCircle size={12} /> Non-aktif</>
-                              )}
-                            </button>
-                          )}
+                          <select
+                            value={std.status === 'aktif' ? 'disetujui' : std.status}
+                            onChange={(e) => handleSetStudentStatus(std.id, e.target.value as StudentStatus)}
+                            className={`px-2.5 py-1 text-xs font-bold rounded-xl border cursor-pointer focus:outline-hidden transition-all ${
+                              std.status === 'disetujui' || std.status === 'aktif'
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                : std.status === 'ditolak'
+                                ? 'bg-rose-50 text-rose-800 border-rose-300'
+                                : 'bg-amber-50 text-amber-900 border-amber-300'
+                            }`}
+                          >
+                            <option value="pending">⏳ Pending</option>
+                            <option value="disetujui">✓ Disetujui</option>
+                            <option value="ditolak">✕ Ditolak</option>
+                          </select>
                         </td>
                         <td className="py-3.5 px-4 text-right">
                           <div className="flex items-center justify-end gap-1">
@@ -646,6 +645,7 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                 existingStudents={students}
                 onRegisterSubmit={handleSaveStudentFromForm}
                 isGuruAdminMode={true}
+                editingStudentId={editingStudent?.id}
               />
             </div>
           </div>

@@ -121,6 +121,8 @@ export interface QuizAttempt {
 
 export type TingkatType = 'Dasar' | 'Menengah Pertama' | 'Menengah Akhir' | 'Umum';
 
+export type StudentStatus = 'pending' | 'disetujui' | 'ditolak' | 'aktif' | 'nonaktif';
+
 export interface Student {
   id: string;
   name: string;
@@ -135,7 +137,7 @@ export interface Student {
   totalXP: number;
   completedMaterials: string[]; // Materi IDs
   attempts: QuizAttempt[];
-  status: 'pending' | 'aktif' | 'nonaktif';
+  status: StudentStatus;
   lastActive: string;
   registeredAt?: string;
 }

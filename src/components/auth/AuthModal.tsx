@@ -74,6 +74,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   }) => {
     setErrorMsg('');
     setSuccessMsg('');
+
+    // Double check duplicate email in database
+    const currentStudents = storageService.getStudents();
+    const isDuplicate = currentStudents.some(
+      s => s.email.toLowerCase().trim() === data.email.toLowerCase().trim()
+    );
+    if (isDuplicate) {
+      setErrorMsg('Alamat email ini sudah terdaftar di database. Silakan masuk atau gunakan email lain.');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -222,7 +233,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   {/* Login Form */}
                   <form onSubmit={handleLoginSubmit} className="space-y-3">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Alamat Email</label>
+                      <label className="block text-xs font-semibold text-slate-800 dark:text-slate-200 mb-1">Alamat Email</label>
                       <div className="relative">
                         <Mail size={16} className="absolute left-3 top-2.5 text-slate-400" />
                         <input
@@ -231,13 +242,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           placeholder="nama@sekolah.sch.id"
-                          className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:outline-hidden focus:border-emerald-500 font-medium"
+                          className="w-full pl-9 pr-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-hidden focus:border-emerald-500 font-medium"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Kata Sandi (Password)</label>
+                      <label className="block text-xs font-semibold text-slate-800 dark:text-slate-200 mb-1">Kata Sandi (Password)</label>
                       <div className="relative">
                         <Lock size={16} className="absolute left-3 top-2.5 text-slate-400" />
                         <input
@@ -247,7 +258,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           placeholder="Min. 6 Karakter"
-                          className="w-full pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:outline-hidden focus:border-emerald-500 font-medium"
+                          className="w-full pl-9 pr-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-hidden focus:border-emerald-500 font-medium"
                         />
                       </div>
                     </div>

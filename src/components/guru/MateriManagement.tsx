@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Materi, CategoryType, VocabularyItem } from '../../types';
-import { Plus, Edit3, Trash2, Eye, FileText, BookOpen, Quote, List, Sparkles, Play, Search, CheckCircle, MessageSquare } from 'lucide-react';
+import { Plus, Edit3, Trash2, Eye, FileText, BookOpen, Quote, List, Sparkles, Play, Search, CheckCircle, MessageSquare, AlertTriangle, X } from 'lucide-react';
 import { PdfViewerModal } from '../common/PdfViewerModal';
 import { QowaidFormModal } from './materi/QowaidFormModal';
 import { HiwarFormModal } from './materi/HiwarFormModal';
@@ -70,17 +70,79 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
     else if (materi.category === 'mahfudzot') setIsMahfudzotModalOpen(true);
   };
 
-  const handleDeleteMateri = (id: string) => {
-    if (confirm('Apakah Anda yakin ingin menghapus materi ini?')) {
-      const updated = materiList.filter(m => m.id !== id);
-      onSaveMateri(updated);
-    }
+  // Delete confirmation modal state
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{
+    isOpen: boolean;
+    type: 'materi' | 'vocab' | 'clear_all';
+    materiId?: string;
+    vocabId?: string;
+    title: string;
+    message: string;
+  }>({
+    isOpen: false,
+    type: 'materi',
+    title: '',
+    message: '',
+  });
+
+  const requestDeleteMateri = (materi: Materi) => {
+    setDeleteConfirmation({
+      isOpen: true,
+      type: 'materi',
+      materiId: materi.id,
+      title: `Hapus Materi "${materi.title}"`,
+      message: `Apakah Anda yakin ingin menghapus materi Bab ${materi.babNumber || 1} (${materi.category.toUpperCase()}) ini? Data materi yang dihapus tidak dapat dikembalikan.`,
+    });
   };
 
-  const handleClearAllDummyMateri = () => {
-    if (confirm('Apakah Anda yakin ingin MENGHAPUS SEMUA data dummy materi? Langkah ini akan mengosongkan seluruh materi (Qowaid, Hiwar, Kosakata, Mahfudzot) dan tersimpan secara permanen.')) {
+  const requestDeleteVocabItem = (materiId: string, vocabId: string) => {
+    const materi = materiList.find(m => m.id === materiId);
+    const vocab = materi?.vocabularies?.find(v => v.id === vocabId);
+    setDeleteConfirmation({
+      isOpen: true,
+      type: 'vocab',
+      materiId,
+      vocabId,
+      title: `Hapus Kosakata "${vocab?.word || ''}"`,
+      message: `Apakah Anda yakin ingin menghapus kata "${vocab?.word || ''}" (${vocab?.meaning || ''}) dari modul bab ini?`,
+    });
+  };
+
+  const requestClearAllDummy = () => {
+    setDeleteConfirmation({
+      isOpen: true,
+      type: 'clear_all',
+      title: 'Hapus Seluruh Data Dummy Materi',
+      message: 'Apakah Anda yakin ingin MENGHAPUS SELURUH data dummy materi? Langkah ini akan mengosongkan seluruh materi (Qowaid, Hiwar, Kosakata, Mahfudzot) secara permanen.',
+    });
+  };
+
+  const handleConfirmDelete = () => {
+    if (deleteConfirmation.type === 'clear_all') {
       onSaveMateri([]);
+    } else if (deleteConfirmation.type === 'materi' && deleteConfirmation.materiId) {
+      const updated = materiList.filter(m => m.id !== deleteConfirmation.materiId);
+      onSaveMateri(updated);
+    } else if (deleteConfirmation.type === 'vocab' && deleteConfirmation.materiId && deleteConfirmation.vocabId) {
+      const updated = materiList.map(m => {
+        if (m.id === deleteConfirmation.materiId) {
+          return {
+            ...m,
+            vocabularies: (m.vocabularies || []).filter(v => v.id !== deleteConfirmation.vocabId),
+            updatedAt: new Date().toISOString(),
+          };
+        }
+        return m;
+      });
+      onSaveMateri(updated);
     }
+
+    setDeleteConfirmation({
+      isOpen: false,
+      type: 'materi',
+      title: '',
+      message: '',
+    });
   };
 
   const handleSaveModalMateri = (partial: Partial<Materi>) => {
@@ -179,7 +241,7 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
           <div className="flex items-center gap-2">
             {materiList.length > 0 && (
               <button
-                onClick={handleClearAllDummyMateri}
+                onClick={requestClearAllDummy}
                 className="px-3 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
                 title="Hapus / Kosongkan Seluruh Data Dummy Materi"
               >
@@ -199,7 +261,7 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-1.5 bg-slate-100/80 rounded-2xl border border-slate-200">
           <button
             onClick={() => setActiveCategory('qowaid')}
-            className={`py-3 px-3 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 ${
+            className={`py-3 px-3 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               activeCategory === 'qowaid'
                 ? 'bg-emerald-700 text-white shadow-md'
                 : 'text-slate-600 hover:text-slate-900'
@@ -210,7 +272,7 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
 
           <button
             onClick={() => setActiveCategory('hiwar')}
-            className={`py-3 px-3 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 ${
+            className={`py-3 px-3 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               activeCategory === 'hiwar'
                 ? 'bg-sky-700 text-white shadow-md'
                 : 'text-slate-600 hover:text-slate-900'
@@ -221,7 +283,7 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
 
           <button
             onClick={() => setActiveCategory('kosakata')}
-            className={`py-3 px-3 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 ${
+            className={`py-3 px-3 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               activeCategory === 'kosakata'
                 ? 'bg-teal-700 text-white shadow-md'
                 : 'text-slate-600 hover:text-slate-900'
@@ -232,7 +294,7 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
 
           <button
             onClick={() => setActiveCategory('mahfudzot')}
-            className={`py-3 px-3 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 ${
+            className={`py-3 px-3 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               activeCategory === 'mahfudzot'
                 ? 'bg-purple-700 text-white shadow-md'
                 : 'text-slate-600 hover:text-slate-900'
@@ -284,15 +346,15 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => handleOpenEditModal(materi)}
-                          className="p-1.5 text-slate-400 hover:text-emerald-600 rounded-lg hover:bg-slate-50"
+                          className="p-1.5 text-slate-400 hover:text-emerald-600 rounded-lg hover:bg-slate-50 cursor-pointer"
                           title="Edit Qowaid"
                         >
                           <Edit3 size={16} />
                         </button>
                         <button
-                          onClick={() => handleDeleteMateri(materi.id)}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-50"
-                          title="Hapus Materi"
+                          onClick={() => requestDeleteMateri(materi)}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer"
+                          title="Hapus Materi Ini"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -322,7 +384,7 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
                     <div className="pt-3 border-t">
                       <button
                         onClick={() => setPreviewPdfMateri(materi)}
-                        className="w-full py-2 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors"
+                        className="w-full py-2 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
                       >
                         <FileText size={15} /> Pratinjau Dokumen PDF Modul
                       </button>
@@ -340,7 +402,10 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
         <HiwarView
           materiList={materiList}
           onEditMateri={handleOpenEditModal}
-          onDeleteMateri={handleDeleteMateri}
+          onDeleteMateri={(id) => {
+            const mat = materiList.find(m => m.id === id);
+            if (mat) requestDeleteMateri(mat);
+          }}
           onAddMateri={handleOpenAddModal}
           isEditable={true}
         />
@@ -362,8 +427,8 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
                 babNumber={materi.babNumber}
                 vocabularies={materi.vocabularies || []}
                 onEditItem={() => handleOpenEditModal(materi)}
-                onDeleteMateri={() => handleDeleteMateri(materi.id)}
-                onDeleteItem={() => handleDeleteMateri(materi.id)}
+                onDeleteMateri={() => requestDeleteMateri(materi)}
+                onDeleteItem={(vocabId) => requestDeleteVocabItem(materi.id, vocabId)}
                 onAddItem={() => handleOpenEditModal(materi)}
                 onLaunchFlashcard={() => handleLaunchKosakataFlashcards(materi)}
                 isEditable={true}
@@ -373,12 +438,15 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
         </div>
       )}
 
-      {/* CATEGORY VIEW 3: MAHFUDZOT */}
+      {/* CATEGORY VIEW 4: MAHFUDZOT */}
       {activeCategory === 'mahfudzot' && (
         <MahfudzotView
           materiList={materiList}
           onEditMateri={handleOpenEditModal}
-          onDeleteMateri={handleDeleteMateri}
+          onDeleteMateri={(id) => {
+            const mat = materiList.find(m => m.id === id);
+            if (mat) requestDeleteMateri(mat);
+          }}
           onLaunchFlashcards={handleLaunchMahfudzotFlashcards}
           isEditable={true}
         />
@@ -433,6 +501,56 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
           pdfUrl={previewPdfMateri.pdfUrl || ''}
           title={`${previewPdfMateri.title} - File PDF`}
         />
+      )}
+
+      {/* Custom Delete Confirmation Modal */}
+      {deleteConfirmation.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden space-y-0">
+            {/* Header */}
+            <div className="bg-rose-600 p-4 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-rose-100" />
+                <h3 className="font-extrabold text-sm">{deleteConfirmation.title}</h3>
+              </div>
+              <button
+                onClick={() => setDeleteConfirmation(prev => ({ ...prev, isOpen: false }))}
+                className="p-1 hover:bg-rose-700 rounded-lg transition-colors cursor-pointer text-white"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-5 space-y-4">
+              <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
+                {deleteConfirmation.message}
+              </p>
+
+              <div className="p-3 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs text-rose-800 dark:text-rose-300 font-bold">
+                ⚠️ Perhatian: Tindakan penghapusan ini tidak dapat dibatalkan (permanen).
+              </div>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmation(prev => ({ ...prev, isOpen: false }))}
+                className="px-4 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-md transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <Trash2 size={14} /> Ya, Hapus Sekarang
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Student, TingkatType } from '../../types';
-import { User, Mail, Lock, Building2, GraduationCap, Users, Sparkles, CheckCircle2 } from 'lucide-react';
+import { User, Mail, Lock, Building2, GraduationCap, Users, Sparkles, CheckCircle2, AlertTriangle } from 'lucide-react';
 
 interface PendaftaranSiswaFormProps {
   existingStudents: Student[];
@@ -14,7 +14,8 @@ interface PendaftaranSiswaFormProps {
     rombelName: string;
   }) => void;
   isLoading?: boolean;
-  isGuruAdminMode?: boolean; // If true, sets status to 'aktif' immediately
+  isGuruAdminMode?: boolean; // If true, sets status to 'aktif' / 'disetujui' immediately
+  editingStudentId?: string; // If editing an existing student, skip duplicate check for current student
 }
 
 export const PendaftaranSiswaForm: React.FC<PendaftaranSiswaFormProps> = ({
@@ -22,6 +23,7 @@ export const PendaftaranSiswaForm: React.FC<PendaftaranSiswaFormProps> = ({
   onRegisterSubmit,
   isLoading = false,
   isGuruAdminMode = false,
+  editingStudentId,
 }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -30,6 +32,25 @@ export const PendaftaranSiswaForm: React.FC<PendaftaranSiswaFormProps> = ({
   const [schoolName, setSchoolName] = useState('');
   const [className, setClassName] = useState('Kelas 1');
   const [rombelName, setRombelName] = useState('');
+  const [emailError, setEmailError] = useState('');
+
+  // Check if email is duplicate
+  const checkIsDuplicateEmail = (emailToCheck: string) => {
+    const trimmed = emailToCheck.toLowerCase().trim();
+    if (!trimmed) return false;
+    return existingStudents.some(
+      s => s.email.toLowerCase().trim() === trimmed && s.id !== editingStudentId
+    );
+  };
+
+  const handleEmailChange = (val: string) => {
+    setEmail(val);
+    if (checkIsDuplicateEmail(val)) {
+      setEmailError('Email ini sudah terdaftar di database. Gunakan email lain untuk mencegah duplikasi akun.');
+    } else {
+      setEmailError('');
+    }
+  };
 
   // Auto-prediction lists from existing student data
   const existingSchoolNames = Array.from(
@@ -70,6 +91,11 @@ export const PendaftaranSiswaForm: React.FC<PendaftaranSiswaFormProps> = ({
     e.preventDefault();
     if (!name.trim() || !email.trim() || (!password && !isGuruAdminMode)) return;
 
+    if (checkIsDuplicateEmail(email)) {
+      setEmailError('Alamat email sudah terdaftar di database. Mohon gunakan email lain.');
+      return;
+    }
+
     onRegisterSubmit({
       name: name.trim(),
       email: email.trim(),
@@ -85,7 +111,7 @@ export const PendaftaranSiswaForm: React.FC<PendaftaranSiswaFormProps> = ({
     <form onSubmit={handleSubmit} className="space-y-4 text-xs sm:text-sm">
       {/* 1. Nama Lengkap */}
       <div>
-        <label className="block font-bold text-slate-700 mb-1">
+        <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
           Nama Lengkap <span className="text-rose-500">*</span>
         </label>
         <div className="relative">
@@ -96,14 +122,14 @@ export const PendaftaranSiswaForm: React.FC<PendaftaranSiswaFormProps> = ({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Contoh: Muhammad Fauzi"
-            className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl focus:outline-hidden focus:border-emerald-500 font-medium"
+            className="w-full pl-9 pr-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-hidden focus:border-emerald-500 font-medium"
           />
         </div>
       </div>
 
-      {/* 2. Alamat Email */}
+      {/* 2. Alamat Email & Validasi Duplikasi */}
       <div>
-        <label className="block font-bold text-slate-700 mb-1">
+        <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
           Alamat Email <span className="text-rose-500">*</span>
         </label>
         <div className="relative">
@@ -112,16 +138,29 @@ export const PendaftaranSiswaForm: React.FC<PendaftaranSiswaFormProps> = ({
             type="email"
             required
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => handleEmailChange(e.target.value)}
             placeholder="fauzi@siswa.belajar.id"
-            className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl focus:outline-hidden focus:border-emerald-500 font-medium"
+            className={`w-full pl-9 pr-3 py-2 border rounded-xl focus:outline-hidden font-medium ${
+              emailError
+                ? 'border-rose-400 bg-rose-50/50 text-rose-900 focus:border-rose-500'
+                : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border-slate-300 dark:border-slate-700 focus:border-emerald-500'
+            }`}
           />
         </div>
+        {emailError ? (
+          <p className="text-xs text-rose-600 font-semibold mt-1 flex items-center gap-1">
+            <AlertTriangle size={13} className="shrink-0 text-rose-500" /> {emailError}
+          </p>
+        ) : (
+          <p className="text-[11px] text-slate-400 mt-0.5">
+            Setiap email hanya dapat terdaftar untuk 1 akun siswa.
+          </p>
+        )}
       </div>
 
       {/* 3. Password */}
       <div>
-        <label className="block font-bold text-slate-700 mb-1">
+        <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
           Kata Sandi (Password) <span className="text-rose-500">*</span>
         </label>
         <div className="relative">
@@ -133,14 +172,14 @@ export const PendaftaranSiswaForm: React.FC<PendaftaranSiswaFormProps> = ({
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Minimal 6 Karakter"
-            className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl focus:outline-hidden focus:border-emerald-500 font-medium"
+            className="w-full pl-9 pr-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-hidden focus:border-emerald-500 font-medium"
           />
         </div>
       </div>
 
       {/* 4. Tingkat */}
       <div>
-        <label className="block font-bold text-slate-700 mb-1">
+        <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
           Tingkat Pendidikan <span className="text-rose-500">*</span>
         </label>
         <div className="relative">
@@ -148,12 +187,12 @@ export const PendaftaranSiswaForm: React.FC<PendaftaranSiswaFormProps> = ({
           <select
             value={tingkat}
             onChange={(e) => handleTingkatChange(e.target.value as TingkatType)}
-            className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl focus:outline-hidden focus:border-emerald-500 font-bold text-slate-800"
+            className="w-full pl-9 pr-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-hidden focus:border-emerald-500 font-bold"
           >
-            <option value="Dasar">Dasar (SD/MI)</option>
-            <option value="Menengah Pertama">Menengah Pertama (SMP/MTs)</option>
-            <option value="Menengah Akhir">Menengah Akhir (SMA/MA/SMK)</option>
-            <option value="Umum">Umum</option>
+            <option value="Dasar" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">Dasar (SD/MI)</option>
+            <option value="Menengah Pertama" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">Menengah Pertama (SMP/MTs)</option>
+            <option value="Menengah Akhir" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">Menengah Akhir (SMA/MA/SMK)</option>
+            <option value="Umum" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">Umum</option>
           </select>
         </div>
       </div>
@@ -161,7 +200,7 @@ export const PendaftaranSiswaForm: React.FC<PendaftaranSiswaFormProps> = ({
       {/* 5. Sekolah (dengan Prediksi Autocomplete) */}
       <div>
         <div className="flex items-center justify-between mb-1">
-          <label className="block font-bold text-slate-700">
+          <label className="block font-bold text-slate-800 dark:text-slate-200">
             Asal Sekolah {tingkat !== 'Umum' && <span className="text-rose-500">*</span>}
           </label>
           {tingkat === 'Umum' && (
@@ -177,7 +216,7 @@ export const PendaftaranSiswaForm: React.FC<PendaftaranSiswaFormProps> = ({
             value={schoolName}
             onChange={(e) => setSchoolName(e.target.value)}
             placeholder={tingkat === 'Umum' ? 'Kosongkan atau isi nama instansi / umum' : 'Ketik nama sekolah (misal: MA Negeri 1 Jakarta)'}
-            className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl focus:outline-hidden focus:border-emerald-500 font-medium"
+            className="w-full pl-9 pr-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-hidden focus:border-emerald-500 font-medium"
           />
           <datalist id="school-predictions">
             {existingSchoolNames.map((s, idx) => (
@@ -195,22 +234,22 @@ export const PendaftaranSiswaForm: React.FC<PendaftaranSiswaFormProps> = ({
       {/* 6. Kelas & Rombel (dengan Prediksi) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label className="block font-bold text-slate-700 mb-1">
+          <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
             Kelas Utama <span className="text-rose-500">*</span>
           </label>
           <select
             value={className}
             onChange={(e) => setClassName(e.target.value)}
-            className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-hidden focus:border-emerald-500 font-semibold text-emerald-800"
+            className="w-full px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-hidden focus:border-emerald-500 font-semibold"
           >
             {getGradeOptions(tingkat).map((g) => (
-              <option key={g} value={g}>{g}</option>
+              <option key={g} value={g} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">{g}</option>
             ))}
           </select>
         </div>
 
         <div>
-          <label className="block font-bold text-slate-700 mb-1">
+          <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
             Rombel / Sub-Kelas <span className="text-slate-400 font-normal">(opsional)</span>
           </label>
           <div className="relative">
@@ -220,7 +259,7 @@ export const PendaftaranSiswaForm: React.FC<PendaftaranSiswaFormProps> = ({
               value={rombelName}
               onChange={(e) => setRombelName(e.target.value)}
               placeholder="Contoh: 8A, 9 Abu Bakar, 10 MIPA 1"
-              className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-hidden focus:border-emerald-500 font-medium"
+              className="w-full px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-hidden focus:border-emerald-500 font-medium"
             />
             <datalist id="rombel-predictions">
               {existingRombelNames.map((r, idx) => (
