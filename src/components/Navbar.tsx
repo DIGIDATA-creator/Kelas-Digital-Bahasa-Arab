@@ -220,6 +220,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         currentUser={firebaseUser}
+        existingStudents={students}
       />
     </header>
   );

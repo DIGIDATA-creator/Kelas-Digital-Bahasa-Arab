@@ -119,18 +119,25 @@ export interface QuizAttempt {
   isGradedByTeacher?: boolean; // F.1.9 Status penilaian oleh guru
 }
 
+export type TingkatType = 'Dasar' | 'Menengah Pertama' | 'Menengah Akhir' | 'Umum';
+
 export interface Student {
   id: string;
   name: string;
   nisn: string;
   email: string;
-  className: string;
+  password?: string;
+  tingkat?: TingkatType;
+  schoolName?: string; // Asal Sekolah
+  className: string; // Kelas utama (e.g., Kelas 8, Kelas 1)
+  rombelName?: string; // Nama Rombel spesifik (e.g. 8A, 9 Abu Bakar)
   avatar: string;
   totalXP: number;
   completedMaterials: string[]; // Materi IDs
   attempts: QuizAttempt[];
-  status: 'aktif' | 'nonaktif';
+  status: 'pending' | 'aktif' | 'nonaktif';
   lastActive: string;
+  registeredAt?: string;
 }
 
 export interface ActivityLog {

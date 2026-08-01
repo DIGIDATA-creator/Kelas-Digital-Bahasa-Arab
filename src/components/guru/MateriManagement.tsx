@@ -77,6 +77,12 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
     }
   };
 
+  const handleClearAllDummyMateri = () => {
+    if (confirm('Apakah Anda yakin ingin MENGHAPUS SEMUA data dummy materi? Langkah ini akan mengosongkan seluruh materi (Qowaid, Hiwar, Kosakata, Mahfudzot) dan tersimpan secara permanen.')) {
+      onSaveMateri([]);
+    }
+  };
+
   const handleSaveModalMateri = (partial: Partial<Materi>) => {
     if (editingMateri) {
       // Update
@@ -170,12 +176,23 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
             </p>
           </div>
 
-          <button
-            onClick={handleOpenAddModal}
-            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-900/10 flex items-center gap-2 transition-all"
-          >
-            <Plus size={16} /> Tambah Materi {activeCategory.toUpperCase()}
-          </button>
+          <div className="flex items-center gap-2">
+            {materiList.length > 0 && (
+              <button
+                onClick={handleClearAllDummyMateri}
+                className="px-3 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                title="Hapus / Kosongkan Seluruh Data Dummy Materi"
+              >
+                <Trash2 size={16} /> Hapus Data Dummy Materi
+              </button>
+            )}
+            <button
+              onClick={handleOpenAddModal}
+              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-900/10 flex items-center gap-2 transition-all cursor-pointer"
+            >
+              <Plus size={16} /> Tambah Materi {activeCategory.toUpperCase()}
+            </button>
+          </div>
         </div>
 
         {/* Category Tabs */}
@@ -345,6 +362,7 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
                 babNumber={materi.babNumber}
                 vocabularies={materi.vocabularies || []}
                 onEditItem={() => handleOpenEditModal(materi)}
+                onDeleteMateri={() => handleDeleteMateri(materi.id)}
                 onDeleteItem={() => handleDeleteMateri(materi.id)}
                 onAddItem={() => handleOpenEditModal(materi)}
                 onLaunchFlashcard={() => handleLaunchKosakataFlashcards(materi)}

@@ -10,6 +10,7 @@ interface KosakataTableViewProps {
   vocabularies: VocabularyItem[];
   onEditItem?: (item: VocabularyItem) => void;
   onDeleteItem?: (id: string) => void;
+  onDeleteMateri?: () => void;
   onAddItem?: () => void;
   onLaunchFlashcard?: () => void;
   isEditable?: boolean;
@@ -22,6 +23,7 @@ export const KosakataTableView: React.FC<KosakataTableViewProps> = ({
   vocabularies,
   onEditItem,
   onDeleteItem,
+  onDeleteMateri,
   onAddItem,
   onLaunchFlashcard,
   isEditable = true,
@@ -125,9 +127,22 @@ export const KosakataTableView: React.FC<KosakataTableViewProps> = ({
           {isEditable && onAddItem && (
             <button
               onClick={onAddItem}
-              className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-400 font-bold text-xs rounded-xl flex items-center gap-1 border border-slate-700"
+              className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-400 font-bold text-xs rounded-xl flex items-center gap-1 border border-slate-700 cursor-pointer"
             >
               <Plus size={14} /> Input Mufrodat
+            </button>
+          )}
+
+          {isEditable && (onDeleteMateri || onDeleteItem) && (
+            <button
+              onClick={() => {
+                if (onDeleteMateri) onDeleteMateri();
+                else if (onDeleteItem) onDeleteItem('');
+              }}
+              className="p-1.5 bg-slate-800 hover:bg-rose-900/60 text-rose-300 font-bold text-xs rounded-xl flex items-center gap-1 border border-slate-700 transition-colors cursor-pointer"
+              title="Hapus Modul Kosakata Ini"
+            >
+              <Trash2 size={15} />
             </button>
           )}
         </div>
