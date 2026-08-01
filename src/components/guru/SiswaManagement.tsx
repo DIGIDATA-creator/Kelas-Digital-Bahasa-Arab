@@ -22,7 +22,9 @@ import {
   Sparkles,
   Check,
   ListFilter,
-  AlertTriangle
+  AlertTriangle,
+  UserCheck,
+  ChevronRight
 } from 'lucide-react';
 import { PendaftaranSiswaForm } from '../auth/PendaftaranSiswaForm';
 
@@ -40,7 +42,8 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState('semua');
   const [selectedSchoolFilter, setSelectedSchoolFilter] = useState('semua');
-  const [statusTab, setStatusTab] = useState<'semua' | 'pending' | 'disetujui' | 'ditolak'>('semua');
+  const [activeMainSection, setActiveMainSection] = useState<'acc' | 'aktif' | 'semua'>('acc');
+  const [statusTab, setStatusTab] = useState<'semua' | 'pending' | 'disetujui' | 'ditolak'>('pending');
   const [viewMode, setViewMode] = useState<'grouped' | 'flat'>('grouped');
 
   const [selectedStudentForDetail, setSelectedStudentForDetail] = useState<Student | null>(null);
@@ -308,6 +311,165 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Primary Column Menu Navigation: ACC Siswa vs Siswa Aktif */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+        {/* MENU 1: ACC SISWA */}
+        <button
+          type="button"
+          onClick={() => {
+            setActiveMainSection('acc');
+            setStatusTab('pending');
+          }}
+          className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer relative overflow-hidden flex items-center justify-between gap-3 ${
+            activeMainSection === 'acc'
+              ? 'bg-gradient-to-r from-amber-500/15 via-amber-50 to-white border-amber-500 shadow-md ring-2 ring-amber-500/20'
+              : 'bg-white border-slate-200 hover:border-amber-300 hover:bg-slate-50 shadow-xs'
+          }`}
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className={`p-3 rounded-2xl shrink-0 ${
+              activeMainSection === 'acc' ? 'bg-amber-500 text-slate-950 shadow-sm' : 'bg-slate-100 text-slate-600'
+            }`}>
+              <UserCheck size={22} />
+            </div>
+            <div className="min-w-0">
+              <div className="font-extrabold text-sm text-slate-900 flex items-center gap-1.5 flex-wrap">
+                <span>Menu ACC Siswa</span>
+                {pendingStudents.length > 0 ? (
+                  <span className="px-2 py-0.5 bg-amber-500 text-slate-950 font-black text-[10px] rounded-full animate-pulse">
+                    {pendingStudents.length} ACC
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 bg-slate-100 text-slate-500 font-bold text-[10px] rounded-full">
+                    0
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
+                Persetujuan pendaftaran siswa baru
+              </p>
+            </div>
+          </div>
+          <ChevronRight size={18} className={`shrink-0 ${activeMainSection === 'acc' ? 'text-amber-600' : 'text-slate-300'}`} />
+        </button>
+
+        {/* MENU 2: SISWA AKTIF */}
+        <button
+          type="button"
+          onClick={() => {
+            setActiveMainSection('aktif');
+            setStatusTab('disetujui');
+          }}
+          className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer relative overflow-hidden flex items-center justify-between gap-3 ${
+            activeMainSection === 'aktif'
+              ? 'bg-gradient-to-r from-emerald-600/15 via-emerald-50 to-white border-emerald-600 shadow-md ring-2 ring-emerald-600/20'
+              : 'bg-white border-slate-200 hover:border-emerald-300 hover:bg-slate-50 shadow-xs'
+          }`}
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className={`p-3 rounded-2xl shrink-0 ${
+              activeMainSection === 'aktif' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600'
+            }`}>
+              <Users size={22} />
+            </div>
+            <div className="min-w-0">
+              <div className="font-extrabold text-sm text-slate-900 flex items-center gap-1.5 flex-wrap">
+                <span>Menu Siswa Aktif</span>
+                <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 font-extrabold text-[10px] rounded-full">
+                  {approvedStudents.length} Aktif
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
+                Daftar & progres siswa terkonfirmasi
+              </p>
+            </div>
+          </div>
+          <ChevronRight size={18} className={`shrink-0 ${activeMainSection === 'aktif' ? 'text-emerald-600' : 'text-slate-300'}`} />
+        </button>
+
+        {/* MENU 3: SEMUA DATA SISWA */}
+        <button
+          type="button"
+          onClick={() => {
+            setActiveMainSection('semua');
+            setStatusTab('semua');
+          }}
+          className={`p-4 rounded-2xl border-2 text-left transition-all cursor-pointer relative overflow-hidden flex items-center justify-between gap-3 ${
+            activeMainSection === 'semua'
+              ? 'bg-gradient-to-r from-slate-900/10 via-slate-50 to-white border-slate-800 shadow-md ring-2 ring-slate-800/20'
+              : 'bg-white border-slate-200 hover:border-slate-400 hover:bg-slate-50 shadow-xs'
+          }`}
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className={`p-3 rounded-2xl shrink-0 ${
+              activeMainSection === 'semua' ? 'bg-slate-900 text-white shadow-sm' : 'bg-slate-100 text-slate-600'
+            }`}>
+              <GraduationCap size={22} />
+            </div>
+            <div className="min-w-0">
+              <div className="font-extrabold text-sm text-slate-900 flex items-center gap-1.5 flex-wrap">
+                <span>Semua Data Siswa</span>
+                <span className="px-2 py-0.5 bg-slate-200 text-slate-700 font-bold text-[10px] rounded-full">
+                  {students.length} Total
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
+                Arsip lengkap (ACC, Aktif, Ditolak)
+              </p>
+            </div>
+          </div>
+          <ChevronRight size={18} className={`shrink-0 ${activeMainSection === 'semua' ? 'text-slate-800' : 'text-slate-300'}`} />
+        </button>
+      </div>
+
+      {/* Contextual Banner Header based on active menu */}
+      {activeMainSection === 'acc' && (
+        <div className="p-4 bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 text-slate-950 rounded-2xl shadow-md border border-amber-400 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-slate-950 text-amber-400 rounded-xl shadow-xs shrink-0">
+              <UserCheck size={20} />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-sm text-slate-950 flex items-center gap-2">
+                📋 Menu ACC Siswa (Persetujuan Pendaftaran)
+              </h3>
+              <p className="text-xs text-amber-950 font-medium">
+                Pilih sekolah asal untuk memproses pendaftaran, atau gunakan centang (checkbox) untuk ACC / Tolak massal.
+              </p>
+            </div>
+          </div>
+          {pendingStudents.length > 0 && (
+            <button
+              onClick={handleApproveAllPending}
+              className="px-3.5 py-2 bg-slate-950 hover:bg-slate-900 text-amber-300 font-black text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
+            >
+              <CheckCircle2 size={16} /> ACC Seluruh ({pendingStudents.length}) Pending
+            </button>
+          )}
+        </div>
+      )}
+
+      {activeMainSection === 'aktif' && (
+        <div className="p-4 bg-gradient-to-r from-emerald-800 via-teal-900 to-slate-900 text-white rounded-2xl shadow-md border border-emerald-700/60 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-emerald-500 text-slate-950 rounded-xl shadow-xs shrink-0">
+              <Users size={20} />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
+                🎓 Menu Daftar Siswa Aktif
+              </h3>
+              <p className="text-xs text-slate-300 font-medium">
+                Menampilkan daftar seluruh siswa yang terkonfirmasi aktif, dikelompokkan per Asal Sekolah, Tingkat, & Rombel.
+              </p>
+            </div>
+          </div>
+          <div className="px-3 py-1.5 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-black rounded-xl shrink-0">
+            {approvedStudents.length} Siswa Aktif
+          </div>
+        </div>
+      )}
 
       {/* Tabs & View Switcher Bar */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
