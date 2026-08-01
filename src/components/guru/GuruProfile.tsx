@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Shield, Mail, Phone, Edit3, Lock, Check, Key, UserCheck, Camera, Save, CheckCircle2, AlertCircle } from 'lucide-react';
+import { db } from '../../firebase/config';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+
+const docGuruProfile = doc(db, 'app_collections', 'guru_profile');
 
 export const GuruProfile: React.FC = () => {
-  // Profile State with LocalStorage Persistence
+  // Profile State with LocalStorage & Firestore Sync
   const [profile, setProfile] = useState(() => {
     const saved = localStorage.getItem('lms_guru_profile');
     if (saved) {
@@ -17,7 +21,7 @@ export const GuruProfile: React.FC = () => {
     };
   });
 
-  // Account & Credentials State with LocalStorage Persistence
+  // Account & Credentials State with LocalStorage & Firestore Sync
   const [credentials, setCredentials] = useState(() => {
     const saved = localStorage.getItem('lms_guru_credentials');
     if (saved) {
@@ -38,6 +42,27 @@ export const GuruProfile: React.FC = () => {
   const [credMsg, setCredMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [profileMsg, setProfileMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Firestore sync for profile & credentials
+  useEffect(() => {
+    const unsub = onSnapshot(docGuruProfile, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.profile) {
+          setProfile(data.profile);
+          localStorage.setItem('lms_guru_profile', JSON.stringify(data.profile));
+        }
+        if (data.credentials) {
+          setCredentials(prev => ({ ...prev, username: data.credentials.username }));
+          localStorage.setItem('lms_guru_credentials', JSON.stringify({ username: data.credentials.username }));
+        }
+      } else {
+        setDoc(docGuruProfile, { profile, credentials: { username: credentials.username } }).catch(console.error);
+      }
+    }, (err) => console.warn('Guru profile snapshot error:', err));
+
+    return () => unsub();
+  }, []);
+
   // Save profile edits
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,6 +72,7 @@ export const GuruProfile: React.FC = () => {
     }
     setProfile(profileFormData);
     localStorage.setItem('lms_guru_profile', JSON.stringify(profileFormData));
+    setDoc(docGuruProfile, { profile: profileFormData, credentials: { username: credentials.username } }).catch(console.error);
     setIsEditingProfile(false);
     setProfileMsg({ type: 'success', text: 'Data profil berhasil diperbarui!' });
     setTimeout(() => setProfileMsg(null), 3000);
@@ -97,6 +123,7 @@ export const GuruProfile: React.FC = () => {
 
     setCredentials(updatedCreds);
     localStorage.setItem('lms_guru_credentials', JSON.stringify({ username: credentials.username }));
+    setDoc(docGuruProfile, { profile, credentials: { username: credentials.username } }).catch(console.error);
     setCredMsg({ type: 'success', text: 'Username dan Password berhasil diperbarui!' });
     setTimeout(() => setCredMsg(null), 3000);
   };

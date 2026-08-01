@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Role, Student } from '../types';
-import { BookOpen, GraduationCap, UserCheck, Shield, RotateCcw, Award, ChevronDown, User as UserIcon, LogIn } from 'lucide-react';
+import { BookOpen, GraduationCap, UserCheck, Shield, RotateCcw, Award, ChevronDown, User as UserIcon, LogIn, Sun, Moon } from 'lucide-react';
 import { auth, onAuthStateChanged, User } from '../lib/firebase';
 import { AuthModal } from './auth/AuthModal';
 
@@ -13,6 +13,8 @@ interface NavbarProps {
   currentStudentId: string;
   onStudentChange: (studentId: string) => void;
   onResetData: () => void;
+  isDarkMode?: boolean;
+  onToggleDarkMode?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -24,6 +26,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   currentStudentId,
   onStudentChange,
   onResetData,
+  isDarkMode = false,
+  onToggleDarkMode,
 }) => {
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -42,6 +46,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'siswa', label: 'Data Siswa' },
     { id: 'materi', label: 'Kelola Materi' },
     { id: 'penilaian', label: 'Kelola Penilaian' },
+    { id: 'forum', label: 'Forum Diskusi' },
     { id: 'leaderboard', label: 'Leaderboard' },
     { id: 'profil', label: 'Profil Guru' },
   ];
@@ -50,6 +55,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'materi', label: 'Materi Belajar' },
     { id: 'penilaian', label: 'Latihan & Kuis' },
+    { id: 'forum', label: 'Forum Diskusi' },
     { id: 'progres', label: 'Progres Saya' },
     { id: 'leaderboard', label: 'Leaderboard' },
     { id: 'profil', label: 'Profil Saya' },
@@ -160,6 +166,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </>
               )}
             </button>
+
+            {/* Dark Mode Toggle Button */}
+            {onToggleDarkMode && (
+              <button
+                onClick={onToggleDarkMode}
+                title={isDarkMode ? 'Beralih ke Mode Terang' : 'Beralih ke Mode Gelap'}
+                className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-amber-300 rounded-xl transition-all border border-slate-700 flex items-center justify-center cursor-pointer shadow-xs"
+              >
+                {isDarkMode ? <Sun size={16} className="text-amber-400" /> : <Moon size={16} className="text-slate-300" />}
+              </button>
+            )}
 
             {/* Reset Data Button */}
             <button

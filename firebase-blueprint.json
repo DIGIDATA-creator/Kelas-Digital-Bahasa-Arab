@@ -1,0 +1,116 @@
+{
+  "entities": {
+    "Materi": {
+      "title": "Materi",
+      "description": "Modul pembelajaran Bahasa Arab (Qowaid, Hiwar, Kosakata, Mahfudzot)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "arabicTitle": { "type": "string" },
+        "category": { "type": "string" },
+        "level": { "type": "string" },
+        "authorName": { "type": "string" },
+        "content": { "type": "string" },
+        "description": { "type": "string" },
+        "babNumber": { "type": "number" },
+        "pdfUrl": { "type": "string" },
+        "pdfFileName": { "type": "string" },
+        "pdfPageCount": { "type": "number" }
+      },
+      "required": ["id", "title", "category", "level", "content"]
+    },
+    "Penilaian": {
+      "title": "Penilaian",
+      "description": "Kuis dan Latihan Ujian Bahasa Arab",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "type": { "type": "string" },
+        "durationMinutes": { "type": "number" },
+        "passingScore": { "type": "number" },
+        "questions": { "type": "array" }
+      },
+      "required": ["id", "title", "category", "type", "questions"]
+    },
+    "Student": {
+      "title": "Student",
+      "description": "Data Profil dan Progres Siswa",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "nisn": { "type": "string" },
+        "classGroup": { "type": "string" },
+        "avatar": { "type": "string" },
+        "totalXP": { "type": "number" },
+        "completedMaterials": { "type": "array" },
+        "attempts": { "type": "array" }
+      },
+      "required": ["id", "name", "totalXP"]
+    },
+    "ActivityLog": {
+      "title": "ActivityLog",
+      "description": "Riwayat Aktivitas LMS",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userName": { "type": "string" },
+        "userRole": { "type": "string" },
+        "action": { "type": "string" },
+        "details": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["id", "userName", "action", "timestamp"]
+    },
+    "ForumPost": {
+      "title": "ForumPost",
+      "description": "Diskusi dan Tanya Jawab Materi Bahasa Arab",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "category": { "type": "string" },
+        "materiId": { "type": "string" },
+        "materiTitle": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorRole": { "type": "string" },
+        "authorAvatar": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "likes": { "type": "number" },
+        "likedBy": { "type": "array" },
+        "isPinned": { "type": "boolean" },
+        "status": { "type": "string" },
+        "replies": { "type": "array" }
+      },
+      "required": ["id", "title", "content", "authorName", "createdAt", "replies"]
+    }
+  },
+  "firestore": {
+    "/app_collections/materi": {
+      "schema": { "$ref": "#/entities/Materi" },
+      "description": "Dokumen tunggal penampung daftar materi"
+    },
+    "/app_collections/penilaian": {
+      "schema": { "$ref": "#/entities/Penilaian" },
+      "description": "Dokumen tunggal penampung kuis dan latihan"
+    },
+    "/app_collections/students": {
+      "schema": { "$ref": "#/entities/Student" },
+      "description": "Dokumen tunggal penampung data siswa"
+    },
+    "/app_collections/logs": {
+      "schema": { "$ref": "#/entities/ActivityLog" },
+      "description": "Dokumen tunggal penampung log aktivitas"
+    },
+    "/app_collections/forum": {
+      "schema": { "$ref": "#/entities/ForumPost" },
+      "description": "Dokumen tunggal penampung postingan forum diskusi"
+    }
+  }
+}

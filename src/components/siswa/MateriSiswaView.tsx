@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Materi, CategoryType, Student } from '../../types';
-import { BookOpen, MessageSquare, List, Quote, FileText, CheckCircle2, Play, Volume2, Search, Sparkles, RefreshCw, ChevronRight } from 'lucide-react';
+import { BookOpen, MessageSquare, List, Quote, FileText, CheckCircle2, Play, Volume2, Search, Sparkles, RefreshCw, ChevronRight, HardDriveDownload, WifiOff, Check } from 'lucide-react';
 import { AudioPlayerButton } from '../common/AudioPlayerButton';
 import { PdfViewerModal } from '../common/PdfViewerModal';
 import { HiwarView } from '../guru/materi/HiwarView';
 import { KosakataTableView } from '../guru/materi/KosakataTableView';
 import { FlashcardModal, FlashcardItem } from '../common/FlashcardModal';
+import { storageService } from '../../services/storage';
 
 interface MateriSiswaViewProps {
   materiList: Materi[];
@@ -28,6 +29,14 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
   // PDF Viewer Modal state
   const [previewPdfMateri, setPreviewPdfMateri] = useState<Materi | null>(null);
 
+  // Offline Cache Notification
+  const [offlineToast, setOfflineToast] = useState<string | null>(null);
+  const [cachedIds, setCachedIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    setCachedIds(storageService.getOfflineCachedMateriIds());
+  }, [activeMateriId]);
+
   // Flashcard Modal State
   const [flashcardModalState, setFlashcardModalState] = useState<{
     isOpen: boolean;
@@ -43,6 +52,20 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
   const currentMateri = materiList.find(m => m.id === activeMateriId) || categoryFiltered[0] || materiList[0];
 
   const isCompleted = currentMateri ? currentStudent.completedMaterials.includes(currentMateri.id) : false;
+  const isCached = currentMateri ? cachedIds.includes(currentMateri.id) : false;
+
+  const handleToggleOfflineCache = (materi: Materi) => {
+    if (isCached) {
+      storageService.removeOfflineCache(materi.id);
+      setCachedIds(storageService.getOfflineCachedMateriIds());
+      setOfflineToast(`Materi "${materi.title}" dihapus dari simpanan offline.`);
+    } else {
+      storageService.cacheMaterialOffline(materi);
+      setCachedIds(storageService.getOfflineCachedMateriIds());
+      setOfflineToast(`Materi "${materi.title}" berhasil disimpan ke LocalStorage! Dapat dibaca saat offline.`);
+    }
+    setTimeout(() => setOfflineToast(null), 4000);
+  };
 
   const categoryInfo = {
     qowaid: { label: 'Qowaid (Tata Bahasa)', icon: BookOpen, arabic: 'الْقَوَاعِدُ' },
@@ -157,14 +180,30 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
                 </div>
 
                 <div className="flex flex-col items-end gap-2">
-                  {currentMateri.pdfUrl && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* Offline Cache Button */}
                     <button
-                      onClick={() => setPreviewPdfMateri(currentMateri)}
-                      className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                      onClick={() => currentMateri && handleToggleOfflineCache(currentMateri)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border ${
+                        isCached
+                          ? 'bg-teal-50 text-teal-800 border-teal-300'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-200'
+                      }`}
+                      title="Simpan teks materi ke LocalStorage agar tetap dapat dibaca tanpa internet"
                     >
-                      <FileText size={16} /> Buka Modul PDF
+                      <HardDriveDownload size={14} className={isCached ? 'text-teal-600' : 'text-slate-500'} />
+                      <span>{isCached ? 'Tersimpan Offline' : 'Simpan Offline'}</span>
                     </button>
-                  )}
+
+                    {currentMateri.pdfUrl && (
+                      <button
+                        onClick={() => setPreviewPdfMateri(currentMateri)}
+                        className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                      >
+                        <FileText size={14} /> Modul PDF
+                      </button>
+                    )}
+                  </div>
 
                   {isCompleted ? (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-800 rounded-xl font-bold text-xs">
@@ -180,6 +219,17 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
                   )}
                 </div>
               </div>
+
+              {/* Toast Notification for Offline Caching */}
+              {offlineToast && (
+                <div className="p-3 bg-teal-600 text-white rounded-xl text-xs font-bold flex items-center justify-between shadow-md transition-all">
+                  <div className="flex items-center gap-2">
+                    <WifiOff size={16} />
+                    <span>{offlineToast}</span>
+                  </div>
+                  <button onClick={() => setOfflineToast(null)} className="hover:opacity-80">✕</button>
+                </div>
+              )}
 
               {/* CATEGORY 1: QOWAID / THEORETICAL EXPLANATION */}
               {currentMateri.category === 'qowaid' && (

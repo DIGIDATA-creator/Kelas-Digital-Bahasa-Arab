@@ -1,90 +1,358 @@
-import { Materi, Penilaian, Student, ActivityLog, Role, QuizAttempt } from '../types';
-import { INITIAL_MATERI, INITIAL_PENILAIAN, INITIAL_STUDENTS, INITIAL_LOGS } from '../data/initialData';
+import { Materi, Penilaian, Student, ActivityLog, Role, QuizAttempt, ForumPost, ForumReply } from '../types';
+import { INITIAL_MATERI, INITIAL_PENILAIAN, INITIAL_STUDENTS, INITIAL_LOGS, INITIAL_FORUM_POSTS } from '../data/initialData';
+import { db } from '../firebase/config';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 
 const KEYS = {
   MATERI: 'lms_arabic_materi',
   PENILAIAN: 'lms_arabic_penilaian',
   STUDENTS: 'lms_arabic_students',
   LOGS: 'lms_arabic_logs',
+  FORUM: 'lms_arabic_forum',
+  OFFLINE_MATERI_IDS: 'lms_arabic_offline_materi_ids',
   ROLE: 'lms_arabic_role',
   CURRENT_STUDENT_ID: 'lms_arabic_current_student_id',
+  GURU_PROFILE: 'lms_guru_profile',
+  GURU_CREDENTIALS: 'lms_guru_credentials',
 };
 
-// LocalStorage helpers
+// Cache in memory for immediate sync reads
+let cachedMateri: Materi[] = [];
+let cachedPenilaian: Penilaian[] = [];
+let cachedStudents: Student[] = [];
+let cachedLogs: ActivityLog[] = [];
+let cachedForum: ForumPost[] = [];
+
+type SyncCallback = (data: {
+  materiList: Materi[];
+  penilaianList: Penilaian[];
+  students: Student[];
+  logs: ActivityLog[];
+  forumPosts: ForumPost[];
+}) => void;
+
+let syncListeners: SyncCallback[] = [];
+
+function notifyListeners() {
+  const data = {
+    materiList: cachedMateri,
+    penilaianList: cachedPenilaian,
+    students: cachedStudents,
+    logs: cachedLogs,
+    forumPosts: cachedForum,
+  };
+  syncListeners.forEach(cb => cb(data));
+}
+
+// Firestore collection documents
+const docMateri = doc(db, 'app_collections', 'materi');
+const docPenilaian = doc(db, 'app_collections', 'penilaian');
+const docStudents = doc(db, 'app_collections', 'students');
+const docLogs = doc(db, 'app_collections', 'logs');
+const docForum = doc(db, 'app_collections', 'forum');
+
+// Helpers for LocalStorage fallback/cache
+function saveLocal(key: string, data: any) {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (e) {
+    console.warn('LocalStorage save error:', e);
+  }
+}
+
+function getLocal<T>(key: string, fallback: T): T {
+  const data = localStorage.getItem(key);
+  if (!data) return fallback;
+  try {
+    return JSON.parse(data) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+// Initialize cached data from LocalStorage first
+cachedMateri = getLocal(KEYS.MATERI, INITIAL_MATERI);
+cachedPenilaian = getLocal(KEYS.PENILAIAN, INITIAL_PENILAIAN);
+cachedStudents = getLocal(KEYS.STUDENTS, INITIAL_STUDENTS);
+cachedLogs = getLocal(KEYS.LOGS, INITIAL_LOGS);
+cachedForum = getLocal(KEYS.FORUM, INITIAL_FORUM_POSTS);
+
 export const storageService = {
+  // Subscribe to real-time Firestore updates across all devices
+  initFirestoreSync(onUpdate: SyncCallback) {
+    syncListeners.push(onUpdate);
+
+    // Provide immediate cached data
+    onUpdate({
+      materiList: cachedMateri,
+      penilaianList: cachedPenilaian,
+      students: cachedStudents,
+      logs: cachedLogs,
+      forumPosts: cachedForum,
+    });
+
+    // 1. Listen to Materi
+    const unsubMateri = onSnapshot(docMateri, (docSnap) => {
+      if (docSnap.exists() && docSnap.data().items) {
+        cachedMateri = docSnap.data().items;
+        saveLocal(KEYS.MATERI, cachedMateri);
+        notifyListeners();
+      } else {
+        setDoc(docMateri, { items: cachedMateri }).catch(console.error);
+      }
+    }, (err) => console.warn('Materi snapshot warning:', err));
+
+    // 2. Listen to Penilaian
+    const unsubPenilaian = onSnapshot(docPenilaian, (docSnap) => {
+      if (docSnap.exists() && docSnap.data().items) {
+        cachedPenilaian = docSnap.data().items;
+        saveLocal(KEYS.PENILAIAN, cachedPenilaian);
+        notifyListeners();
+      } else {
+        setDoc(docPenilaian, { items: cachedPenilaian }).catch(console.error);
+      }
+    }, (err) => console.warn('Penilaian snapshot warning:', err));
+
+    // 3. Listen to Students
+    const unsubStudents = onSnapshot(docStudents, (docSnap) => {
+      if (docSnap.exists() && docSnap.data().items) {
+        cachedStudents = docSnap.data().items;
+        saveLocal(KEYS.STUDENTS, cachedStudents);
+        notifyListeners();
+      } else {
+        setDoc(docStudents, { items: cachedStudents }).catch(console.error);
+      }
+    }, (err) => console.warn('Students snapshot warning:', err));
+
+    // 4. Listen to Logs
+    const unsubLogs = onSnapshot(docLogs, (docSnap) => {
+      if (docSnap.exists() && docSnap.data().items) {
+        cachedLogs = docSnap.data().items;
+        saveLocal(KEYS.LOGS, cachedLogs);
+        notifyListeners();
+      } else {
+        setDoc(docLogs, { items: cachedLogs }).catch(console.error);
+      }
+    }, (err) => console.warn('Logs snapshot warning:', err));
+
+    // 5. Listen to Forum Diskusi
+    const unsubForum = onSnapshot(docForum, (docSnap) => {
+      if (docSnap.exists() && docSnap.data().items) {
+        cachedForum = docSnap.data().items;
+        saveLocal(KEYS.FORUM, cachedForum);
+        notifyListeners();
+      } else {
+        setDoc(docForum, { items: cachedForum }).catch(console.error);
+      }
+    }, (err) => console.warn('Forum snapshot warning:', err));
+
+    return () => {
+      syncListeners = syncListeners.filter(cb => cb !== onUpdate);
+      unsubMateri();
+      unsubPenilaian();
+      unsubStudents();
+      unsubLogs();
+      unsubForum();
+    };
+  },
+
   getMateri(): Materi[] {
-    const data = localStorage.getItem(KEYS.MATERI);
-    if (!data) {
-      localStorage.setItem(KEYS.MATERI, JSON.stringify(INITIAL_MATERI));
-      return INITIAL_MATERI;
-    }
-    try {
-      return JSON.parse(data);
-    } catch {
-      return INITIAL_MATERI;
-    }
+    return cachedMateri;
   },
 
   saveMateri(list: Materi[]): void {
-    localStorage.setItem(KEYS.MATERI, JSON.stringify(list));
+    cachedMateri = list;
+    saveLocal(KEYS.MATERI, list);
+    setDoc(docMateri, { items: list }).catch(err => console.error('Error syncing Materi to Firestore:', err));
+    notifyListeners();
   },
 
   getPenilaian(): Penilaian[] {
-    const data = localStorage.getItem(KEYS.PENILAIAN);
-    if (!data) {
-      localStorage.setItem(KEYS.PENILAIAN, JSON.stringify(INITIAL_PENILAIAN));
-      return INITIAL_PENILAIAN;
-    }
-    try {
-      return JSON.parse(data);
-    } catch {
-      return INITIAL_PENILAIAN;
-    }
+    return cachedPenilaian;
   },
 
   savePenilaian(list: Penilaian[]): void {
-    localStorage.setItem(KEYS.PENILAIAN, JSON.stringify(list));
+    cachedPenilaian = list;
+    saveLocal(KEYS.PENILAIAN, list);
+    setDoc(docPenilaian, { items: list }).catch(err => console.error('Error syncing Penilaian to Firestore:', err));
+    notifyListeners();
   },
 
   getStudents(): Student[] {
-    const data = localStorage.getItem(KEYS.STUDENTS);
-    if (!data) {
-      localStorage.setItem(KEYS.STUDENTS, JSON.stringify(INITIAL_STUDENTS));
-      return INITIAL_STUDENTS;
-    }
-    try {
-      return JSON.parse(data);
-    } catch {
-      return INITIAL_STUDENTS;
-    }
+    return cachedStudents;
   },
 
   saveStudents(list: Student[]): void {
-    localStorage.setItem(KEYS.STUDENTS, JSON.stringify(list));
+    cachedStudents = list;
+    saveLocal(KEYS.STUDENTS, list);
+    setDoc(docStudents, { items: list }).catch(err => console.error('Error syncing Students to Firestore:', err));
+    notifyListeners();
   },
 
   getLogs(): ActivityLog[] {
-    const data = localStorage.getItem(KEYS.LOGS);
-    if (!data) {
-      localStorage.setItem(KEYS.LOGS, JSON.stringify(INITIAL_LOGS));
-      return INITIAL_LOGS;
-    }
-    try {
-      return JSON.parse(data);
-    } catch {
-      return INITIAL_LOGS;
-    }
+    return cachedLogs;
   },
 
   addLog(log: Omit<ActivityLog, 'id' | 'timestamp'>): void {
-    const logs = this.getLogs();
     const newLog: ActivityLog = {
       ...log,
       id: `log-${Date.now()}`,
       timestamp: new Date().toISOString(),
     };
-    const updated = [newLog, ...logs].slice(0, 50); // Keep last 50
-    localStorage.setItem(KEYS.LOGS, JSON.stringify(updated));
+    const updated = [newLog, ...cachedLogs].slice(0, 50);
+    cachedLogs = updated;
+    saveLocal(KEYS.LOGS, updated);
+    setDoc(docLogs, { items: updated }).catch(err => console.error('Error syncing Logs to Firestore:', err));
+    notifyListeners();
+  },
+
+  // Forum Diskusi Methods
+  getForumPosts(): ForumPost[] {
+    return cachedForum;
+  },
+
+  saveForumPosts(list: ForumPost[]): void {
+    cachedForum = list;
+    saveLocal(KEYS.FORUM, list);
+    setDoc(docForum, { items: list }).catch(err => console.error('Error syncing Forum to Firestore:', err));
+    notifyListeners();
+  },
+
+  addForumPost(post: Omit<ForumPost, 'id' | 'createdAt' | 'updatedAt' | 'replies' | 'likes' | 'likedBy'>): ForumPost {
+    const newPost: ForumPost = {
+      ...post,
+      id: `forum-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      replies: [],
+      likes: 0,
+      likedBy: [],
+      status: 'terbuka',
+    };
+    const updated = [newPost, ...cachedForum];
+    this.saveForumPosts(updated);
+
+    this.addLog({
+      userName: post.authorName,
+      userRole: post.authorRole,
+      action: 'Posting Diskusi Baru',
+      details: `Membuat diskusi: "${post.title.substring(0, 30)}..."`,
+    });
+
+    return newPost;
+  },
+
+  addForumReply(postId: string, reply: Omit<ForumReply, 'id' | 'createdAt' | 'likes' | 'likedBy'>): void {
+    const posts = JSON.parse(JSON.stringify(cachedForum)) as ForumPost[];
+    const post = posts.find(p => p.id === postId);
+    if (post) {
+      const newReply: ForumReply = {
+        ...reply,
+        id: `reply-${Date.now()}`,
+        createdAt: new Date().toISOString(),
+        likes: 0,
+        likedBy: [],
+        isVerifiedAnswer: reply.authorRole === 'guru',
+      };
+      post.replies.push(newReply);
+      post.updatedAt = new Date().toISOString();
+      if (reply.authorRole === 'guru') {
+        post.status = 'terjawab';
+      }
+      this.saveForumPosts(posts);
+
+      this.addLog({
+        userName: reply.authorName,
+        userRole: reply.authorRole,
+        action: 'Menjawab Diskusi Forum',
+        details: `Menjawab pada postingan "${post.title.substring(0, 25)}..."`,
+      });
+    }
+  },
+
+  toggleLikePost(postId: string, userId: string): void {
+    const posts = JSON.parse(JSON.stringify(cachedForum)) as ForumPost[];
+    const post = posts.find(p => p.id === postId);
+    if (post) {
+      post.likedBy = post.likedBy || [];
+      const index = post.likedBy.indexOf(userId);
+      if (index >= 0) {
+        post.likedBy.splice(index, 1);
+        post.likes = Math.max(0, (post.likes || 1) - 1);
+      } else {
+        post.likedBy.push(userId);
+        post.likes = (post.likes || 0) + 1;
+      }
+      this.saveForumPosts(posts);
+    }
+  },
+
+  togglePinPost(postId: string): void {
+    const posts = JSON.parse(JSON.stringify(cachedForum)) as ForumPost[];
+    const post = posts.find(p => p.id === postId);
+    if (post) {
+      post.isPinned = !post.isPinned;
+      this.saveForumPosts(posts);
+    }
+  },
+
+  toggleVerifiedReply(postId: string, replyId: string): void {
+    const posts = JSON.parse(JSON.stringify(cachedForum)) as ForumPost[];
+    const post = posts.find(p => p.id === postId);
+    if (post) {
+      const reply = post.replies.find(r => r.id === replyId);
+      if (reply) {
+        reply.isVerifiedAnswer = !reply.isVerifiedAnswer;
+        this.saveForumPosts(posts);
+      }
+    }
+  },
+
+  deleteForumPost(postId: string): void {
+    const updated = cachedForum.filter(p => p.id !== postId);
+    this.saveForumPosts(updated);
+  },
+
+  // OFFLINE LOCALSTORAGE CACHING FOR HIWAR & QOWAID
+  getOfflineCachedMateriIds(): string[] {
+    return getLocal<string[]>(KEYS.OFFLINE_MATERI_IDS, []);
+  },
+
+  isMateriCachedOffline(materiId: string): boolean {
+    const ids = this.getOfflineCachedMateriIds();
+    return ids.includes(materiId);
+  },
+
+  cacheMaterialOffline(materi: Materi): void {
+    const ids = this.getOfflineCachedMateriIds();
+    if (!ids.includes(materi.id)) {
+      ids.push(materi.id);
+      saveLocal(KEYS.OFFLINE_MATERI_IDS, ids);
+    }
+    // Save full material text & dialogues into separate key for reliable offline retrieval
+    saveLocal(`lms_offline_item_${materi.id}`, materi);
+  },
+
+  removeOfflineCache(materiId: string): void {
+    const ids = this.getOfflineCachedMateriIds().filter(id => id !== materiId);
+    saveLocal(KEYS.OFFLINE_MATERI_IDS, ids);
+    localStorage.removeItem(`lms_offline_item_${materiId}`);
+  },
+
+  getOfflineCachedMateriList(): Materi[] {
+    const ids = this.getOfflineCachedMateriIds();
+    const result: Materi[] = [];
+    ids.forEach(id => {
+      const item = getLocal<Materi | null>(`lms_offline_item_${id}`, null);
+      if (item) {
+        result.push(item);
+      } else {
+        // Fallback from current materi list
+        const found = cachedMateri.find(m => m.id === id);
+        if (found) result.push(found);
+      }
+    });
+    return result;
   },
 
   getRole(): Role {
@@ -108,14 +376,13 @@ export const storageService = {
     localStorage.setItem(KEYS.CURRENT_STUDENT_ID, id);
   },
 
-  // Student specific actions
   markMaterialComplete(studentId: string, materiId: string): void {
-    const students = this.getStudents();
+    const students = JSON.parse(JSON.stringify(this.getStudents())) as Student[];
     const student = students.find(s => s.id === studentId);
     if (student) {
       if (!student.completedMaterials.includes(materiId)) {
         student.completedMaterials.push(materiId);
-        student.totalXP += 50; // Earn 50 XP per material read
+        student.totalXP += 50;
         student.lastActive = new Date().toISOString();
         this.saveStudents(students);
 
@@ -131,7 +398,7 @@ export const storageService = {
   },
 
   saveQuizAttempt(attempt: Omit<QuizAttempt, 'id' | 'completedAt'>): QuizAttempt {
-    const students = this.getStudents();
+    const students = JSON.parse(JSON.stringify(this.getStudents())) as Student[];
     const student = students.find(s => s.id === attempt.studentId);
     
     const newAttempt: QuizAttempt = {
@@ -141,9 +408,10 @@ export const storageService = {
     };
 
     if (student) {
+      student.attempts = student.attempts || [];
       student.attempts.push(newAttempt);
       if (attempt.passed) {
-        student.totalXP += attempt.score; // Add points as XP
+        student.totalXP += attempt.score;
       }
       student.lastActive = new Date().toISOString();
       this.saveStudents(students);
@@ -160,9 +428,24 @@ export const storageService = {
   },
 
   resetData(): void {
-    localStorage.setItem(KEYS.MATERI, JSON.stringify(INITIAL_MATERI));
-    localStorage.setItem(KEYS.PENILAIAN, JSON.stringify(INITIAL_PENILAIAN));
-    localStorage.setItem(KEYS.STUDENTS, JSON.stringify(INITIAL_STUDENTS));
-    localStorage.setItem(KEYS.LOGS, JSON.stringify(INITIAL_LOGS));
+    cachedMateri = INITIAL_MATERI;
+    cachedPenilaian = INITIAL_PENILAIAN;
+    cachedStudents = INITIAL_STUDENTS;
+    cachedLogs = INITIAL_LOGS;
+    cachedForum = INITIAL_FORUM_POSTS;
+
+    saveLocal(KEYS.MATERI, INITIAL_MATERI);
+    saveLocal(KEYS.PENILAIAN, INITIAL_PENILAIAN);
+    saveLocal(KEYS.STUDENTS, INITIAL_STUDENTS);
+    saveLocal(KEYS.LOGS, INITIAL_LOGS);
+    saveLocal(KEYS.FORUM, INITIAL_FORUM_POSTS);
+
+    setDoc(docMateri, { items: INITIAL_MATERI }).catch(console.error);
+    setDoc(docPenilaian, { items: INITIAL_PENILAIAN }).catch(console.error);
+    setDoc(docStudents, { items: INITIAL_STUDENTS }).catch(console.error);
+    setDoc(docLogs, { items: INITIAL_LOGS }).catch(console.error);
+    setDoc(docForum, { items: INITIAL_FORUM_POSTS }).catch(console.error);
+
+    notifyListeners();
   }
 };

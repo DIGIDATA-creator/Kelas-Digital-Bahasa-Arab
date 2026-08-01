@@ -1,4 +1,4 @@
-import { Materi, Penilaian, Student, ActivityLog } from '../types';
+import { Materi, Penilaian, Student, ActivityLog, ForumPost } from '../types';
 
 // Sample PDF Base64 fallback or data helper
 export const SAMPLE_PDF_BASE64 = `data:application/pdf;base64,JVBERi0xLjQKJcOkw7zDtsOfCjIgMCBvYmoKPDwvTGVuZ3RoIDMgMCBSL0ZpbHRlci9GbGF0ZURlY29kZT4+CnN0cmVhbXgNc3RhdHVzIG9rCmVuZHN0cmVhbQplbmRvYmoKMyAwIG9iagoxOQplbmRvYmoKMSAwIG9iago8PC9UeXBlL0NhdGFsb2cvUGFnZXMgNCAwIFI+PgplbmRvYmoKNCAwIG9iago8PC9UeXBlL1BhZ2VzL0NvdW50IDEvS2lkc1sgNSAwIFJdPj4KZW5kb2JqCjUgMCBvYmoKPDwvVHlwZS9QYWdlL1BhcmVudCA0IDAgUi9SZXNvdXJjZXM8PC9Gb250PDwvRjEgNiAwIFI+Pj4+L01lZGlhQm94WzAgMCA1OTUgODQyXS9Db250ZW50cyAyIDAgUj4+CmVuZG9iaiA2IDAgb2JqCjw8L1R5cGUvRm9udC9TdWJ0eXBlL1R5cGUxL0Jhc2VGb250L0hlbHZldGljYT4+CmVuZG9iagp0cmFpbGVyCjw8L1NpemUgNy9Sb290IDEgMCBSPj4KJSVFT0Y=`;
@@ -476,3 +476,83 @@ export const INITIAL_LOGS: ActivityLog[] = [
     timestamp: '2026-07-26T09:00:00Z',
   }
 ];
+
+export const INITIAL_FORUM_POSTS: ForumPost[] = [
+  {
+    id: 'forum-1',
+    title: 'Bagaimana cara membedakan Isim dan Fi\'il jika tidak ada Alif Lam?',
+    content: 'Ustaz, mohon penjelasannya. Jika sebuah kata tidak diawali dengan الـ (Alif Lam), bagaimana cara praktis membedakan apakah kata tersebut Isim atau Fi\'il saat membaca kitab gundul?',
+    materiId: 'mat-qowaid-1',
+    materiTitle: 'Pengenalan Isim, Fi\'il, dan Harf',
+    category: 'qowaid',
+    authorId: 'std-1',
+    authorName: 'Muhammad Farhan',
+    authorRole: 'siswa',
+    authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    createdAt: '2026-07-28T10:00:00Z',
+    updatedAt: '2026-07-28T10:00:00Z',
+    isPinned: true,
+    status: 'terjawab',
+    likes: 4,
+    likedBy: ['std-2', 'std-3', 'std-4'],
+    replies: [
+      {
+        id: 'reply-1',
+        authorId: 'guru-1',
+        authorName: 'Ust. Ahmad Dahlan, M.Pd.',
+        authorRole: 'guru',
+        authorAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
+        content: 'Pertanyaan bagus sekali Ananda Farhan! Jika tidak ada Alif Lam, kita bisa melihat ciri lain:\n1. Tanwin (ـٌ ـٍ ـً): Hanya ada pada Isim.\n2. Coba masukkan Harf Jar (seperti فِي / مِنْ): Jika cocok dipadukan, maka itu Isim.\n3. Jika kata tersebut dapat dimasuki huruf قَدْ atau سَوْفَ, maka itu pasti Fi\'il.',
+        createdAt: '2026-07-28T11:15:00Z',
+        likes: 5,
+        likedBy: ['std-1', 'std-2', 'std-3', 'std-4'],
+        isVerifiedAnswer: true,
+      },
+      {
+        id: 'reply-2',
+        authorId: 'std-2',
+        authorName: 'Aisyah Az-Zahra',
+        authorRole: 'siswa',
+        authorAvatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
+        content: 'Syukran Ustadz atas penjelasannya! Sangat membantu dalam memahami materi bab 1.',
+        createdAt: '2026-07-28T12:00:00Z',
+        likes: 2,
+        likedBy: ['std-1'],
+        isVerifiedAnswer: false,
+      }
+    ]
+  },
+  {
+    id: 'forum-2',
+    title: 'Tips Menghafal Percakapan At-Ta\'aruf agar tidak cepat lupa',
+    content: 'Teman-teman dan Ustadzah, adakah tips atau metode efektif untuk mempraktikkan Hiwar At-Ta\'aruf dengan lancar bersama pasangan belajar?',
+    materiId: 'mat-hiwar-1',
+    materiTitle: 'Perkenalan Diri (At-Ta\'aruf)',
+    category: 'hiwar',
+    authorId: 'std-2',
+    authorName: 'Aisyah Az-Zahra',
+    authorRole: 'siswa',
+    authorAvatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
+    createdAt: '2026-07-29T14:30:00Z',
+    updatedAt: '2026-07-29T14:30:00Z',
+    isPinned: false,
+    status: 'terbuka',
+    likes: 3,
+    likedBy: ['std-1', 'std-4'],
+    replies: [
+      {
+        id: 'reply-3',
+        authorId: 'guru-2',
+        authorName: 'Ustzh. Fatimah, S.Pd.I.',
+        authorRole: 'guru',
+        authorAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
+        content: 'Afwan Mbak Aisyah, cara terbaik adalah merekam suara sendiri saat mempraktikkan dialogue pair, lalu dengarkan kembali sambil menyimak teks Hiwar di aplikasi.',
+        createdAt: '2026-07-29T16:00:00Z',
+        likes: 3,
+        likedBy: ['std-2', 'std-1'],
+        isVerifiedAnswer: true,
+      }
+    ]
+  }
+];
+

@@ -141,3 +141,37 @@ export interface ActivityLog {
   details: string;
   timestamp: string;
 }
+
+export interface ForumReply {
+  id: string;
+  authorId: string;
+  authorName: string;
+  authorRole: Role;
+  authorAvatar?: string;
+  content: string;
+  createdAt: string;
+  likes?: number;
+  likedBy?: string[];
+  isVerifiedAnswer?: boolean;
+}
+
+export interface ForumPost {
+  id: string;
+  title: string;
+  content: string;
+  materiId?: string;
+  materiTitle?: string;
+  category?: CategoryType | 'umum';
+  babNumber?: number;
+  authorId: string;
+  authorName: string;
+  authorRole: Role;
+  authorAvatar?: string;
+  createdAt: string;
+  updatedAt: string;
+  replies: ForumReply[];
+  likes?: number;
+  likedBy?: string[];
+  isPinned?: boolean;
+  status?: 'terbuka' | 'terjawab' | 'ditutup';
+}
