@@ -68,24 +68,33 @@ export interface Materi {
 
 export interface Question {
   id: string;
-  type: 'multiple_choice' | 'fill_in_blank' | 'true_false';
+  type: 'multiple_choice' | 'fill_in_blank' | 'true_false' | 'essay';
   questionText: string;
   questionArabic?: string;
   options?: string[];
   correctAnswer: string | number; // index or text
   explanation: string;
   points: number;
+  code?: string; // F.1.6 Kode Soal Unik (e.g. QW-BAB1-T1-102)
 }
 
 export interface Penilaian {
   id: string;
+  code?: string; // F.1.6 Kode Paket Soal Unik (e.g. TMR-QOW-BAB1)
   title: string;
-  type: AssessmentType;
+  type: AssessmentType; // 'latihan' | 'kuis' | 'ujian'
   category: CategoryType | 'umum';
+  babNumber?: number; // F.1.1 Bab number
+  learningTarget?: string; // F.1.10 Target materi dari bab
+  displayQuestionCount?: number; // F.1.4 Jumlah soal yang muncul di akun siswa
+  questionsToShow?: number; // F.1.4 Total questions shown to student
+  randomizeQuestions?: boolean; // F.1.5 Acak urutan soal
+  prioritizeUnseen?: boolean; // F.1.7 Prioritaskan soal belum pernah dikerjakan
   durationMinutes: number;
   passingGrade: number; // e.g. 75
-  questions: Question[];
+  questions: Question[]; // F.1.3 Bank soal sebanyak-banyaknya
   totalPoints: number;
+  gradingMethod?: 'digital' | 'manual'; // F.1.8 / F.1.9 Manual vs Digital
   createdAt: string;
 }
 
@@ -101,6 +110,13 @@ export interface QuizAttempt {
   answers: Record<string, string | number>;
   timeSpentSeconds: number;
   completedAt: string;
+  accessedAt?: string; // F.1.6 Tanggal & Waktu Akses
+  questionCodes?: string[]; // F.1.6 Kode Soal Unik yang diakses
+  seenQuestionIds?: string[]; // F.1.7 Tracking untuk rotasi soal belum pernah muncul
+  manualSubmissionUrl?: string; // F.1.8 Jawaban manual siswa
+  manualTextSubmission?: string; // F.1.8 Jawaban teks manual siswa
+  teacherFeedback?: string; // F.1.9 Catatan/Umpan balik guru
+  isGradedByTeacher?: boolean; // F.1.9 Status penilaian oleh guru
 }
 
 export interface Student {

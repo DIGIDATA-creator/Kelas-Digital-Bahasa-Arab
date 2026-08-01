@@ -8,17 +8,17 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /**
  * Uploads a File or Blob directly to Supabase Storage bucket 'LMS Bahasa Arab'
- * Returns the public URL and path.
+ * Returns the public URL and path. Fallbacks to Data URL if Supabase storage RLS policy or network fails.
  */
 export async function uploadToSupabaseStorage(
   file: File | Blob,
   fileName: string,
   folder: string = 'modul-pdf'
 ): Promise<{ publicUrl: string; path: string }> {
-  try {
-    const cleanFileName = fileName.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-    const filePath = `${folder}/${Date.now()}_${cleanFileName}`;
+  const cleanFileName = (fileName || 'document.pdf').replace(/[^a-zA-Z0-9.\-_]/g, '_');
+  const filePath = `${folder}/${Date.now()}_${cleanFileName}`;
 
+  try {
     const { data, error } = await supabase.storage
       .from(BUCKET_NAME)
       .upload(filePath, file, {
@@ -27,8 +27,12 @@ export async function uploadToSupabaseStorage(
       });
 
     if (error) {
-      console.error('Supabase upload error:', error);
-      throw new Error(`Gagal mengunggah ke Supabase Storage: ${error.message}`);
+      console.warn('Supabase storage upload error, falling back to local Data URL:', error.message);
+      const dataUrl = await fileToDataUrl(file);
+      return {
+        publicUrl: dataUrl,
+        path: filePath,
+      };
     }
 
     const { data: urlData } = supabase.storage
@@ -40,9 +44,22 @@ export async function uploadToSupabaseStorage(
       path: data.path,
     };
   } catch (err: any) {
-    console.error('Error uploading file to Supabase:', err);
-    throw err;
+    console.warn('Error uploading file to Supabase, falling back to local Data URL:', err);
+    const dataUrl = await fileToDataUrl(file);
+    return {
+      publicUrl: dataUrl,
+      path: filePath,
+    };
   }
+}
+
+function fileToDataUrl(file: File | Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (err) => reject(err);
+    reader.readAsDataURL(file);
+  });
 }
 
 /**

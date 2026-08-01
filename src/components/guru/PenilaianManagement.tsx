@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Penilaian, Question, AssessmentType, CategoryType } from '../../types';
-import { Plus, Edit3, Trash2, Clock, Award, FileCheck2, CheckCircle2, HelpCircle, X, Sparkles, AlertCircle } from 'lucide-react';
+import { Plus, Edit3, Trash2, Clock, Award, FileCheck2, CheckCircle2, HelpCircle, X, Sparkles, AlertCircle, FileSpreadsheet, Upload, Shuffle, Eye, Calendar, Layers, Hash } from 'lucide-react';
 
 interface PenilaianManagementProps {
   penilaianList: Penilaian[];
@@ -11,41 +11,72 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
   penilaianList,
   onSavePenilaian,
 }) => {
-  const [activeType, setActiveType] = useState<AssessmentType>('kuis');
+  const [activeType, setActiveType] = useState<AssessmentType>('latihan');
+  const [activeCategoryFilter, setActiveCategoryFilter] = useState<string>('all');
+  const [selectedBabFilter, setSelectedBabFilter] = useState<number | 'all'>('all');
 
   // Form Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPenilaian, setEditingPenilaian] = useState<Penilaian | null>(null);
 
+  // Bulk Sheet Upload Modal State
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+  const [bulkSheetText, setBulkSheetText] = useState('');
+
   const [formData, setFormData] = useState({
+    code: '',
     title: '',
-    type: 'kuis' as AssessmentType,
-    category: 'umum' as CategoryType | 'umum',
+    type: 'latihan' as AssessmentType,
+    category: 'qowaid' as CategoryType | 'umum',
+    babNumber: 1,
+    gradingMethod: 'digital' as 'digital' | 'manual',
     durationMinutes: 15,
     passingGrade: 75,
+    questionsToShow: 5,
+    randomizeQuestions: true,
+    prioritizeUnseen: true,
     questions: [] as Question[],
   });
 
-  const filteredList = penilaianList.filter(p => p.type === activeType);
+  const filteredList = penilaianList.filter(p => {
+    if (p.type !== activeType) return false;
+    if (activeCategoryFilter !== 'all' && p.category !== activeCategoryFilter) return false;
+    if (selectedBabFilter !== 'all' && (p.babNumber || 1) !== selectedBabFilter) return false;
+    return true;
+  });
 
-  const handleOpenAddModal = () => {
+  // Extract unique bab numbers available
+  const availableBabs = Array.from(
+    new Set(penilaianList.map(p => p.babNumber || 1))
+  ).sort((a, b) => Number(a) - Number(b));
+
+  const handleOpenAddModal = (defaultBab?: number, defaultCategory?: CategoryType) => {
     setEditingPenilaian(null);
+    const newBab = defaultBab || 1;
+    const newCat = defaultCategory || 'qowaid';
     setFormData({
-      title: '',
+      code: `TMR-${newCat.toUpperCase()}-BAB${newBab}-${Math.floor(100 + Math.random() * 900)}`,
+      title: `Tamrin / Latihan Bab ${newBab}`,
       type: activeType,
-      category: 'umum',
+      category: newCat,
+      babNumber: newBab,
+      gradingMethod: 'digital',
       durationMinutes: 15,
       passingGrade: 75,
+      questionsToShow: 5,
+      randomizeQuestions: true,
+      prioritizeUnseen: true,
       questions: [
         {
-          id: 'q1',
+          id: `q-${Date.now()}-1`,
+          code: `Q-BAB${newBab}-1`,
           type: 'multiple_choice',
-          questionText: 'Manakah di bawah ini yang merupakan contoh Isim?',
-          questionArabic: 'أَيُّ كَلِمَةٍ اسْمٌ؟',
-          options: ['كَتَبَ', 'الْمَسْجِدُ', 'عَلَى', 'يَكْتُبُ'],
-          correctAnswer: 1,
-          explanation: 'الْمَسْجِدُ adalah Isim (kata benda).',
-          points: 25,
+          questionText: 'Pilihlah jawaban yang paling tepat dari pertanyaan di bawah ini:',
+          questionArabic: 'اخْتَرْ الإِجَابَةَ الصَّحِيْحَةَ:',
+          options: ['Pilihan A', 'Pilihan B', 'Pilihan C', 'Pilihan D'],
+          correctAnswer: 0,
+          explanation: 'Pembahasan jawaban benar.',
+          points: 20,
         }
       ],
     });
@@ -55,36 +86,46 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
   const handleOpenEditModal = (p: Penilaian) => {
     setEditingPenilaian(p);
     setFormData({
+      code: p.code || `TMR-${(p.category || 'qowaid').toUpperCase()}-BAB${p.babNumber || 1}`,
       title: p.title,
       type: p.type,
       category: p.category,
+      babNumber: p.babNumber || 1,
+      gradingMethod: p.gradingMethod || 'digital',
       durationMinutes: p.durationMinutes,
       passingGrade: p.passingGrade,
+      questionsToShow: p.questionsToShow || p.questions.length,
+      randomizeQuestions: p.randomizeQuestions ?? true,
+      prioritizeUnseen: p.prioritizeUnseen ?? true,
       questions: p.questions || [],
     });
     setIsModalOpen(true);
   };
 
   const handleDelete = (id: string) => {
-    if (confirm('Apakah Anda yakin ingin menghapus paket soal penilaian ini?')) {
+    if (confirm('Apakah Anda yakin ingin menghapus paket latihan/penilaian ini?')) {
       const updated = penilaianList.filter(p => p.id !== id);
       onSavePenilaian(updated);
     }
   };
 
   const handleAddQuestion = () => {
+    const qCount = formData.questions.length + 1;
     const newQ: Question = {
       id: `q-${Date.now()}`,
-      type: 'multiple_choice',
-      questionText: 'Soal baru...',
-      options: ['Pilihan A', 'Pilihan B', 'Pilihan C', 'Pilihan D'],
+      code: `Q-BAB${formData.babNumber}-${qCount}`,
+      type: formData.gradingMethod === 'manual' ? 'essay' : 'multiple_choice',
+      questionText: 'Tuliskan teks pertanyaan di sini...',
+      questionArabic: '',
+      options: formData.gradingMethod === 'manual' ? undefined : ['Pilihan A', 'Pilihan B', 'Pilihan C', 'Pilihan D'],
       correctAnswer: 0,
-      explanation: 'Penjelasan jawaban benar.',
-      points: 25,
+      explanation: 'Pembahasan...',
+      points: 20,
     };
     setFormData(prev => ({
       ...prev,
       questions: [...prev.questions, newQ],
+      questionsToShow: prev.questionsToShow + 1,
     }));
   };
 
@@ -95,6 +136,58 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
     }));
   };
 
+  // Bulk sheet parser
+  const handleProcessBulkSheet = () => {
+    if (!bulkSheetText.trim()) {
+      alert('Teks sheet tidak boleh kosong.');
+      return;
+    }
+
+    const lines = bulkSheetText.trim().split('\n');
+    const importedQuestions: Question[] = [];
+
+    lines.forEach((line, idx) => {
+      const parts = line.split('\t').length > 1 ? line.split('\t') : line.split('|');
+      if (parts.length >= 2) {
+        const textIndo = parts[0]?.trim() || '';
+        const textArab = parts[1]?.trim() || '';
+        const optA = parts[2]?.trim() || 'Pilihan A';
+        const optB = parts[3]?.trim() || 'Pilihan B';
+        const optC = parts[4]?.trim() || 'Pilihan C';
+        const optD = parts[5]?.trim() || 'Pilihan D';
+        const correctIdx = parseInt(parts[6]?.trim() || '0') || 0;
+        const expl = parts[7]?.trim() || '';
+
+        importedQuestions.push({
+          id: `q-bulk-${Date.now()}-${idx}`,
+          code: `Q-BULK-${idx + 1}`,
+          type: 'multiple_choice',
+          questionText: textIndo,
+          questionArabic: textArab,
+          options: [optA, optB, optC, optD],
+          correctAnswer: correctIdx,
+          explanation: expl,
+          points: 20,
+        });
+      }
+    });
+
+    if (importedQuestions.length === 0) {
+      alert('Format sheet tidak valid. Pastikan menggunakan pemisah tab (Excel/Google Sheet) atau simbol pipe (|).');
+      return;
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      questions: [...prev.questions, ...importedQuestions],
+      questionsToShow: Math.max(prev.questionsToShow, prev.questions.length + importedQuestions.length),
+    }));
+
+    setIsBulkModalOpen(false);
+    setBulkSheetText('');
+    alert(`Berhasil mengimpor ${importedQuestions.length} soal ke bank soal!`);
+  };
+
   const handleSubmitForm = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title.trim() || formData.questions.length === 0) {
@@ -102,18 +195,24 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
       return;
     }
 
-    const totalPts = formData.questions.reduce((acc, q) => acc + (q.points || 25), 0);
+    const totalPts = formData.questions.reduce((acc, q) => acc + (q.points || 20), 0);
 
     if (editingPenilaian) {
       const updated = penilaianList.map(p => {
         if (p.id === editingPenilaian.id) {
           return {
             ...p,
+            code: formData.code,
             title: formData.title,
             type: formData.type,
             category: formData.category,
+            babNumber: formData.babNumber,
+            gradingMethod: formData.gradingMethod,
             durationMinutes: formData.durationMinutes,
             passingGrade: formData.passingGrade,
+            questionsToShow: formData.questionsToShow,
+            randomizeQuestions: formData.randomizeQuestions,
+            prioritizeUnseen: formData.prioritizeUnseen,
             questions: formData.questions,
             totalPoints: totalPts,
           };
@@ -124,11 +223,17 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
     } else {
       const newPen: Penilaian = {
         id: `pen-${Date.now()}`,
+        code: formData.code,
         title: formData.title,
         type: formData.type,
         category: formData.category,
+        babNumber: formData.babNumber,
+        gradingMethod: formData.gradingMethod,
         durationMinutes: formData.durationMinutes,
         passingGrade: formData.passingGrade,
+        questionsToShow: formData.questionsToShow,
+        randomizeQuestions: formData.randomizeQuestions,
+        prioritizeUnseen: formData.prioritizeUnseen,
         questions: formData.questions,
         totalPoints: totalPts,
         createdAt: new Date().toISOString(),
@@ -145,43 +250,87 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">Kelola Latihan, Kuis & Ujian</h2>
-          <p className="text-xs text-slate-500">
-            Sesuai sheet modul Guru: Buat paket soal evaluasi interaktif, atur timer pengerjaan, dan KKM kelulusan.
+          <h2 className="text-xl font-bold text-slate-900">Kelola Latihan, Kuis & Bank Soal</h2>
+          <p className="text-xs text-slate-500 mt-1">
+            Buat tamrin per bab, unggah bank soal secara massal dari sheet, dan atur alur penilaian (Digital / Manual).
           </p>
         </div>
         <button
-          onClick={handleOpenAddModal}
+          onClick={() => handleOpenAddModal()}
           className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-md flex items-center gap-2"
         >
-          <Plus size={18} /> Buat Paket Soal Baru
+          <Plus size={18} /> Tambah Tamrin Baru
         </button>
       </div>
 
-      {/* Assessment Type Switcher Tabs */}
-      <div className="flex items-center gap-3 border-b pb-4">
-        {(['latihan', 'kuis', 'ujian'] as AssessmentType[]).map((t) => {
-          const count = penilaianList.filter(p => p.type === t).length;
-          const isActive = activeType === t;
-          const labels = { latihan: 'Latihan Soal', kuis: 'Kuis Interaktif', ujian: 'Ujian Evaluasi' };
+      {/* Type Switcher Tabs + Filter Bar */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
+          <div className="flex items-center gap-2">
+            {(['latihan', 'kuis', 'ujian'] as AssessmentType[]).map((t) => {
+              const count = penilaianList.filter(p => p.type === t).length;
+              const isActive = activeType === t;
+              const labels = { latihan: 'Latihan / Tamrin', kuis: 'Kuis Interaktif', ujian: 'Ujian Evaluasi' };
 
-          return (
-            <button
-              key={t}
-              onClick={() => setActiveType(t)}
-              className={`px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm capitalize transition-all flex items-center gap-2 ${
-                isActive
-                  ? 'bg-purple-700 text-white shadow-md'
-                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-              }`}
+              return (
+                <button
+                  key={t}
+                  onClick={() => setActiveType(t)}
+                  className={`px-4 py-2 rounded-xl font-bold text-xs capitalize transition-all flex items-center gap-2 ${
+                    isActive
+                      ? 'bg-purple-700 text-white shadow-md'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  <span>{labels[t]}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${isActive ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'}`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center gap-2 text-xs">
+            <span className="font-semibold text-slate-500">Filter Target:</span>
+            <select
+              value={activeCategoryFilter}
+              onChange={(e) => setActiveCategoryFilter(e.target.value)}
+              className="px-3 py-1.5 border border-slate-300 rounded-xl bg-slate-50 font-bold text-slate-700"
             >
-              <span>{labels[t]}</span>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>
-                {count}
-              </span>
+              <option value="all">Semua Materi (Qowaid, Hiwar, dll)</option>
+              <option value="qowaid">Tata Bahasa (Qowaid)</option>
+              <option value="hiwar">Percakapan (Hiwar)</option>
+              <option value="kosakata">Kosakata (Mufradat)</option>
+              <option value="mahfudzot">Mahfudzot</option>
+            </select>
+
+            <select
+              value={selectedBabFilter}
+              onChange={(e) => setSelectedBabFilter(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
+              className="px-3 py-1.5 border border-slate-300 rounded-xl bg-slate-50 font-bold text-slate-700"
+            >
+              <option value="all">Semua Bab</option>
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(b => (
+                <option key={b} value={b}>Bab {b}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Quick Bab Action Cards */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+          <span className="text-xs font-bold text-slate-400 whitespace-nowrap">Akses Cepat Bab:</span>
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((bab) => (
+            <button
+              key={bab}
+              onClick={() => handleOpenAddModal(bab, activeCategoryFilter !== 'all' ? activeCategoryFilter as CategoryType : 'qowaid')}
+              className="px-3 py-1 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-lg text-xs font-bold whitespace-nowrap flex items-center gap-1 transition-colors"
+            >
+              <Plus size={12} /> Tamrin Bab {bab}
             </button>
-          );
-        })}
+          ))}
+        </div>
       </div>
 
       {/* Assessment List Grid */}
@@ -189,8 +338,8 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
         {filteredList.length === 0 ? (
           <div className="col-span-full py-12 text-center bg-white rounded-2xl border border-dashed border-slate-300">
             <FileCheck2 size={36} className="mx-auto text-slate-300 mb-2" />
-            <p className="text-sm font-medium text-slate-500">Belum ada paket penilaian untuk kategori ini.</p>
-            <p className="text-xs text-slate-400 mt-1">Klik "Buat Paket Soal Baru" untuk mulai menyusun kuis.</p>
+            <p className="text-sm font-medium text-slate-500">Belum ada paket latihan untuk bab/kategori ini.</p>
+            <p className="text-xs text-slate-400 mt-1">Klik "+ Tambah Tamrin Baru" untuk menyusun bank soal latihan.</p>
           </div>
         ) : (
           filteredList.map((p) => (
@@ -199,35 +348,54 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
               className="bg-white rounded-2xl border border-slate-200 shadow-xs hover:shadow-md transition-all flex flex-col justify-between overflow-hidden"
             >
               <div className="p-5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-200">
-                    {p.type}
-                  </span>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-purple-100 text-purple-800 border border-purple-200">
+                      Bab {p.babNumber || 1}
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-sky-100 text-sky-800 border border-sky-200">
+                      {p.category}
+                    </span>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${p.gradingMethod === 'manual' ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'}`}>
+                      {p.gradingMethod === 'manual' ? 'Koreksi Manual' : 'Koreksi Digital'}
+                    </span>
+                  </div>
                   <span className="text-xs font-semibold text-slate-500 flex items-center gap-1">
-                    <Clock size={14} className="text-amber-500" /> {p.durationMinutes} Menit
+                    <Clock size={14} className="text-amber-500" /> {p.durationMinutes}m
                   </span>
                 </div>
 
-                <h3 className="text-base font-bold text-slate-900 leading-snug">
-                  {p.title}
-                </h3>
+                <div className="space-y-0.5">
+                  <span className="text-[10px] font-mono font-extrabold text-slate-400 block uppercase">
+                    Kode: {p.code || 'TAMRIN-DEF'}
+                  </span>
+                  <h3 className="text-base font-extrabold text-slate-900 leading-snug">
+                    {p.title}
+                  </h3>
+                </div>
 
-                <div className="flex items-center justify-between text-xs text-slate-600 pt-2 border-t border-slate-100">
-                  <span>Total Soal: <strong className="text-slate-900">{p.questions.length} Butir</strong></span>
-                  <span>KKM: <strong className="text-emerald-700">{p.passingGrade} / 100</strong></span>
+                <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 pt-2 border-t border-slate-100 bg-slate-50 p-2.5 rounded-xl">
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">Bank Soal:</span>
+                    <strong className="text-slate-900">{p.questions.length} Soal</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">Tampil di Siswa:</span>
+                    <strong className="text-purple-700">{p.questionsToShow || p.questions.length} Soal (Acak)</strong>
+                  </div>
                 </div>
               </div>
 
-              <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-[11px] text-slate-400">
-                  Dibuat {new Date(p.createdAt).toLocaleDateString('id-ID')}
+              <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs">
+                <span className="text-[11px] text-slate-500 font-medium flex items-center gap-1">
+                  <Calendar size={13} className="text-slate-400" /> {new Date(p.createdAt).toLocaleDateString('id-ID')}
                 </span>
 
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => handleOpenEditModal(p)}
                     className="p-1.5 text-slate-600 hover:bg-slate-200/60 rounded-lg"
-                    title="Edit Paket Soal"
+                    title="Edit Paket & Bank Soal"
                   >
                     <Edit3 size={16} />
                   </button>
@@ -245,17 +413,20 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
         )}
       </div>
 
-      {/* Form Modal Buat / Edit Kuis */}
+      {/* Form Modal Buat / Edit Tamrin & Bank Soal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto">
           <form
             onSubmit={handleSubmitForm}
-            className="bg-white rounded-2xl max-w-3xl w-full p-6 shadow-2xl border border-slate-200 space-y-5 my-8 max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-2xl max-w-4xl w-full p-6 shadow-2xl border border-slate-200 space-y-5 my-8 max-h-[90vh] overflow-y-auto"
           >
             <div className="flex items-center justify-between border-b pb-3">
-              <h3 className="text-lg font-bold text-slate-900">
-                {editingPenilaian ? 'Edit Paket Penilaian' : 'Buat Paket Penilaian Baru'}
-              </h3>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">
+                  {editingPenilaian ? 'Edit Paket Tamrin & Bank Soal' : 'Buat Paket Tamrin & Bank Soal Baru'}
+                </h3>
+                <p className="text-xs text-slate-500">Atur nomor bab, jumlah soal yang diacak ke siswa, dan alur penilaian.</p>
+              </div>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
@@ -265,30 +436,68 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs sm:text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs sm:text-sm">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Judul Evaluasi / Kuis</label>
+                <label className="block font-semibold text-slate-700 mb-1">Target Bab</label>
+                <select
+                  value={formData.babNumber}
+                  onChange={(e) => setFormData({ ...formData, babNumber: parseInt(e.target.value) || 1 })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-hidden focus:border-purple-500 font-bold"
+                >
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].map(b => (
+                    <option key={b} value={b}>Bab {b}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Target Materi</label>
+                <select
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value as CategoryType })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-hidden focus:border-purple-500 font-bold"
+                >
+                  <option value="qowaid">Tata Bahasa (Qowaid)</option>
+                  <option value="hiwar">Percakapan (Hiwar)</option>
+                  <option value="kosakata">Kosakata (Mufradat)</option>
+                  <option value="mahfudzot">Mahfudzot</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Alur Penilaian</label>
+                <select
+                  value={formData.gradingMethod}
+                  onChange={(e) => setFormData({ ...formData, gradingMethod: e.target.value as 'digital' | 'manual' })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-hidden focus:border-purple-500 font-bold"
+                >
+                  <option value="digital">Digital (Pilihan Ganda - Auto Periksa)</option>
+                  <option value="manual">Manual (Isian / Essay - Periksa Guru)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Kode Paket Soal</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.code}
+                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                  placeholder="Kode unik (e.g. TMR-QOW-BAB1)"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono uppercase"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Judul Tamrin / Latihan</label>
                 <input
                   type="text"
                   required
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="Contoh: Kuis 1 Bahasa Arab Qowaid"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-hidden focus:border-emerald-500"
+                  placeholder="Judul latihan (e.g. Tamrin Qowaid Bab 1)"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl"
                 />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Tipe Evaluasi</label>
-                <select
-                  value={formData.type}
-                  onChange={(e) => setFormData({ ...formData, type: e.target.value as AssessmentType })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-hidden focus:border-emerald-500"
-                >
-                  <option value="latihan">Latihan Soal</option>
-                  <option value="kuis">Kuis Interaktif</option>
-                  <option value="ujian">Ujian Evaluasi</option>
-                </select>
               </div>
 
               <div>
@@ -298,39 +507,79 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
                   min={1}
                   max={180}
                   value={formData.durationMinutes}
-                  onChange={(e) => setFormData({ ...formData, durationMinutes: parseInt(e.target.value) || 10 })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-hidden focus:border-emerald-500"
+                  onChange={(e) => setFormData({ ...formData, durationMinutes: parseInt(e.target.value) || 15 })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Nilai KKM (Passing Grade)</label>
+                <label className="block font-semibold text-slate-700 mb-1">Jumlah Soal Tampil di Siswa</label>
                 <input
                   type="number"
-                  min={10}
-                  max={100}
-                  value={formData.passingGrade}
-                  onChange={(e) => setFormData({ ...formData, passingGrade: parseInt(e.target.value) || 75 })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-hidden focus:border-emerald-500"
+                  min={1}
+                  max={formData.questions.length || 100}
+                  value={formData.questionsToShow}
+                  onChange={(e) => setFormData({ ...formData, questionsToShow: parseInt(e.target.value) || 5 })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-purple-700 font-extrabold"
                 />
+                <span className="text-[10px] text-slate-400 mt-0.5 block">Diambil secara acak dari total bank soal</span>
+              </div>
+
+              <div className="sm:col-span-2 flex items-center gap-4 pt-4">
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={formData.randomizeQuestions}
+                    onChange={(e) => setFormData({ ...formData, randomizeQuestions: e.target.checked })}
+                    className="w-4 h-4 text-purple-600 rounded-md"
+                  />
+                  <span>Acak Urutan Soal Untuk Tiap Siswa</span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={formData.prioritizeUnseen}
+                    onChange={(e) => setFormData({ ...formData, prioritizeUnseen: e.target.checked })}
+                    className="w-4 h-4 text-purple-600 rounded-md"
+                  />
+                  <span>Prioritaskan Soal Yang Belum Pernah Dikerjakan</span>
+                </label>
               </div>
             </div>
 
-            {/* Questions Builder */}
-            <div className="space-y-4 pt-2 border-t">
-              <div className="flex items-center justify-between">
-                <h4 className="font-bold text-slate-900 text-sm">
-                  Daftar Soal ({formData.questions.length} Butir Soal)
-                </h4>
-                <button
-                  type="button"
-                  onClick={handleAddQuestion}
-                  className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl font-bold text-xs hover:bg-emerald-100 flex items-center gap-1"
-                >
-                  <Plus size={14} /> Tambah Soal
-                </button>
+            {/* Questions Bank Section */}
+            <div className="space-y-4 pt-4 border-t">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h4 className="font-bold text-slate-900 text-sm">
+                    Bank Soal ({formData.questions.length} Butir Soal Tersimpan)
+                  </h4>
+                  <p className="text-xs text-slate-500">
+                    Siswa akan menerima {formData.questionsToShow} soal acak dari {formData.questions.length} soal di atas.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsBulkModalOpen(true)}
+                    className="px-3 py-1.5 bg-purple-50 text-purple-700 border border-purple-200 rounded-xl font-bold text-xs hover:bg-purple-100 flex items-center gap-1.5"
+                  >
+                    <FileSpreadsheet size={15} /> Upload Massal dari Sheet
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleAddQuestion}
+                    className="px-3 py-1.5 bg-emerald-600 text-white rounded-xl font-bold text-xs hover:bg-emerald-700 flex items-center gap-1"
+                  >
+                    <Plus size={15} /> Tambah Soal Manual
+                  </button>
+                </div>
               </div>
 
+              {/* Questions Item List */}
               <div className="space-y-4">
                 {formData.questions.map((q, idx) => (
                   <div key={q.id || idx} className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3 relative">
@@ -340,10 +589,17 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
                       className="absolute top-3 right-3 text-rose-500 hover:text-rose-700 text-xs font-bold"
                       title="Hapus Soal ini"
                     >
-                      Hapus
+                      Hapus Soal
                     </button>
 
-                    <div className="font-bold text-slate-700 text-xs">Soal No. {idx + 1}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-extrabold text-slate-800 text-xs bg-slate-200 px-2 py-0.5 rounded-md">
+                        Soal #{idx + 1}
+                      </span>
+                      <span className="text-[10px] font-mono text-slate-400">
+                        Kode Soal: {q.code || `Q-BAB${formData.babNumber}-${idx + 1}`}
+                      </span>
+                    </div>
 
                     <div className="space-y-2 text-xs">
                       <input
@@ -357,7 +613,7 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
                             questions: prev.questions.map((item, i) => i === idx ? { ...item, questionText: val } : item)
                           }));
                         }}
-                        placeholder="Teks pertanyaan (Indonesia)..."
+                        placeholder="Teks pertanyaan (Bahasa Indonesia)..."
                         className="w-full px-3 py-1.5 border border-slate-300 rounded-lg bg-white"
                       />
 
@@ -376,8 +632,8 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
                         className="w-full px-3 py-1.5 border border-slate-300 rounded-lg bg-white font-arabic text-base"
                       />
 
-                      {/* Options for Multiple Choice */}
-                      {q.options && (
+                      {/* Options for Digital / Multiple Choice */}
+                      {formData.gradingMethod === 'digital' && q.options && (
                         <div className="grid grid-cols-2 gap-2 pt-1">
                           {q.options.map((opt, optIdx) => (
                             <div key={optIdx} className="flex items-center gap-2">
@@ -422,7 +678,7 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
                             questions: prev.questions.map((item, i) => i === idx ? { ...item, explanation: val } : item)
                           }));
                         }}
-                        placeholder="Penjelasan pembahasan jawaban..."
+                        placeholder="Pembahasan / kunci jawaban untuk koreksi..."
                         className="w-full px-3 py-1.5 border border-slate-300 rounded-lg bg-white italic text-slate-500"
                       />
                     </div>
@@ -441,12 +697,63 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-xl font-bold text-xs"
+                className="px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-xl font-bold text-xs shadow-md"
               >
-                Simpan Paket Soal
+                Simpan Paket Tamrin
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Bulk Sheet Import Modal */}
+      {isBulkModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div className="flex items-center gap-2 text-purple-700 font-extrabold text-base">
+                <FileSpreadsheet size={20} /> Upload Soal Massal Dari Sheet
+              </div>
+              <button
+                onClick={() => setIsBulkModalOpen(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Copy kolom dari Google Sheets / Excel dan paste di bawah ini.
+              <br />
+              <strong className="text-slate-800">Format Kolom per baris:</strong>
+              <br />
+              <code>Teks Soal Indo | Teks Soal Arab | Pilihan A | Pilihan B | Pilihan C | Pilihan D | Indeks Benar (0-3) | Pembahasan</code>
+            </p>
+
+            <textarea
+              rows={8}
+              value={bulkSheetText}
+              onChange={(e) => setBulkSheetText(e.target.value)}
+              placeholder="Contoh format per baris:
+Arti kata masjid | مَا مَعْنَى الْمَسْجِدِ؟ | Rumah | Masjid | Sekolah | Pasar | 1 | Masjid adalah tempat ibadah."
+              className="w-full p-3 text-xs font-mono border border-slate-300 rounded-xl focus:outline-hidden focus:border-purple-500 bg-slate-50"
+            />
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t">
+              <button
+                onClick={() => setIsBulkModalOpen(false)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleProcessBulkSheet}
+                className="px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold rounded-xl shadow-md flex items-center gap-1.5"
+              >
+                <Upload size={15} /> Impor Soal Massal
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

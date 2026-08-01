@@ -3,6 +3,7 @@ import { Materi, CategoryType, Student } from '../../types';
 import { BookOpen, MessageSquare, List, Quote, FileText, CheckCircle2, Play, Volume2, Search, Sparkles, RefreshCw, ChevronRight } from 'lucide-react';
 import { AudioPlayerButton } from '../common/AudioPlayerButton';
 import { PdfViewerModal } from '../common/PdfViewerModal';
+import { HiwarView } from '../guru/materi/HiwarView';
 import { KosakataTableView } from '../guru/materi/KosakataTableView';
 import { FlashcardModal, FlashcardItem } from '../common/FlashcardModal';
 
@@ -192,87 +193,10 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
               {/* CATEGORY 2: HIWAR / DIALOGUE PLAYER */}
               {currentMateri.category === 'hiwar' && (
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between text-xs text-slate-500 bg-slate-50 p-3 rounded-xl border">
-                    <span>Klik tombol pengeras suara untuk mendengarkan pelafalan Bahasa Arab</span>
-                    <span className="font-semibold text-sky-800 font-arabic">
-                      {currentMateri.dialoguePairs?.length || Math.ceil((currentMateri.dialogues?.length || 0) / 2)} Dialog Percakapan
-                    </span>
-                  </div>
-
-                  {currentMateri.dialoguePairs && currentMateri.dialoguePairs.length > 0 ? (
-                    <div className="space-y-4">
-                      {currentMateri.dialoguePairs.map((pair, idx) => (
-                        <div key={pair.id || idx} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-2xs space-y-3">
-                          <div className="flex items-center justify-between border-b pb-2">
-                            <span className="px-3 py-1 bg-sky-100 text-sky-900 font-extrabold text-xs rounded-xl flex items-center gap-1.5">
-                              <MessageSquare size={13} className="text-sky-700" /> Percakapan #{pair.turnNumber || idx + 1}
-                            </span>
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                              <div className="flex items-center justify-between">
-                                <span className="font-arabic font-extrabold text-sky-800 text-sm">
-                                  {pair.speaker1}
-                                </span>
-                                <AudioPlayerButton arabicText={pair.arabic1} size="sm" />
-                              </div>
-                              <p className="font-arabic font-extrabold text-xl text-slate-900 text-right leading-relaxed">
-                                {pair.arabic1}
-                              </p>
-                              <p className="text-xs text-slate-600 font-medium italic border-t pt-1.5">
-                                "{pair.translation1}"
-                              </p>
-                            </div>
-
-                            <div className="p-3.5 bg-emerald-50/50 border border-emerald-200 rounded-xl space-y-2">
-                              <div className="flex items-center justify-between">
-                                <span className="font-arabic font-extrabold text-emerald-800 text-sm">
-                                  {pair.speaker2}
-                                </span>
-                                <AudioPlayerButton arabicText={pair.arabic2} size="sm" />
-                              </div>
-                              <p className="font-arabic font-extrabold text-xl text-slate-900 text-right leading-relaxed">
-                                {pair.arabic2}
-                              </p>
-                              <p className="text-xs text-slate-600 font-medium italic border-t pt-1.5 border-emerald-200">
-                                "{pair.translation2}"
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {currentMateri.dialogues?.map((d, idx) => (
-                        <div
-                          key={d.id || idx}
-                          className={`p-4 rounded-2xl border transition-all ${
-                            idx % 2 === 0
-                              ? 'bg-emerald-50/50 border-emerald-200 ml-0 sm:mr-8'
-                              : 'bg-teal-50/50 border-teal-200 mr-0 sm:ml-8'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="font-bold text-xs text-slate-700 bg-white/80 px-2.5 py-1 rounded-lg border border-slate-200">
-                              {d.speaker}
-                            </span>
-                            <AudioPlayerButton arabicText={d.arabic} size="sm" />
-                          </div>
-
-                          <p className="font-arabic text-2xl text-slate-900 text-right leading-loose my-2 font-bold">
-                            {d.arabic}
-                          </p>
-
-                          <div className="pt-2 border-t border-slate-200/60 text-xs space-y-0.5">
-                            {d.latin && <p className="text-slate-500 italic font-mono">{d.latin}</p>}
-                            <p className="text-slate-800 font-medium">{d.translation}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <HiwarView
+                    materiList={[currentMateri]}
+                    isEditable={false}
+                  />
                 </div>
               )}
 

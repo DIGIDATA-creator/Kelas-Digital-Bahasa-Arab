@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Penilaian, Student, QuizAttempt } from '../../types';
-import { Clock, CheckCircle2, XCircle, Award, ArrowRight, ArrowLeft, RefreshCw, Sparkles, AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Penilaian, Student, QuizAttempt, Question } from '../../types';
+import { Clock, CheckCircle2, XCircle, Award, ArrowRight, ArrowLeft, RefreshCw, Sparkles, AlertTriangle, Hash, Calendar } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface QuizRunnerProps {
@@ -23,6 +23,31 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
   const [finalScore, setFinalScore] = useState(0);
   const [isPassed, setIsPassed] = useState(false);
 
+  // F.1.6 Accessed At Timestamp
+  const [accessedAt] = useState<string>(new Date().toISOString());
+
+  // F.1.4, F.1.5, F.1.7 Prepare Active Question Set from Bank
+  const questions: Question[] = useMemo(() => {
+    let pool = [...(penilaian.questions || [])];
+
+    // Prioritize unseen questions if requested
+    if (penilaian.prioritizeUnseen && student.seenQuestionIds && student.seenQuestionIds.length > 0) {
+      const seenSet = new Set(student.seenQuestionIds);
+      const unseen = pool.filter(q => !seenSet.has(q.id));
+      const seen = pool.filter(q => seenSet.has(q.id));
+      pool = [...unseen, ...seen];
+    }
+
+    // Randomize if enabled
+    if (penilaian.randomizeQuestions) {
+      pool.sort(() => Math.random() - 0.5);
+    }
+
+    // Slice to questionsToShow limit
+    const limit = penilaian.questionsToShow || pool.length;
+    return pool.slice(0, limit);
+  }, [penilaian, student]);
+
   // Timer Countdown Effect
   useEffect(() => {
     if (isSubmitted) return;
@@ -39,7 +64,6 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
     return () => clearInterval(timer);
   }, [timeLeftSeconds, isSubmitted]);
 
-  const questions = penilaian.questions || [];
   const currentQ = questions[currentQuestionIdx];
 
   const handleSelectAnswer = (ans: string | number) => {
@@ -53,12 +77,13 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
   const handleSubmitQuiz = () => {
     if (isSubmitted) return;
 
-    // Calculate score
+    // Calculate score for digital questions
     let totalScorePoints = 0;
     let maxPoints = 0;
+    const isManualGrading = penilaian.gradingMethod === 'manual';
 
     questions.forEach(q => {
-      const qPoints = q.points || 25;
+      const qPoints = q.points || 20;
       maxPoints += qPoints;
       const userAns = userAnswers[q.id];
 
@@ -91,13 +116,16 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
       penilaianType: penilaian.type,
       studentId: student.id,
       studentName: student.name,
-      score: calculatedScore,
-      passed,
+      score: isManualGrading ? 0 : calculatedScore,
+      passed: isManualGrading ? false : passed,
       answers: userAnswers,
       timeSpentSeconds: Math.max(10, timeSpent),
+      accessedAt,
+      seenQuestionIds: questions.map(q => q.id),
+      pendingManualGrading: isManualGrading,
     });
 
-    if (passed) {
+    if (passed && !isManualGrading) {
       confetti({
         particleCount: 100,
         spread: 70,
@@ -113,12 +141,17 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-xs p-4 sm:p-6 overflow-y-auto">
       <div className="relative w-full max-w-3xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-auto">
         
-        {/* Top Timer Bar */}
+        {/* Top Timer & Metadata Bar */}
         <div className="flex items-center justify-between px-6 py-4 bg-slate-900 text-white border-b border-slate-800">
           <div>
-            <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30">
-              {penilaian.type}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                {penilaian.type} - Bab {penilaian.babNumber || 1}
+              </span>
+              <span className="text-[10px] font-mono text-slate-400">
+                Kode: {penilaian.code || 'TAMRIN-01'}
+              </span>
+            </div>
             <h3 className="text-base font-bold truncate max-w-md mt-1">{penilaian.title}</h3>
           </div>
 
@@ -138,9 +171,14 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
             
             {/* Progress & Question Navigation Pills */}
             <div className="flex items-center justify-between border-b pb-3">
-              <span className="text-xs font-bold text-slate-500">
-                Soal <span className="text-slate-900 font-extrabold">{currentQuestionIdx + 1}</span> dari {questions.length}
-              </span>
+              <div className="space-y-0.5">
+                <span className="text-xs font-bold text-slate-500 block">
+                  Soal <span className="text-slate-900 font-extrabold">{currentQuestionIdx + 1}</span> dari {questions.length}
+                </span>
+                <span className="text-[10px] text-slate-400 font-mono">
+                  Kode Soal: {currentQ?.code || `Q-${currentQuestionIdx + 1}`}
+                </span>
+              </div>
 
               <div className="flex gap-1.5 overflow-x-auto max-w-xs">
                 {questions.map((q, idx) => {
@@ -153,9 +191,9 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
                       onClick={() => setCurrentQuestionIdx(idx)}
                       className={`w-7 h-7 rounded-lg text-xs font-bold transition-all ${
                         isCurrent
-                          ? 'bg-emerald-600 text-white ring-2 ring-emerald-300'
+                          ? 'bg-purple-600 text-white ring-2 ring-purple-300'
                           : isAnswered
-                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                          ? 'bg-purple-100 text-purple-800 border border-purple-300'
                           : 'bg-slate-100 text-slate-600'
                       }`}
                     >
@@ -174,14 +212,14 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
                     {currentQ.questionText}
                   </h4>
                   {currentQ.questionArabic && (
-                    <p className="font-arabic text-2xl text-emerald-800 leading-relaxed text-right p-3 bg-emerald-50/50 rounded-xl border border-emerald-100">
+                    <p className="font-arabic text-2xl text-purple-900 leading-relaxed text-right p-3 bg-purple-50/50 rounded-xl border border-purple-100">
                       {currentQ.questionArabic}
                     </p>
                   )}
                 </div>
 
                 {/* Multiple Choice Options */}
-                {currentQ.options && (
+                {currentQ.options && currentQ.options.length > 0 && (
                   <div className="space-y-2.5 pt-2">
                     {currentQ.options.map((opt, optIdx) => {
                       const isSelected = userAnswers[currentQ.id] === optIdx;
@@ -192,13 +230,13 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
                           onClick={() => handleSelectAnswer(optIdx)}
                           className={`w-full text-left p-4 rounded-xl border-2 transition-all text-xs sm:text-sm font-medium flex items-center justify-between ${
                             isSelected
-                              ? 'bg-emerald-50 border-emerald-600 text-emerald-900 font-bold shadow-xs'
+                              ? 'bg-purple-50 border-purple-600 text-purple-900 font-bold shadow-xs'
                               : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-800'
                           }`}
                         >
                           <span>{opt}</span>
                           <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center text-xs font-bold ${
-                            isSelected ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-slate-300'
+                            isSelected ? 'border-purple-600 bg-purple-600 text-white' : 'border-slate-300'
                           }`}>
                             {isSelected && '✓'}
                           </div>
@@ -208,16 +246,18 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
                   </div>
                 )}
 
-                {/* Fill in Blank Option */}
-                {currentQ.type === 'fill_in_blank' && (
-                  <div className="pt-2">
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">Ketikkan Jawaban Bahasa Arab/Indonesia:</label>
-                    <input
-                      type="text"
+                {/* Essay / Fill in Blank Input */}
+                {(!currentQ.options || currentQ.options.length === 0 || currentQ.type === 'essay' || currentQ.type === 'fill_in_blank') && (
+                  <div className="pt-2 space-y-2">
+                    <label className="block text-xs font-semibold text-slate-600">
+                      Tuliskan Jawaban Isian / Essay Anda:
+                    </label>
+                    <textarea
+                      rows={4}
                       value={String(userAnswers[currentQ.id] || '')}
                       onChange={(e) => handleSelectAnswer(e.target.value)}
-                      placeholder="Tuliskan jawaban Anda di sini..."
-                      className="w-full px-4 py-3 border-2 border-slate-300 rounded-xl font-arabic text-lg focus:border-emerald-500 focus:outline-hidden"
+                      placeholder="Tuliskan jawaban Anda secara lengkap di sini..."
+                      className="w-full p-4 border-2 border-slate-300 rounded-xl font-sans text-sm focus:border-purple-500 focus:outline-hidden"
                     />
                   </div>
                 )}
@@ -244,9 +284,9 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
               ) : (
                 <button
                   onClick={handleSubmitQuiz}
-                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-md flex items-center gap-1.5"
+                  className="px-6 py-2.5 bg-purple-700 hover:bg-purple-800 text-white font-bold rounded-xl text-xs shadow-md flex items-center gap-1.5"
                 >
-                  <CheckCircle2 size={16} /> Selesaikan & Kirim Kuis
+                  <CheckCircle2 size={16} /> Selesaikan & Kirim Jawaban
                 </button>
               )}
             </div>
@@ -256,30 +296,38 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
           /* Quiz Results View */
           <div className="p-8 text-center space-y-6">
             <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center shadow-lg ${
-              isPassed ? 'bg-emerald-100 text-emerald-600 border-4 border-emerald-300' : 'bg-rose-100 text-rose-600 border-4 border-rose-300'
+              penilaian.gradingMethod === 'manual'
+                ? 'bg-amber-100 text-amber-600 border-4 border-amber-300'
+                : isPassed ? 'bg-emerald-100 text-emerald-600 border-4 border-emerald-300' : 'bg-rose-100 text-rose-600 border-4 border-rose-300'
             }`}>
-              {isPassed ? <Award size={40} /> : <AlertTriangle size={40} />}
+              {penilaian.gradingMethod === 'manual' ? <Clock size={40} /> : isPassed ? <Award size={40} /> : <AlertTriangle size={40} />}
             </div>
 
             <div className="space-y-2">
               <h3 className="text-2xl font-extrabold text-slate-900">
-                {isPassed ? 'Selamat, Anda Lulus!' : 'Hasil Kuis Belum Memenuhi KKM'}
+                {penilaian.gradingMethod === 'manual'
+                  ? 'Jawaban Berhasil Dikirim!'
+                  : isPassed ? 'Selamat, Anda Lulus!' : 'Hasil Latihan Belum Memenuhi KKM'}
               </h3>
               <p className="text-xs text-slate-500">
-                KKM Kelulusan: {penilaian.passingGrade} / 100
+                {penilaian.gradingMethod === 'manual'
+                  ? 'Jawaban isian Anda telah tersimpan dan menunggu pemeriksaan koreksi manual dari Guru.'
+                  : `KKM Kelulusan: ${penilaian.passingGrade} / 100`}
               </p>
             </div>
 
-            <div className="inline-block px-8 py-4 bg-slate-50 rounded-2xl border border-slate-200">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Nilai Akhir Anda</span>
-              <p className={`text-5xl font-black ${isPassed ? 'text-emerald-600' : 'text-rose-600'}`}>
-                {finalScore}
-              </p>
-            </div>
+            {penilaian.gradingMethod !== 'manual' && (
+              <div className="inline-block px-8 py-4 bg-slate-50 rounded-2xl border border-slate-200">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Nilai Akhir Anda</span>
+                <p className={`text-5xl font-black ${isPassed ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  {finalScore}
+                </p>
+              </div>
+            )}
 
-            {/* Answer Explanations List */}
+            {/* Answer Summary List */}
             <div className="text-left space-y-3 pt-4 border-t max-h-60 overflow-y-auto pr-1">
-              <h4 className="font-bold text-xs uppercase text-slate-500">Pembahasan Jawaban:</h4>
+              <h4 className="font-bold text-xs uppercase text-slate-500">Ringkasan Pengerjaan Soal:</h4>
               {questions.map((q, idx) => {
                 const uAns = userAnswers[q.id];
                 const isCorrect = uAns === q.correctAnswer || (q.type === 'fill_in_blank' && String(uAns).trim().toLowerCase() === String(q.correctAnswer).trim().toLowerCase());
@@ -287,8 +335,10 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
                 return (
                   <div key={q.id || idx} className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1">
                     <div className="flex items-center justify-between font-bold">
-                      <span className="text-slate-800">{idx + 1}. {q.questionText}</span>
-                      {isCorrect ? (
+                      <span className="text-slate-800">{idx + 1}. {q.questionText} ({q.code || `Q-${idx+1}`})</span>
+                      {penilaian.gradingMethod === 'manual' ? (
+                        <span className="text-amber-600 font-bold flex items-center gap-1"><Clock size={14} /> Menunggu Koreksi</span>
+                      ) : isCorrect ? (
                         <span className="text-emerald-600 font-bold flex items-center gap-1"><CheckCircle2 size={14} /> Benar</span>
                       ) : (
                         <span className="text-rose-600 font-bold flex items-center gap-1"><XCircle size={14} /> Salah</span>
@@ -296,7 +346,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
                     </div>
                     {q.explanation && (
                       <p className="text-slate-500 italic bg-white p-2 rounded-lg border border-slate-100">
-                        Penjelasan: {q.explanation}
+                        Pembahasan: {q.explanation}
                       </p>
                     )}
                   </div>
@@ -309,7 +359,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
                 onClick={onClose}
                 className="px-6 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs transition-all"
               >
-                Kembali ke Menu Utama
+                Kembali ke Dashboard Siswa
               </button>
             </div>
           </div>

@@ -69,8 +69,8 @@ export const QowaidFormModal: React.FC<QowaidFormModalProps> = ({
     setPdfFileName(file.name);
 
     try {
-      const publicUrl = await uploadToSupabaseStorage(file, 'materi_pdf');
-      setPdfUrl(publicUrl);
+      const uploadResult = await uploadToSupabaseStorage(file, file.name, 'materi_pdf');
+      setPdfUrl(uploadResult.publicUrl);
     } catch (err: any) {
       console.error('Supabase upload error:', err);
       // Fallback local data url
