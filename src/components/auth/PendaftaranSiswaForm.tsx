@@ -46,7 +46,7 @@ export const PendaftaranSiswaForm: React.FC<PendaftaranSiswaFormProps> = ({
   const handleEmailChange = (val: string) => {
     setEmail(val);
     if (checkIsDuplicateEmail(val)) {
-      setEmailError('Email ini sudah terdaftar di database. Gunakan email lain untuk mencegah duplikasi akun.');
+      setEmailError('Email sudah terdaftar. Mohon gunakan alamat email lain.');
     } else {
       setEmailError('');
     }
@@ -92,7 +92,7 @@ export const PendaftaranSiswaForm: React.FC<PendaftaranSiswaFormProps> = ({
     if (!name.trim() || !email.trim() || (!password && !isGuruAdminMode)) return;
 
     if (checkIsDuplicateEmail(email)) {
-      setEmailError('Alamat email sudah terdaftar di database. Mohon gunakan email lain.');
+      setEmailError('Email sudah terdaftar. Mohon gunakan alamat email lain.');
       return;
     }
 

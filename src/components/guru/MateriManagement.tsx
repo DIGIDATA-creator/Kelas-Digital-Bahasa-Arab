@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Materi, CategoryType, VocabularyItem } from '../../types';
 import { Plus, Edit3, Trash2, Eye, FileText, BookOpen, Quote, List, Sparkles, Play, Search, CheckCircle, MessageSquare, AlertTriangle, X } from 'lucide-react';
 import { PdfViewerModal } from '../common/PdfViewerModal';
@@ -504,54 +505,68 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
       )}
 
       {/* Custom Delete Confirmation Modal */}
-      {deleteConfirmation.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden space-y-0">
-            {/* Header */}
-            <div className="bg-rose-600 p-4 text-white flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-rose-100" />
-                <h3 className="font-extrabold text-sm">{deleteConfirmation.title}</h3>
+      <AnimatePresence>
+        {deleteConfirmation.isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden space-y-0"
+            >
+              {/* Header */}
+              <div className="bg-rose-600 p-4 text-white flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-rose-100" />
+                  <h3 className="font-extrabold text-sm">{deleteConfirmation.title}</h3>
+                </div>
+                <button
+                  onClick={() => setDeleteConfirmation(prev => ({ ...prev, isOpen: false }))}
+                  className="p-1 hover:bg-rose-700 rounded-lg transition-colors cursor-pointer text-white"
+                >
+                  <X size={18} />
+                </button>
               </div>
-              <button
-                onClick={() => setDeleteConfirmation(prev => ({ ...prev, isOpen: false }))}
-                className="p-1 hover:bg-rose-700 rounded-lg transition-colors cursor-pointer text-white"
-              >
-                <X size={18} />
-              </button>
-            </div>
 
-            {/* Body */}
-            <div className="p-5 space-y-4">
-              <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
-                {deleteConfirmation.message}
-              </p>
+              {/* Body */}
+              <div className="p-5 space-y-4">
+                <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
+                  {deleteConfirmation.message}
+                </p>
 
-              <div className="p-3 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs text-rose-800 dark:text-rose-300 font-bold">
-                ⚠️ Perhatian: Tindakan penghapusan ini tidak dapat dibatalkan (permanen).
+                <div className="p-3 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs text-rose-800 dark:text-rose-300 font-bold">
+                  ⚠️ Perhatian: Tindakan penghapusan ini tidak dapat dibatalkan (permanen).
+                </div>
               </div>
-            </div>
 
-            {/* Footer Actions */}
-            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setDeleteConfirmation(prev => ({ ...prev, isOpen: false }))}
-                className="px-4 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 text-xs font-bold rounded-xl transition-colors cursor-pointer"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmDelete}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-md transition-colors flex items-center gap-1.5 cursor-pointer"
-              >
-                <Trash2 size={14} /> Ya, Hapus Sekarang
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+              {/* Footer Actions */}
+              <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDeleteConfirmation(prev => ({ ...prev, isOpen: false }))}
+                  className="px-4 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDelete}
+                  className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-md transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Trash2 size={14} /> Ya, Hapus Sekarang
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

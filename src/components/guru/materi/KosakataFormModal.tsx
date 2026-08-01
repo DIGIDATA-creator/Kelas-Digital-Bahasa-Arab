@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Materi, VocabularyItem } from '../../../types';
 import { parseSpreadsheetText } from '../../common/ArabicUtils';
 import { X, Plus, Trash2, FileSpreadsheet, Save, Layers } from 'lucide-react';
@@ -18,8 +19,7 @@ export const KosakataFormModal: React.FC<KosakataFormModalProps> = ({
   existingMateriList,
   onSave,
 }) => {
-  if (!isOpen) return null;
-
+  // (Rendered using AnimatePresence below)
   const [babNumber, setBabNumber] = useState<number>(editingMateri?.babNumber || 1);
   const [title, setTitle] = useState(editingMateri?.title || '');
   const [arabicTitle, setArabicTitle] = useState(editingMateri?.arabicTitle || '');
@@ -97,8 +97,22 @@ export const KosakataFormModal: React.FC<KosakataFormModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 my-8 space-y-5">
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto"
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 my-8 space-y-5"
+          >
         
         {/* Header */}
         <div className="flex items-center justify-between border-b pb-4">
@@ -305,7 +319,9 @@ export const KosakataFormModal: React.FC<KosakataFormModalProps> = ({
           </div>
         )}
 
-      </div>
-    </div>
+      </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };

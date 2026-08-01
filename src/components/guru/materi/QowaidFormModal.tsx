@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Materi } from '../../../types';
 import { X, Plus, Trash2, UploadCloud, Loader2, Save } from 'lucide-react';
 import { uploadToSupabaseStorage } from '../../../lib/supabase';
@@ -18,8 +19,7 @@ export const QowaidFormModal: React.FC<QowaidFormModalProps> = ({
   existingMateriList,
   onSave,
 }) => {
-  if (!isOpen) return null;
-
+  // (Rendered using AnimatePresence below)
   // Filter already used Bab numbers in Qowaid category (except the one currently being edited)
   const usedBabs = existingMateriList
     .filter(m => m.category === 'qowaid' && m.id !== editingMateri?.id)
@@ -103,8 +103,22 @@ export const QowaidFormModal: React.FC<QowaidFormModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 my-8 space-y-5">
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto"
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 my-8 space-y-5"
+          >
         
         {/* Header */}
         <div className="flex items-center justify-between border-b pb-4">
@@ -275,7 +289,9 @@ export const QowaidFormModal: React.FC<QowaidFormModalProps> = ({
 
         </form>
 
-      </div>
-    </div>
+      </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };

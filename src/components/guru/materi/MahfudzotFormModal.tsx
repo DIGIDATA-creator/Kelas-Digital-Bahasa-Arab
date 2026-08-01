@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Materi } from '../../../types';
 import { X, Save, Quote } from 'lucide-react';
 
@@ -17,8 +18,7 @@ export const MahfudzotFormModal: React.FC<MahfudzotFormModalProps> = ({
   existingMateriList,
   onSave,
 }) => {
-  if (!isOpen) return null;
-
+  // (Rendered using AnimatePresence below)
   const countMahfudzot = existingMateriList.filter(m => m.category === 'mahfudzot').length;
   const autoNumber = editingMateri?.babNumber || countMahfudzot + 1;
 
@@ -54,8 +54,22 @@ export const MahfudzotFormModal: React.FC<MahfudzotFormModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
-      <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-5">
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4"
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-5"
+          >
         
         {/* Header */}
         <div className="flex items-center justify-between border-b pb-4">
@@ -141,7 +155,9 @@ export const MahfudzotFormModal: React.FC<MahfudzotFormModalProps> = ({
 
         </form>
 
-      </div>
-    </div>
+      </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };

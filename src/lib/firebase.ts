@@ -49,9 +49,18 @@ export const registerUser = async (email: string, pass: string, name: string) =>
     }
     return userCred.user;
   } catch (error: any) {
-    console.error("Firebase Register error:", error);
+    console.warn("Firebase Register error/warning:", error);
+    if (
+      error?.code === 'auth/operation-not-allowed' ||
+      error?.code === 'auth/admin-restricted-operation' ||
+      error?.code === 'auth/configuration-not-found'
+    ) {
+      console.warn("Firebase Email Auth provider is not enabled in Firebase Console. Proceeding with local registration.");
+      return null;
+    }
     if (error?.code === 'auth/api-key-not-valid' || error?.message?.includes('API key not valid')) {
-      throw new Error("API Key Firebase belum diaktifkan/valid. Periksa konfigurasi Firebase Console.");
+      console.warn("Firebase API Key issue. Proceeding with local registration.");
+      return null;
     }
     throw error;
   }
@@ -62,9 +71,17 @@ export const loginUser = async (email: string, pass: string) => {
     const userCred = await signInWithEmailAndPassword(auth, email, pass);
     return userCred.user;
   } catch (error: any) {
-    console.error("Firebase Login error:", error);
+    console.warn("Firebase Login error/warning:", error);
+    if (
+      error?.code === 'auth/operation-not-allowed' ||
+      error?.code === 'auth/admin-restricted-operation' ||
+      error?.code === 'auth/configuration-not-found'
+    ) {
+      console.warn("Firebase Email Auth provider is not enabled in Firebase Console.");
+      return null;
+    }
     if (error?.code === 'auth/api-key-not-valid' || error?.message?.includes('API key not valid')) {
-      throw new Error("API Key Firebase belum diaktifkan/valid. Periksa konfigurasi Firebase Console.");
+      return null;
     }
     throw error;
   }

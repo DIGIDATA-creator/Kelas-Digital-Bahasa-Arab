@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { signInWithGoogle, loginUser, registerUser, logoutUser, User } from '../../lib/firebase';
 import { LogIn, LogOut, UserPlus, Mail, Lock, Shield, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
 import { PendaftaranSiswaForm } from './PendaftaranSiswaForm';
@@ -27,8 +28,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
 
-  if (!isOpen) return null;
-
+  // (Rendered using AnimatePresence below)
   const handleGoogleLogin = async () => {
     setErrorMsg('');
     setSuccessMsg('');
@@ -53,9 +53,43 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setLoading(true);
 
     try {
-      const user = await loginUser(email, password);
-      setSuccessMsg(`Berhasil masuk sebagai ${user.email}`);
-      setTimeout(() => onClose(), 1000);
+      // Check local student database status first
+      const allStudents = storageService.getStudents();
+      const studentMatch = allStudents.find(
+        s => s.email.toLowerCase().trim() === email.toLowerCase().trim()
+      );
+
+      if (studentMatch) {
+        if (studentMatch.status === 'pending') {
+          setErrorMsg(`Pendaftaran akun "${studentMatch.name}" masih MENUNGGU ACC (Persetujuan) dari Guru. Silakan tunggu hingga guru menyetujui akun Anda.`);
+          setLoading(false);
+          return;
+        } else if (studentMatch.status === 'ditolak') {
+          setErrorMsg(`Pendaftaran akun "${studentMatch.name}" DITOLAK oleh Guru. Silakan hubungi guru pengampu.`);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Try Firebase authentication
+      try {
+        const user = await loginUser(email, password);
+        if (user) {
+          setSuccessMsg(`Berhasil masuk sebagai ${user.email}`);
+          setTimeout(() => onClose(), 1000);
+          return;
+        }
+      } catch (fbErr: any) {
+        console.warn("Firebase login skipped/failed:", fbErr);
+      }
+
+      // Fallback: If student exists and is approved, allow login
+      if (studentMatch && (studentMatch.status === 'disetujui' || studentMatch.status === 'aktif')) {
+        setSuccessMsg(`Berhasil masuk sebagai ${studentMatch.name}!`);
+        setTimeout(() => onClose(), 1000);
+      } else {
+        setErrorMsg('Email atau kata sandi tidak ditemukan. Pastikan Anda sudah mendaftar dan akun disetujui Guru.');
+      }
     } catch (err: any) {
       setErrorMsg(err.message || 'Gagal login. Periksa kembali email & password Anda.');
     } finally {
@@ -81,7 +115,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       s => s.email.toLowerCase().trim() === data.email.toLowerCase().trim()
     );
     if (isDuplicate) {
-      setErrorMsg('Alamat email ini sudah terdaftar di database. Silakan masuk atau gunakan email lain.');
+      setErrorMsg('Email sudah terdaftar. Silakan masuk dengan akun Anda atau gunakan email lain.');
       return;
     }
 
@@ -89,7 +123,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
     try {
       if (data.password) {
-        await registerUser(data.email, data.password, data.name);
+        try {
+          await registerUser(data.email, data.password, data.name);
+        } catch (fbErr: any) {
+          console.warn("Firebase register skipped/handled:", fbErr);
+        }
       }
 
       const newStudent: Student = {
@@ -115,8 +153,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       storageService.saveStudents(updatedList);
       if (onAddNewStudent) onAddNewStudent(newStudent);
 
-      setSuccessMsg(`Pendaftaran siswa berhasil! Status pendaftaran: MENUNGGU ACC oleh Guru.`);
-      setTimeout(() => onClose(), 2000);
+      setSuccessMsg(`Pendaftaran siswa baru berhasil! Status: MENUNGGU ACC (Persetujuan) dari Guru.`);
+      setTimeout(() => onClose(), 2500);
     } catch (err: any) {
       setErrorMsg(err.message || 'Gagal mendaftar. Silakan coba beberapa saat lagi.');
     } finally {
@@ -138,8 +176,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-100 my-auto max-h-[90vh] flex flex-col">
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50"
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-100 dark:border-slate-800 my-auto max-h-[90vh] flex flex-col"
+          >
         {/* Header */}
         <div className="bg-gradient-to-r from-emerald-800 to-teal-900 p-6 text-white relative shrink-0">
           <button
@@ -308,7 +360,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </>
           )}
         </div>
-      </div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };

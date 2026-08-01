@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download, FileText, Printer, Eye, ExternalLink, AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 
@@ -224,8 +225,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
     };
   }, [objectBlobUrl]);
 
-  if (!isOpen) return null;
-
+  // (Rendered using AnimatePresence below)
   const handleOpenNewTab = () => {
     const targetUrl = objectBlobUrl || pdfUrl;
     if (targetUrl) {
@@ -263,8 +263,22 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-xs p-2 sm:p-6 overflow-y-auto">
-      <div className="relative w-full max-w-5xl bg-white rounded-2xl shadow-2xl flex flex-col h-[92vh] overflow-hidden border border-slate-200">
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-xs p-2 sm:p-6 overflow-y-auto"
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="relative w-full max-w-5xl bg-white rounded-2xl shadow-2xl flex flex-col h-[92vh] overflow-hidden border border-slate-200"
+          >
         
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-3.5 bg-slate-900 text-white border-b border-slate-800">
@@ -455,8 +469,10 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
           </div>
         </div>
 
-      </div>
-    </div>
+      </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 

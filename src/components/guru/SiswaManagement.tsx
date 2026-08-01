@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Student, StudentStatus, Materi, TingkatType } from '../../types';
 import {
   UserPlus,
@@ -43,6 +44,9 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
   const [viewMode, setViewMode] = useState<'grouped' | 'flat'>('grouped');
 
   const [selectedStudentForDetail, setSelectedStudentForDetail] = useState<Student | null>(null);
+
+  // Bulk selection state
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
 
   // Form modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -100,11 +104,29 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
     setIsModalOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm('Apakah Anda yakin ingin menghapus data siswa ini?')) {
-      const updated = students.filter(s => s.id !== id);
+  // Delete student modal state
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{
+    isOpen: boolean;
+    studentId?: string;
+    studentName?: string;
+  }>({
+    isOpen: false,
+  });
+
+  const requestDeleteStudent = (student: Student) => {
+    setDeleteConfirmation({
+      isOpen: true,
+      studentId: student.id,
+      studentName: student.name,
+    });
+  };
+
+  const handleConfirmDeleteStudent = () => {
+    if (deleteConfirmation.studentId) {
+      const updated = students.filter(s => s.id !== deleteConfirmation.studentId);
       onSaveStudents(updated);
     }
+    setDeleteConfirmation({ isOpen: false });
   };
 
   const handleSetStudentStatus = (id: string, newStatus: StudentStatus) => {
@@ -115,6 +137,56 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
       return s;
     });
     onSaveStudents(updated);
+  };
+
+  // Bulk selection handlers
+  const handleToggleSelectStudent = (id: string) => {
+    setSelectedStudentIds(prev =>
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAllFiltered = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      const allFilteredIds = filteredStudents.map(s => s.id);
+      setSelectedStudentIds(allFilteredIds);
+    } else {
+      setSelectedStudentIds([]);
+    }
+  };
+
+  const isAllFilteredSelected =
+    filteredStudents.length > 0 &&
+    filteredStudents.every(s => selectedStudentIds.includes(s.id));
+
+  const isSomeFilteredSelected =
+    filteredStudents.some(s => selectedStudentIds.includes(s.id)) &&
+    !isAllFilteredSelected;
+
+  const handleBulkUpdateStatus = (newStatus: StudentStatus) => {
+    if (selectedStudentIds.length === 0) return;
+    const updated = students.map(s => {
+      if (selectedStudentIds.includes(s.id)) {
+        return { ...s, status: newStatus };
+      }
+      return s;
+    });
+    onSaveStudents(updated);
+    setSelectedStudentIds([]);
+  };
+
+  const handleSelectAllInSchool = (schoolName: string) => {
+    const schoolStudentIds = filteredStudents
+      .filter(s => (s.schoolName || 'Tanpa Sekolah / Umum') === schoolName)
+      .map(s => s.id);
+
+    const allAlreadySelected = schoolStudentIds.every(id => selectedStudentIds.includes(id));
+
+    if (allAlreadySelected) {
+      setSelectedStudentIds(prev => prev.filter(id => !schoolStudentIds.includes(id)));
+    } else {
+      setSelectedStudentIds(prev => Array.from(new Set([...prev, ...schoolStudentIds])));
+    }
   };
 
   const handleApproveAllPending = () => {
@@ -326,11 +398,11 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
             <select
               value={selectedSchoolFilter}
               onChange={e => setSelectedSchoolFilter(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700"
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-hidden focus:border-emerald-500"
             >
-              <option value="semua">🏢 Semua Asal Sekolah ({allSchoolNames.length})</option>
+              <option value="semua">🏢 Filter Sekolah: Semua ({allSchoolNames.length} Sekolah)</option>
               {allSchoolNames.map(sch => (
-                <option key={sch} value={sch}>{sch}</option>
+                <option key={sch} value={sch}>🏫 {sch}</option>
               ))}
             </select>
           </div>
@@ -339,9 +411,9 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
             <select
               value={selectedClass}
               onChange={e => setSelectedClass(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700"
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-hidden focus:border-emerald-500"
             >
-              <option value="semua">📚 Semua Kelas Utama ({allClasses.length})</option>
+              <option value="semua">📚 Filter Kelas: Semua ({allClasses.length} Kelas)</option>
               {allClasses.map(c => (
                 <option key={c} value={c}>{c}</option>
               ))}
@@ -349,6 +421,65 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
           </div>
         </div>
       </div>
+
+      {/* BULK ACTION BANNER */}
+      <AnimatePresence>
+        {selectedStudentIds.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98, y: -5 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.98, y: -5 }}
+            transition={{ duration: 0.2 }}
+            className="p-4 bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 text-white rounded-2xl shadow-lg border border-emerald-700/60 flex flex-wrap items-center justify-between gap-3"
+          >
+            <div className="flex items-center gap-3">
+              <span className="px-3 py-1 bg-emerald-500 text-slate-950 font-black text-xs rounded-xl shadow-xs">
+                {selectedStudentIds.length} Dipilih
+              </span>
+              <div>
+                <div className="font-extrabold text-xs text-white flex items-center gap-1.5">
+                  <Sparkles size={14} className="text-emerald-400" />
+                  Aksi Massal (Bulk Action) Terpilih
+                </div>
+                <div className="text-[11px] text-slate-300">
+                  Perbarui status pendaftaran untuk {selectedStudentIds.length} siswa sekaligus
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleBulkUpdateStatus('disetujui')}
+                className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <CheckCircle2 size={16} /> Setujui ({selectedStudentIds.length}) Siswa
+              </button>
+              <button
+                type="button"
+                onClick={() => handleBulkUpdateStatus('ditolak')}
+                className="px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <XCircle size={16} /> Tolak ({selectedStudentIds.length}) Siswa
+              </button>
+              <button
+                type="button"
+                onClick={() => handleBulkUpdateStatus('pending')}
+                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-xs rounded-xl transition-all cursor-pointer border border-slate-700"
+              >
+                Set Ke Pending
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedStudentIds([])}
+                className="px-3 py-2 text-slate-300 hover:text-white hover:bg-white/10 font-bold text-xs rounded-xl transition-all cursor-pointer"
+              >
+                Batal
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Pending Registrations Notice */}
       {statusTab === 'pending' && pendingStudents.length === 0 && (
@@ -379,7 +510,7 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                   className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden transition-all"
                 >
                   {/* Outer Group: Sekolah Header */}
-                  <div className="p-4 bg-gradient-to-r from-slate-900 to-emerald-950 text-white flex items-center justify-between gap-3">
+                  <div className="p-4 bg-gradient-to-r from-slate-900 to-emerald-950 text-white flex items-center justify-between gap-3 flex-wrap">
                     <div className="flex items-center gap-3">
                       <button
                         onClick={() => toggleSchoolCollapse(schoolName)}
@@ -399,9 +530,20 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                       </div>
                     </div>
 
-                    <span className="px-3 py-1 bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-extrabold rounded-xl">
-                      {totalInSchool} Siswa
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleSelectAllInSchool(schoolName)}
+                        className="px-3 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Check size={14} className="text-emerald-400" />
+                        Pilih Semua Siswa Sekolah Ini
+                      </button>
+
+                      <span className="px-3 py-1 bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-extrabold rounded-xl">
+                        {totalInSchool} Siswa
+                      </span>
+                    </div>
                   </div>
 
                   {/* Inner Group Content */}
@@ -436,68 +578,82 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
 
                                 {/* Student List Items in Rombel */}
                                 <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-                                  {listSiswa.map(std => (
-                                    <div
-                                      key={std.id}
-                                      className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between gap-2 hover:bg-emerald-50/50 transition-colors"
-                                    >
-                                      <div className="flex items-center gap-2.5 min-w-0">
-                                        <img
-                                          src={std.avatar}
-                                          alt={std.name}
-                                          className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0"
-                                        />
-                                        <div className="min-w-0">
-                                          <div className="font-bold text-slate-900 text-xs truncate">
-                                            {std.name}
-                                          </div>
-                                          <div className="text-[10px] text-slate-400 truncate">
-                                            {std.email}
+                                  {listSiswa.map(std => {
+                                    const isSelected = selectedStudentIds.includes(std.id);
+                                    return (
+                                      <div
+                                        key={std.id}
+                                        className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-colors ${
+                                          isSelected
+                                            ? 'bg-emerald-50/90 border-emerald-300'
+                                            : 'bg-slate-50 border-slate-100 hover:bg-emerald-50/50'
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                          <input
+                                            type="checkbox"
+                                            checked={isSelected}
+                                            onChange={() => handleToggleSelectStudent(std.id)}
+                                            className="w-4 h-4 text-emerald-600 rounded-md border-slate-300 focus:ring-emerald-500 cursor-pointer accent-emerald-600 shrink-0"
+                                            title="Pilih Siswa"
+                                          />
+                                          <img
+                                            src={std.avatar}
+                                            alt={std.name}
+                                            className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0"
+                                          />
+                                          <div className="min-w-0">
+                                            <div className="font-bold text-slate-900 text-xs truncate">
+                                              {std.name}
+                                            </div>
+                                            <div className="text-[10px] text-slate-400 truncate">
+                                              {std.email}
+                                            </div>
                                           </div>
                                         </div>
-                                      </div>
 
-                                      <div className="flex items-center gap-1 shrink-0">
-                                        <select
-                                          value={std.status === 'aktif' ? 'disetujui' : std.status}
-                                          onChange={(e) => handleSetStudentStatus(std.id, e.target.value as StudentStatus)}
-                                          className={`px-2 py-1 text-[11px] font-bold rounded-lg border cursor-pointer focus:outline-hidden transition-all ${
-                                            std.status === 'disetujui' || std.status === 'aktif'
-                                              ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                                              : std.status === 'ditolak'
-                                              ? 'bg-rose-50 text-rose-800 border-rose-300'
-                                              : 'bg-amber-50 text-amber-900 border-amber-300'
-                                          }`}
-                                        >
-                                          <option value="pending">⏳ Pending</option>
-                                          <option value="disetujui">✓ Disetujui</option>
-                                          <option value="ditolak">✕ Ditolak</option>
-                                        </select>
+                                        <div className="flex items-center gap-1 shrink-0">
+                                          <select
+                                            value={std.status === 'aktif' ? 'disetujui' : std.status}
+                                            onChange={(e) => handleSetStudentStatus(std.id, e.target.value as StudentStatus)}
+                                            className={`px-2 py-1 text-[11px] font-bold rounded-lg border cursor-pointer focus:outline-hidden transition-all ${
+                                              std.status === 'disetujui' || std.status === 'aktif'
+                                                ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                                : std.status === 'ditolak'
+                                                ? 'bg-rose-50 text-rose-800 border-rose-300'
+                                                : 'bg-amber-50 text-amber-900 border-amber-300'
+                                            }`}
+                                          >
+                                            <option value="pending">⏳ Pending</option>
+                                            <option value="disetujui">✓ Disetujui</option>
+                                            <option value="ditolak">✕ Ditolak</option>
+                                          </select>
 
-                                        <button
-                                          onClick={() => setSelectedStudentForDetail(std)}
-                                          className="p-1 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg cursor-pointer"
-                                          title="Detail Progres"
-                                        >
-                                          <Eye size={14} />
-                                        </button>
-                                        <button
-                                          onClick={() => handleOpenEditModal(std)}
-                                          className="p-1 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg cursor-pointer"
-                                          title="Edit"
-                                        >
-                                          <Edit3 size={14} />
-                                        </button>
-                                        <button
-                                          onClick={() => handleDelete(std.id)}
-                                          className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer"
-                                          title="Hapus"
-                                        >
-                                          <Trash2 size={14} />
-                                        </button>
+                                          <button
+                                            onClick={() => setSelectedStudentForDetail(std)}
+                                            className="p-1 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg cursor-pointer"
+                                            title="Detail Progres"
+                                          >
+                                            <Eye size={14} />
+                                          </button>
+                                          <button
+                                            onClick={() => handleOpenEditModal(std)}
+                                            className="p-1 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg cursor-pointer"
+                                            title="Edit"
+                                          >
+                                            <Edit3 size={14} />
+                                          </button>
+                                          <button
+                                            onClick={() => requestDeleteStudent(std)}
+                                            className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer"
+                                            title="Hapus"
+                                          >
+                                            <Trash2 size={14} />
+                                          </button>
+                                        </div>
                                       </div>
-                                    </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                               </div>
                             ))}
@@ -520,6 +676,18 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
             <table className="w-full text-left text-xs sm:text-sm text-slate-600">
               <thead className="bg-slate-50 text-slate-700 uppercase tracking-wider font-semibold border-b border-slate-200">
                 <tr>
+                  <th className="py-3.5 px-4 w-10 text-center">
+                    <input
+                      type="checkbox"
+                      checked={isAllFilteredSelected}
+                      ref={el => {
+                        if (el) el.indeterminate = isSomeFilteredSelected;
+                      }}
+                      onChange={handleSelectAllFiltered}
+                      className="w-4 h-4 text-emerald-600 rounded-md border-slate-300 focus:ring-emerald-500 cursor-pointer accent-emerald-600"
+                      title="Pilih Semua Siswa yang Tampil"
+                    />
+                  </th>
                   <th className="py-3.5 px-4">Siswa</th>
                   <th className="py-3.5 px-4">Asal Sekolah</th>
                   <th className="py-3.5 px-4">Tingkat / Kelas / Rombel</th>
@@ -531,14 +699,28 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
               <tbody className="divide-y divide-slate-100">
                 {filteredStudents.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-8 text-center text-slate-400 text-xs">
+                    <td colSpan={7} className="py-8 text-center text-slate-400 text-xs">
                       Tidak ada siswa ditemukan.
                     </td>
                   </tr>
                 ) : (
                   filteredStudents.map(std => {
+                    const isSelected = selectedStudentIds.includes(std.id);
                     return (
-                      <tr key={std.id} className="hover:bg-slate-50/80 transition-colors">
+                      <tr
+                        key={std.id}
+                        className={`transition-colors ${
+                          isSelected ? 'bg-emerald-50/70' : 'hover:bg-slate-50/80'
+                        }`}
+                      >
+                        <td className="py-3.5 px-4 text-center">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleToggleSelectStudent(std.id)}
+                            className="w-4 h-4 text-emerald-600 rounded-md border-slate-300 focus:ring-emerald-500 cursor-pointer accent-emerald-600"
+                          />
+                        </td>
                         <td className="py-3.5 px-4">
                           <div className="flex items-center gap-3">
                             <img
@@ -606,7 +788,7 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                               <Edit3 size={16} />
                             </button>
                             <button
-                              onClick={() => handleDelete(std.id)}
+                              onClick={() => requestDeleteStudent(std)}
                               className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                               title="Hapus"
                             >
@@ -625,100 +807,188 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
       )}
 
       {/* MODAL 1: EDIT / TAMBAH SISWA FORM */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-slate-100 my-auto">
-            <div className="p-5 bg-gradient-to-r from-emerald-800 to-teal-900 text-white flex items-center justify-between">
-              <h3 className="font-extrabold text-base">
-                {editingStudent ? 'Edit Data Siswa' : 'Tambah Siswa Baru'}
-              </h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-slate-200 hover:text-white p-1 rounded-lg cursor-pointer"
-              >
-                <X size={20} />
-              </button>
-            </div>
+      <AnimatePresence>
+        {isModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-slate-100 my-auto"
+            >
+              <div className="p-5 bg-gradient-to-r from-emerald-800 to-teal-900 text-white flex items-center justify-between">
+                <h3 className="font-extrabold text-base">
+                  {editingStudent ? 'Edit Data Siswa' : 'Tambah Siswa Baru'}
+                </h3>
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="text-slate-200 hover:text-white p-1 rounded-lg cursor-pointer"
+                >
+                  <X size={20} />
+                </button>
+              </div>
 
-            <div className="p-5">
-              <PendaftaranSiswaForm
-                existingStudents={students}
-                onRegisterSubmit={handleSaveStudentFromForm}
-                isGuruAdminMode={true}
-                editingStudentId={editingStudent?.id}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+              <div className="p-5">
+                <PendaftaranSiswaForm
+                  existingStudents={students}
+                  onRegisterSubmit={handleSaveStudentFromForm}
+                  isGuruAdminMode={true}
+                  editingStudentId={editingStudent?.id}
+                />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* MODAL 2: DETAIL PROGRES SISWA */}
-      {selectedStudentForDetail && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-xl w-full overflow-hidden shadow-2xl border border-slate-100 my-auto max-h-[90vh] flex flex-col">
-            <div className="p-5 bg-gradient-to-r from-slate-900 to-emerald-950 text-white flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-3">
-                <img
-                  src={selectedStudentForDetail.avatar}
-                  alt={selectedStudentForDetail.name}
-                  className="w-12 h-12 rounded-full object-cover border-2 border-emerald-400"
-                />
+      <AnimatePresence>
+        {selectedStudentForDetail && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="bg-white rounded-3xl max-w-xl w-full overflow-hidden shadow-2xl border border-slate-100 my-auto max-h-[90vh] flex flex-col"
+            >
+              <div className="p-5 bg-gradient-to-r from-slate-900 to-emerald-950 text-white flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                  <img
+                    src={selectedStudentForDetail.avatar}
+                    alt={selectedStudentForDetail.name}
+                    className="w-12 h-12 rounded-full object-cover border-2 border-emerald-400"
+                  />
+                  <div>
+                    <h3 className="font-extrabold text-base text-white">
+                      {selectedStudentForDetail.name}
+                    </h3>
+                    <p className="text-xs text-slate-300">
+                      {selectedStudentForDetail.schoolName || 'Tanpa Sekolah'} • {selectedStudentForDetail.className} ({selectedStudentForDetail.rombelName || '-'})
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedStudentForDetail(null)}
+                  className="text-slate-300 hover:text-white p-1 rounded-lg cursor-pointer"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-5 overflow-y-auto">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200">
+                    <div className="text-[11px] text-slate-500 font-semibold">Tingkat & Status</div>
+                    <div className="font-extrabold text-xs text-slate-900 mt-1">
+                      {selectedStudentForDetail.tingkat || 'Umum'} • Status {selectedStudentForDetail.status.toUpperCase()}
+                    </div>
+                  </div>
+                  <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200">
+                    <div className="text-[11px] text-amber-700 font-semibold">Total Capaian XP</div>
+                    <div className="font-extrabold text-xs text-amber-900 mt-1 flex items-center gap-1">
+                      <Award size={14} /> {selectedStudentForDetail.totalXP} XP
+                    </div>
+                  </div>
+                </div>
+
                 <div>
-                  <h3 className="font-extrabold text-base text-white">
-                    {selectedStudentForDetail.name}
-                  </h3>
-                  <p className="text-xs text-slate-300">
-                    {selectedStudentForDetail.schoolName || 'Tanpa Sekolah'} • {selectedStudentForDetail.className} ({selectedStudentForDetail.rombelName || '-'})
-                  </p>
+                  <h4 className="font-bold text-xs text-slate-800 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <BookOpen size={14} className="text-emerald-600" /> Modul Materi Selesai ({selectedStudentForDetail.completedMaterials.length})
+                  </h4>
+                  {selectedStudentForDetail.completedMaterials.length === 0 ? (
+                    <p className="text-xs text-slate-400 font-medium">Belum ada materi yang diselesaikan.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedStudentForDetail.completedMaterials.map(matId => {
+                        const matObj = materiList.find(m => m.id === matId);
+                        return (
+                          <span key={matId} className="px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold rounded-lg">
+                            ✓ {matObj ? matObj.title : matId}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
-              <button
-                onClick={() => setSelectedStudentForDetail(null)}
-                className="text-slate-300 hover:text-white p-1 rounded-lg cursor-pointer"
-              >
-                <X size={20} />
-              </button>
-            </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-            <div className="p-6 space-y-5 overflow-y-auto">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200">
-                  <div className="text-[11px] text-slate-500 font-semibold">Tingkat & Status</div>
-                  <div className="font-extrabold text-xs text-slate-900 mt-1">
-                    {selectedStudentForDetail.tingkat || 'Umum'} • Status {selectedStudentForDetail.status.toUpperCase()}
-                  </div>
+      {/* MODAL 3: DELETE CONFIRMATION SISWA */}
+      <AnimatePresence>
+        {deleteConfirmation.isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-slate-100 my-auto space-y-0"
+            >
+              <div className="p-4 bg-rose-600 text-white flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle size={20} className="text-rose-100" />
+                  <h3 className="font-extrabold text-sm">Konfirmasi Hapus Siswa</h3>
                 </div>
-                <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200">
-                  <div className="text-[11px] text-amber-700 font-semibold">Total Capaian XP</div>
-                  <div className="font-extrabold text-xs text-amber-900 mt-1 flex items-center gap-1">
-                    <Award size={14} /> {selectedStudentForDetail.totalXP} XP
-                  </div>
+                <button
+                  onClick={() => setDeleteConfirmation({ isOpen: false })}
+                  className="p-1 hover:bg-rose-700 rounded-lg transition-colors cursor-pointer text-white"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="p-5 space-y-3">
+                <p className="text-xs text-slate-700 font-medium">
+                  Apakah Anda yakin ingin menghapus data siswa <strong className="text-slate-900 font-bold">{deleteConfirmation.studentName}</strong>?
+                </p>
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 font-semibold">
+                  ⚠️ Perhatian: Data progres dan riwayat siswa ini akan terhapus.
                 </div>
               </div>
 
-              <div>
-                <h4 className="font-bold text-xs text-slate-800 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <BookOpen size={14} className="text-emerald-600" /> Modul Materi Selesai ({selectedStudentForDetail.completedMaterials.length})
-                </h4>
-                {selectedStudentForDetail.completedMaterials.length === 0 ? (
-                  <p className="text-xs text-slate-400 font-medium">Belum ada materi yang diselesaikan.</p>
-                ) : (
-                  <div className="flex flex-wrap gap-1.5">
-                    {selectedStudentForDetail.completedMaterials.map(matId => {
-                      const matObj = materiList.find(m => m.id === matId);
-                      return (
-                        <span key={matId} className="px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold rounded-lg">
-                          ✓ {matObj ? matObj.title : matId}
-                        </span>
-                      );
-                    })}
-                  </div>
-                )}
+              <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDeleteConfirmation({ isOpen: false })}
+                  className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-xl cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDeleteStudent}
+                  className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-md cursor-pointer flex items-center gap-1.5"
+                >
+                  <Trash2 size={14} /> Ya, Hapus Siswa
+                </button>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
