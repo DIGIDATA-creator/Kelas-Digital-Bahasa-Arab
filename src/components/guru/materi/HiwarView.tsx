@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Materi, DialogueTurnPair } from '../../../types';
 import { toArabicNumber } from '../../common/ArabicUtils';
 import { AudioPlayerButton } from '../../common/AudioPlayerButton';
-import { MessageSquare, Edit3, Trash2, Plus, Volume2, Sparkles, Layers, ChevronDown, ChevronUp, Download, Eye, FileText, Printer } from 'lucide-react';
+import { MessageSquare, Edit3, Trash2, Plus, Volume2, Sparkles, Layers, ChevronDown, ChevronUp, Download, Eye, EyeOff, FileText, Printer, Focus, HelpCircle } from 'lucide-react';
 
 interface HiwarViewProps {
   materiList: Materi[];
@@ -26,6 +26,19 @@ export const HiwarView: React.FC<HiwarViewProps> = ({
 
   // B.4 Display filter mode: 'semua' | 'arab' | 'terjemah'
   const [displayMode, setDisplayMode] = useState<'semua' | 'arab' | 'terjemah'>('semua');
+
+  // Mode Fokus: Sembunyikan terjemahan sementara untuk latihan mandiri
+  const [isFocusMode, setIsFocusMode] = useState<boolean>(false);
+  const [revealedTurnIds, setRevealedTurnIds] = useState<Set<string>>(new Set());
+
+  const togglePeekTurn = (id: string) => {
+    setRevealedTurnIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const toggleMinimize = (id: string) => {
     setMinimizedMateriIds(prev => {
@@ -130,47 +143,77 @@ export const HiwarView: React.FC<HiwarViewProps> = ({
   return (
     <div className="space-y-6">
 
-      {/* B.4 Display Mode Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-            <Eye size={16} className="text-sky-600" /> Mode Tampilan Hiwar:
+      {/* B.4 Display Mode & Focus Mode Bar */}
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setIsFocusMode(!isFocusMode)}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${
+              isFocusMode
+                ? 'bg-emerald-600 text-white border-emerald-700 shadow-md ring-2 ring-emerald-500/30'
+                : 'bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
+            }`}
+          >
+            {isFocusMode ? <EyeOff size={16} /> : <Focus size={16} />}
+            <span>{isFocusMode ? '🎯 Mode Fokus Aktif' : '🎯 Mode Fokus (Sembunyikan Terjemahan)'}</span>
+          </button>
+          <span className="text-xs font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5 hidden sm:inline-flex">
+            <Eye size={16} className="text-sky-600" /> Mode Tampilan:
           </span>
         </div>
 
-        <div className="flex bg-slate-100 p-1 rounded-xl text-xs font-bold gap-1">
+        <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs font-bold gap-1">
           <button
-            onClick={() => setDisplayMode('semua')}
-            className={`px-3 py-1.5 rounded-lg transition-all ${
-              displayMode === 'semua'
+            onClick={() => { setDisplayMode('semua'); setIsFocusMode(false); }}
+            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+              displayMode === 'semua' && !isFocusMode
                 ? 'bg-sky-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
             }`}
           >
             Tampilkan Seluruh Percakapan
           </button>
           <button
-            onClick={() => setDisplayMode('arab')}
-            className={`px-3 py-1.5 rounded-lg transition-all ${
-              displayMode === 'arab'
+            onClick={() => { setDisplayMode('arab'); setIsFocusMode(true); }}
+            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+              (displayMode === 'arab' || isFocusMode)
                 ? 'bg-sky-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
             }`}
           >
-            Hanya Teks Arab
+            Hanya Teks Arab (Fokus)
           </button>
           <button
-            onClick={() => setDisplayMode('terjemah')}
-            className={`px-3 py-1.5 rounded-lg transition-all ${
-              displayMode === 'terjemah'
+            onClick={() => { setDisplayMode('terjemah'); setIsFocusMode(false); }}
+            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+              displayMode === 'terjemah' && !isFocusMode
                 ? 'bg-sky-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
             }`}
           >
             Hanya Terjemah
           </button>
         </div>
       </div>
+
+      {/* Focus Mode Explanation Toast / Banner */}
+      {isFocusMode && (
+        <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 rounded-2xl text-xs font-semibold text-emerald-900 dark:text-emerald-300 flex items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-center gap-2.5">
+            <Sparkles size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <span>
+              <strong>Mode Fokus Aktif:</strong> Teks terjemahan Bahasa Indonesia disembunyikan untuk melatih pemahaman bahasa Arab secara mandiri. Gunakan tombol <strong>"Intip Terjemahan"</strong> di tiap percakapan bila memerlukan bantuan arti.
+            </span>
+          </div>
+          <button
+            onClick={() => setIsFocusMode(false)}
+            className="text-xs text-emerald-700 dark:text-emerald-400 underline font-bold hover:text-emerald-900 shrink-0 cursor-pointer"
+          >
+            Matikan
+          </button>
+        </div>
+      )}
 
       {hiwarMateri.map((materi) => {
         // Retrieve or parse dialogue pairs
@@ -287,62 +330,102 @@ export const HiwarView: React.FC<HiwarViewProps> = ({
                   pairs.map((pair, idx) => {
                     const turnNum = pair.turnNumber || idx + 1;
                     const arabicTurnNum = toArabicNumber(turnNum);
+                    const turnKey = `${materi.id}-${pair.id || idx}`;
+                    const isTurnRevealed = revealedTurnIds.has(turnKey);
+
+                    // Determine whether translations should be visible
+                    const showTranslation = isFocusMode || displayMode === 'arab'
+                      ? isTurnRevealed
+                      : (displayMode === 'semua' || displayMode === 'terjemah');
+
+                    const showArabic = displayMode === 'semua' || displayMode === 'arab' || isFocusMode;
 
                     return (
                       <div
                         key={pair.id || idx}
-                        className="bg-white rounded-2xl border border-slate-200 p-4 shadow-2xs space-y-3 hover:border-sky-300 transition-all"
+                        className={`bg-white dark:bg-slate-900 rounded-2xl border p-4 shadow-2xs space-y-3 transition-all ${
+                          isFocusMode ? 'border-emerald-300 dark:border-emerald-800 ring-1 ring-emerald-500/10' : 'border-slate-200 dark:border-slate-800 hover:border-sky-300'
+                        }`}
                       >
-                        {/* Dialogue Number Badge */}
-                        <div className="flex items-center justify-between border-b pb-2">
-                          <span className="px-3 py-1 bg-sky-100 text-sky-900 font-extrabold text-xs rounded-xl flex items-center gap-1.5">
-                            <MessageSquare size={13} className="text-sky-700" /> Percakapan #{turnNum} ({arabicTurnNum})
+                        {/* Dialogue Number Badge & Peek Button */}
+                        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                          <span className="px-3 py-1 bg-sky-100 dark:bg-sky-950/70 text-sky-900 dark:text-sky-300 font-extrabold text-xs rounded-xl flex items-center gap-1.5">
+                            <MessageSquare size={13} className="text-sky-700 dark:text-sky-400" /> Percakapan #{turnNum} ({arabicTurnNum})
                           </span>
+
+                          {/* Peek / Intip Terjemahan Toggle Button in Focus Mode */}
+                          {(isFocusMode || displayMode === 'arab') && (
+                            <button
+                              type="button"
+                              onClick={() => togglePeekTurn(turnKey)}
+                              className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border flex items-center gap-1.5 transition-all cursor-pointer ${
+                                isTurnRevealed
+                                  ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border-amber-300 dark:border-amber-700'
+                                  : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700'
+                              }`}
+                              title="Intip terjemahan Bahasa Indonesia untuk kalimat ini"
+                            >
+                              {isTurnRevealed ? <EyeOff size={13} /> : <Eye size={13} />}
+                              <span>{isTurnRevealed ? 'Sembunyikan Terjemahan' : 'Intip Terjemahan 👁️'}</span>
+                            </button>
+                          )}
                         </div>
 
                         {/* B.1 Dialogue Exchange Pair with RTL Layout (Right: Pertanyaan / Pembicara 1, Left: Jawaban / Pembicara 2) */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3" dir="rtl">
                           {/* Right Column (Pembicara 1 / Pertanyaan / Soal) */}
-                          <div className="p-3.5 bg-sky-50/70 border border-sky-200 rounded-xl space-y-2 text-right">
+                          <div className="p-3.5 bg-sky-50/70 dark:bg-sky-950/40 border border-sky-200/80 dark:border-sky-800 rounded-xl space-y-2 text-right">
                             <div className="flex items-center justify-between" dir="ltr">
-                              <span className="font-arabic font-extrabold text-sky-800 text-sm">
-                                {pair.speaker1} <span className="text-[10px] font-normal text-sky-600">(سُؤَالٌ / Pertanyaan)</span>
+                              <span className="font-arabic font-extrabold text-sky-800 dark:text-sky-300 text-sm">
+                                {pair.speaker1} <span className="text-[10px] font-normal text-sky-600 dark:text-sky-400">(سُؤَالٌ / Pertanyaan)</span>
                               </span>
                               <AudioPlayerButton arabicText={pair.arabic1} size="sm" />
                             </div>
 
-                            {(displayMode === 'semua' || displayMode === 'arab') && (
-                              <p className="font-arabic font-extrabold text-lg sm:text-xl text-slate-900 text-right leading-relaxed">
+                            {showArabic && (
+                              <p className="font-arabic font-extrabold text-lg sm:text-xl text-slate-900 dark:text-slate-100 text-right leading-relaxed">
                                 {pair.arabic1}
                               </p>
                             )}
 
-                            {(displayMode === 'semua' || displayMode === 'terjemah') && (
-                              <p className="text-xs text-slate-600 font-medium italic border-t pt-1.5 border-sky-200" dir="ltr">
+                            {showTranslation ? (
+                              <p className="text-xs text-slate-600 dark:text-slate-300 font-medium italic border-t pt-1.5 border-sky-200/80 dark:border-sky-800/80 animate-fadeIn" dir="ltr">
                                 "{pair.translation1}"
                               </p>
+                            ) : (
+                              isFocusMode && (
+                                <p className="text-[11px] text-slate-400 dark:text-slate-500 italic border-t pt-1.5 border-sky-200/40 dark:border-sky-900/40 flex items-center gap-1" dir="ltr">
+                                  <span>🔒 Terjemahan disembunyikan (Mode Fokus)</span>
+                                </p>
+                              )
                             )}
                           </div>
 
                           {/* Left Column (Pembicara 2 / Jawaban / Respon) */}
-                          <div className="p-3.5 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-2 text-right">
+                          <div className="p-3.5 bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800 rounded-xl space-y-2 text-right">
                             <div className="flex items-center justify-between" dir="ltr">
-                              <span className="font-arabic font-extrabold text-emerald-800 text-sm">
-                                {pair.speaker2} <span className="text-[10px] font-normal text-emerald-600">(جَوَابٌ / Jawaban)</span>
+                              <span className="font-arabic font-extrabold text-emerald-800 dark:text-emerald-300 text-sm">
+                                {pair.speaker2} <span className="text-[10px] font-normal text-emerald-600 dark:text-emerald-400">(جَوَابٌ / Jawaban)</span>
                               </span>
                               <AudioPlayerButton arabicText={pair.arabic2} size="sm" />
                             </div>
 
-                            {(displayMode === 'semua' || displayMode === 'arab') && (
-                              <p className="font-arabic font-extrabold text-lg sm:text-xl text-slate-900 text-right leading-relaxed">
+                            {showArabic && (
+                              <p className="font-arabic font-extrabold text-lg sm:text-xl text-slate-900 dark:text-slate-100 text-right leading-relaxed">
                                 {pair.arabic2}
                               </p>
                             )}
 
-                            {(displayMode === 'semua' || displayMode === 'terjemah') && (
-                              <p className="text-xs text-slate-600 font-medium italic border-t pt-1.5 border-emerald-200" dir="ltr">
+                            {showTranslation ? (
+                              <p className="text-xs text-slate-600 dark:text-slate-300 font-medium italic border-t pt-1.5 border-emerald-200/80 dark:border-emerald-800/80 animate-fadeIn" dir="ltr">
                                 "{pair.translation2}"
                               </p>
+                            ) : (
+                              isFocusMode && (
+                                <p className="text-[11px] text-slate-400 dark:text-slate-500 italic border-t pt-1.5 border-emerald-200/40 dark:border-emerald-900/40 flex items-center gap-1" dir="ltr">
+                                  <span>🔒 Terjemahan disembunyikan (Mode Fokus)</span>
+                                </p>
+                              )
                             )}
                           </div>
                         </div>

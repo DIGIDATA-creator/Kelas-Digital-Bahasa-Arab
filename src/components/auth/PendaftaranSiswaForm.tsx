@@ -4,10 +4,12 @@ import { User, Mail, Lock, Building2, GraduationCap, Users, Sparkles, CheckCircl
 
 interface PendaftaranSiswaFormProps {
   existingStudents: Student[];
+  initialStudent?: Student;
   onRegisterSubmit: (studentData: {
     name: string;
     email: string;
     password?: string;
+    gender: 'Laki-laki' | 'Perempuan';
     tingkat: TingkatType;
     schoolName: string;
     className: string;
@@ -20,18 +22,20 @@ interface PendaftaranSiswaFormProps {
 
 export const PendaftaranSiswaForm: React.FC<PendaftaranSiswaFormProps> = ({
   existingStudents,
+  initialStudent,
   onRegisterSubmit,
   isLoading = false,
   isGuruAdminMode = false,
   editingStudentId,
 }) => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [tingkat, setTingkat] = useState<TingkatType>('Dasar');
-  const [schoolName, setSchoolName] = useState('');
-  const [className, setClassName] = useState('Kelas 1');
-  const [rombelName, setRombelName] = useState('');
+  const [name, setName] = useState(initialStudent?.name || '');
+  const [email, setEmail] = useState(initialStudent?.email || '');
+  const [password, setPassword] = useState(initialStudent?.password || '');
+  const [gender, setGender] = useState<'Laki-laki' | 'Perempuan'>(initialStudent?.gender || 'Laki-laki');
+  const [tingkat, setTingkat] = useState<TingkatType>(initialStudent?.tingkat || 'Dasar');
+  const [schoolName, setSchoolName] = useState(initialStudent?.schoolName || '');
+  const [className, setClassName] = useState(initialStudent?.className || 'Kelas 1');
+  const [rombelName, setRombelName] = useState(initialStudent?.rombelName || '');
   const [emailError, setEmailError] = useState('');
 
   // Check if email is duplicate
@@ -100,6 +104,7 @@ export const PendaftaranSiswaForm: React.FC<PendaftaranSiswaFormProps> = ({
       name: name.trim(),
       email: email.trim(),
       password,
+      gender,
       tingkat,
       schoolName: tingkat === 'Umum' ? (schoolName.trim() || 'Masyarakat Umum') : (schoolName.trim() || 'Tanpa Sekolah'),
       className,
@@ -124,6 +129,37 @@ export const PendaftaranSiswaForm: React.FC<PendaftaranSiswaFormProps> = ({
             placeholder="Contoh: Muhammad Fauzi"
             className="w-full pl-9 pr-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-hidden focus:border-emerald-500 font-medium"
           />
+        </div>
+      </div>
+
+      {/* 2. Jenis Kelamin (Gender) */}
+      <div>
+        <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
+          Jenis Kelamin <span className="text-rose-500">*</span>
+        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => setGender('Laki-laki')}
+            className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+              gender === 'Laki-laki'
+                ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-500 text-emerald-800 dark:text-emerald-300 ring-2 ring-emerald-500/20 shadow-xs'
+                : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-400'
+            }`}
+          >
+            👨 Laki-laki
+          </button>
+          <button
+            type="button"
+            onClick={() => setGender('Perempuan')}
+            className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+              gender === 'Perempuan'
+                ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-500 text-emerald-800 dark:text-emerald-300 ring-2 ring-emerald-500/20 shadow-xs'
+                : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-400'
+            }`}
+          >
+            👩 Perempuan
+          </button>
         </div>
       </div>
 

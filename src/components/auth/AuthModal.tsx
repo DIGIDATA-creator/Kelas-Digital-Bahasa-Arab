@@ -101,6 +101,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     name: string;
     email: string;
     password?: string;
+    gender: 'Laki-laki' | 'Perempuan';
     tingkat: TingkatType;
     schoolName: string;
     className: string;
@@ -135,6 +136,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         name: data.name,
         email: data.email,
         nisn: `2026${Math.floor(1000 + Math.random() * 9000)}`,
+        gender: data.gender,
         tingkat: data.tingkat,
         schoolName: data.schoolName,
         className: data.className,

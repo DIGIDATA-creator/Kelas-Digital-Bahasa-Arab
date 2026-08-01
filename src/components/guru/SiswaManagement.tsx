@@ -208,6 +208,7 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
     name: string;
     email: string;
     password?: string;
+    gender: 'Laki-laki' | 'Perempuan';
     tingkat: TingkatType;
     schoolName: string;
     className: string;
@@ -222,6 +223,7 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
             name: data.name,
             email: data.email,
             password: data.password || s.password,
+            gender: data.gender,
             tingkat: data.tingkat,
             schoolName: data.schoolName,
             className: data.className,
@@ -239,6 +241,7 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
         email: data.email,
         password: data.password || '123456',
         nisn: `2026${Math.floor(1000 + Math.random() * 9000)}`,
+        gender: data.gender,
         tingkat: data.tingkat,
         schoolName: data.schoolName,
         className: data.className,
@@ -891,7 +894,18 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                               className="w-9 h-9 rounded-full object-cover border border-slate-200"
                             />
                             <div>
-                              <div className="font-bold text-slate-900">{std.name}</div>
+                              <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                                <span>{std.name}</span>
+                                {std.gender && (
+                                  <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold ${
+                                    std.gender === 'Laki-laki'
+                                      ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                      : 'bg-pink-50 text-pink-700 border border-pink-200'
+                                  }`}>
+                                    {std.gender === 'Laki-laki' ? '👨 Laki-laki' : '👩 Perempuan'}
+                                  </span>
+                                )}
+                              </div>
                               <div className="text-xs text-slate-400">{std.email}</div>
                             </div>
                           </div>
@@ -1000,6 +1014,7 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
               <div className="p-5">
                 <PendaftaranSiswaForm
                   existingStudents={students}
+                  initialStudent={editingStudent || undefined}
                   onRegisterSubmit={handleSaveStudentFromForm}
                   isGuruAdminMode={true}
                   editingStudentId={editingStudent?.id}

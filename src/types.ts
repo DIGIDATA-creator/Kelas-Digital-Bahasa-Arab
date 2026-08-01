@@ -129,6 +129,7 @@ export interface Student {
   nisn: string;
   email: string;
   password?: string;
+  gender?: 'Laki-laki' | 'Perempuan';
   tingkat?: TingkatType;
   schoolName?: string; // Asal Sekolah
   className: string; // Kelas utama (e.g., Kelas 8, Kelas 1)

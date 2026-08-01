@@ -164,8 +164,10 @@ export const GuruProfile: React.FC = () => {
               <div>
                 <h2 className="text-xl font-bold text-slate-900">{profile.name}</h2>
                 <p className="text-xs text-slate-500 font-medium">{profile.title}</p>
-                <div className="flex items-center gap-2 mt-1 justify-center sm:justify-start">
-                  <span className="font-arabic text-base text-emerald-700 font-bold">مُدَرِّسُ اللُّغَةِ الْعَرَبِيَّةِ</span>
+                <div className="mt-2 flex items-center justify-center sm:justify-start">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800 rounded-xl font-arabic font-bold text-sm sm:text-base leading-relaxed tracking-wide shadow-2xs">
+                    ✨ مُدَرِّسُ اللُّغَةِ الْعَرَبِيَّةِ
+                  </span>
                 </div>
               </div>
             </div>

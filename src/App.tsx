@@ -96,6 +96,11 @@ export default function App() {
     setLogs(storageService.getLogs());
   };
 
+  const handleUpdateStudentProfile = (updatedStudent: Student) => {
+    const updatedList = students.map(s => s.id === updatedStudent.id ? updatedStudent : s);
+    handleSaveStudents(updatedList);
+  };
+
   const handleMarkMaterialComplete = (materiId: string) => {
     storageService.markMaterialComplete(currentStudentId, materiId);
     setStudents(storageService.getStudents());
@@ -260,6 +265,7 @@ export default function App() {
                   <SiswaProfile
                     currentStudent={currentStudent}
                     materiList={materiList}
+                    onUpdateStudentProfile={handleUpdateStudentProfile}
                   />
                 )}
               </>
