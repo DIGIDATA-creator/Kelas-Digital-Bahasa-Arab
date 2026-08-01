@@ -1,0 +1,527 @@
+import React, { useState } from 'react';
+import { Materi, DialogueTurnPair } from '../../../types';
+import { toArabicNumber } from '../../common/ArabicUtils';
+import { X, Plus, Trash2, FileSpreadsheet, Save, MessageSquare, Layers, HelpCircle } from 'lucide-react';
+
+interface HiwarFormModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  editingMateri: Materi | null;
+  existingMateriList: Materi[];
+  onSave: (materi: Partial<Materi>) => void;
+}
+
+export const HiwarFormModal: React.FC<HiwarFormModalProps> = ({
+  isOpen,
+  onClose,
+  editingMateri,
+  existingMateriList,
+  onSave,
+}) => {
+  if (!isOpen) return null;
+
+  // Initialize state from editingMateri or defaults
+  const [babNumber, setBabNumber] = useState<number>(editingMateri?.babNumber || 1);
+  const [title, setTitle] = useState<string>(editingMateri?.title || '');
+  const [arabicTitle, setArabicTitle] = useState<string>(editingMateri?.arabicTitle || '');
+  const [hiwarLevelNumber, setHiwarLevelNumber] = useState<number>(editingMateri?.hiwarLevelNumber || 1);
+
+  // Convert existing dialogues into dialoguePairs if needed
+  const initialPairs: DialogueTurnPair[] = (() => {
+    if (editingMateri?.dialoguePairs && editingMateri.dialoguePairs.length > 0) {
+      return editingMateri.dialoguePairs;
+    }
+    if (editingMateri?.dialogues && editingMateri.dialogues.length > 0) {
+      const pairs: DialogueTurnPair[] = [];
+      for (let i = 0; i < editingMateri.dialogues.length; i += 2) {
+        const d1 = editingMateri.dialogues[i];
+        const d2 = editingMateri.dialogues[i + 1];
+        pairs.push({
+          id: `pair-${Date.now()}-${i}`,
+          turnNumber: pairs.length + 1,
+          speaker1: d1 ? d1.speaker : 'سُؤَالٌ',
+          arabic1: d1 ? d1.arabic : '',
+          translation1: d1 ? d1.translation : '',
+          speaker2: d2 ? d2.speaker : 'جَوَابٌ',
+          arabic2: d2 ? d2.arabic : '',
+          translation2: d2 ? d2.translation : '',
+        });
+      }
+      return pairs;
+    }
+    return [
+      {
+        id: 'p1',
+        turnNumber: 1,
+        speaker1: 'أَحْمَدُ',
+        arabic1: 'السَّلاَمُ عَلَيْكُمْ وَرَحْمَةُ اللهِ وَبَرَكَاتُهُ',
+        translation1: 'Semoga keselamatan dan rahmat Allah tercurah kepadamu.',
+        speaker2: 'عَلِيٌّ',
+        arabic2: 'وَعَلَيْكُمُ السَّلاَمُ وَرَحْمَةُ اللهِ وَبَرَكَاتُهُ',
+        translation2: 'Dan semoga keselamatan dan rahmat Allah tercurah kepadamu juga.',
+      },
+    ];
+  })();
+
+  const [dialoguePairs, setDialoguePairs] = useState<DialogueTurnPair[]>(initialPairs);
+
+  // Form states for adding new turn pair manually
+  const [speaker1, setSpeaker1] = useState('سُؤَالٌ');
+  const [arabic1, setArabic1] = useState('');
+  const [translation1, setTranslation1] = useState('');
+
+  const [speaker2, setSpeaker2] = useState('جَوَابٌ');
+  const [arabic2, setArabic2] = useState('');
+  const [translation2, setTranslation2] = useState('');
+
+  // Sheet Modal State
+  const [isSheetModalOpen, setIsSheetModalOpen] = useState(false);
+  const [sheetText, setSheetText] = useState('');
+
+  const handleAddPair = () => {
+    if (!arabic1.trim() && !arabic2.trim()) {
+      alert('Harap isi minimal teks Arab Pembicara 1 atau Pembicara 2.');
+      return;
+    }
+
+    const newPair: DialogueTurnPair = {
+      id: `pair-${Date.now()}-${Math.random()}`,
+      turnNumber: dialoguePairs.length + 1,
+      speaker1: speaker1.trim() || 'Pembicara 1',
+      arabic1: arabic1.trim(),
+      translation1: translation1.trim(),
+      speaker2: speaker2.trim() || 'Pembicara 2',
+      arabic2: arabic2.trim(),
+      translation2: translation2.trim(),
+    };
+
+    setDialoguePairs([...dialoguePairs, newPair]);
+
+    // Reset inputs
+    setArabic1('');
+    setTranslation1('');
+    setArabic2('');
+    setTranslation2('');
+  };
+
+  const handleRemovePair = (id: string) => {
+    const updated = dialoguePairs.filter(p => p.id !== id);
+    // Recalculate automatic turn numbering
+    const renumbered = updated.map((pair, idx) => ({
+      ...pair,
+      turnNumber: idx + 1,
+    }));
+    setDialoguePairs(renumbered);
+  };
+
+  const handleImportSheetText = () => {
+    if (!sheetText.trim()) return;
+
+    const lines = sheetText.split('\n').filter(line => line.trim().length > 0);
+    const parsedPairs: DialogueTurnPair[] = [];
+
+    lines.forEach((line, idx) => {
+      // Split by tab or comma
+      const cols = line.includes('\t') ? line.split('\t') : line.split(',');
+      const cleaned = cols.map(c => c.trim());
+
+      if (cleaned.length >= 6) {
+        parsedPairs.push({
+          id: `sheet-pair-${Date.now()}-${idx}`,
+          turnNumber: dialoguePairs.length + parsedPairs.length + 1,
+          speaker1: cleaned[0] || 'سُؤَالٌ',
+          arabic1: cleaned[1] || '',
+          translation1: cleaned[2] || '',
+          speaker2: cleaned[3] || 'جَوَابٌ',
+          arabic2: cleaned[4] || '',
+          translation2: cleaned[5] || '',
+        });
+      } else if (cleaned.length >= 4) {
+        // Default speakers to سؤال & جواب
+        parsedPairs.push({
+          id: `sheet-pair-${Date.now()}-${idx}`,
+          turnNumber: dialoguePairs.length + parsedPairs.length + 1,
+          speaker1: 'سُؤَالٌ',
+          arabic1: cleaned[0] || '',
+          translation1: cleaned[1] || '',
+          speaker2: 'جَوَابٌ',
+          arabic2: cleaned[2] || '',
+          translation2: cleaned[3] || '',
+        });
+      }
+    });
+
+    if (parsedPairs.length === 0) {
+      alert('Tidak dapat mengurai data sheet. Gunakan format 6 kolom:\n"Pembicara1, Arab1, Terjemah1, Pembicara2, Arab2, Terjemah2"');
+      return;
+    }
+
+    setDialoguePairs([...dialoguePairs, ...parsedPairs]);
+    setSheetText('');
+    setIsSheetModalOpen(false);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Flatten dialoguePairs to dialogues array for compatibility
+    const flatDialogues = dialoguePairs.flatMap((pair) => [
+      {
+        id: `${pair.id}-1`,
+        speaker: pair.speaker1,
+        arabic: pair.arabic1,
+        latin: '',
+        translation: pair.translation1,
+      },
+      {
+        id: `${pair.id}-2`,
+        speaker: pair.speaker2,
+        arabic: pair.arabic2,
+        latin: '',
+        translation: pair.translation2,
+      },
+    ]);
+
+    onSave({
+      category: 'hiwar',
+      babNumber,
+      hiwarLevelNumber,
+      level: `Level ${hiwarLevelNumber}` as any,
+      title: title.trim() || `Hiwar Bab ${babNumber}: Level ${hiwarLevelNumber}`,
+      arabicTitle: arabicTitle.trim(),
+      dialoguePairs,
+      dialogues: flatDialogues,
+      content: `Materi Hiwar Percakapan Bab ${babNumber} - Level ${hiwarLevelNumber}: ${title}`,
+      description: `Modul Percakapan Bahasa Arab Bab ${babNumber} Level ${hiwarLevelNumber} berisi ${dialoguePairs.length} percakapan.`,
+      authorName: 'Ust. Ahmad Dahlan, M.Pd.',
+    });
+
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto">
+      <div className="bg-white rounded-3xl max-w-3xl w-full p-6 shadow-2xl border border-slate-200 my-8 space-y-5">
+        
+        {/* Header */}
+        <div className="flex items-center justify-between border-b pb-4">
+          <div>
+            <span className="px-2.5 py-0.5 bg-sky-100 text-sky-800 text-[11px] font-extrabold rounded-full">
+              Formulir Modul Hiwar (Percakapan)
+            </span>
+            <h3 className="text-lg font-extrabold text-slate-900 mt-1">
+              {editingMateri ? `Edit Hiwar - ${editingMateri.title}` : 'Tambah Modul Hiwar Baru'}
+            </h3>
+          </div>
+          <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100">
+            <X size={20} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+          
+          {/* Grid Bab, Judul, and Level */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">
+                Nomor Bab
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={50}
+                required
+                value={babNumber}
+                onChange={(e) => setBabNumber(Number(e.target.value))}
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:border-sky-500 font-extrabold text-sky-800 bg-slate-50"
+              />
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">
+                Level Percakapan
+              </label>
+              <select
+                value={hiwarLevelNumber}
+                onChange={(e) => setHiwarLevelNumber(Number(e.target.value))}
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:border-sky-500 font-extrabold text-sky-900 bg-sky-50/50"
+              >
+                {Array.from({ length: 10 }, (_, i) => i + 1).map((lvl) => (
+                  <option key={lvl} value={lvl}>
+                    Level {lvl}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="block font-bold text-slate-700 mb-1">
+                Judul Materi Hiwar (Indonesia)
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="Contoh: Perkenalan Diri di Sekolah"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:border-sky-500 font-bold text-slate-900"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">
+              Judul Materi Bahasa Arab (Opsional)
+            </label>
+            <input
+              type="text"
+              placeholder="التَّعَارُفُ فِي المَدْرَسَةِ"
+              value={arabicTitle}
+              onChange={(e) => setArabicTitle(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:border-sky-500 font-arabic text-base text-right"
+            />
+          </div>
+
+          {/* Dialogue Input Section */}
+          <div className="space-y-3 pt-2">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b pb-2">
+              <span className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                <MessageSquare size={16} className="text-sky-600" /> Input Percakapan / Hiwar (Otomatis Penomoran)
+              </span>
+
+              <button
+                type="button"
+                onClick={() => setIsSheetModalOpen(true)}
+                className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl font-bold flex items-center gap-1.5 text-xs shadow-2xs"
+              >
+                <FileSpreadsheet size={15} /> Input Sheet / Massal CSV
+              </button>
+            </div>
+
+            {/* Input Form Pair */}
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+              <div className="flex items-center justify-between text-slate-700 font-bold text-xs border-b pb-1">
+                <span>Tambah Dialog Percakapan Baru (Nomor Otomatis: #{dialoguePairs.length + 1})</span>
+                <span className="text-[10px] text-slate-400 font-normal">Isi nama pembicara, teks Arab, dan terjemahan</span>
+              </div>
+
+              {/* Speaker 1 (Soal / Pertanyaan) */}
+              <div className="grid grid-cols-1 sm:grid-cols-6 gap-2 bg-white p-3 rounded-xl border border-slate-200">
+                <div className="sm:col-span-2">
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    Pembicara 1 (Orang / "سُؤَالٌ")
+                  </label>
+                  <input
+                    type="text"
+                    value={speaker1}
+                    onChange={(e) => setSpeaker1(e.target.value)}
+                    placeholder='Manual: "أَحْمَدُ" atau "سُؤَالٌ"'
+                    className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs font-bold font-arabic"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    Teks Soal / Arab Pembicara 1
+                  </label>
+                  <input
+                    type="text"
+                    value={arabic1}
+                    onChange={(e) => setArabic1(e.target.value)}
+                    placeholder="السَّلاَمُ عَلَيْكُمْ"
+                    className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs font-arabic font-bold text-right text-slate-900"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    Terjemahan Pembicara 1
+                  </label>
+                  <input
+                    type="text"
+                    value={translation1}
+                    onChange={(e) => setTranslation1(e.target.value)}
+                    placeholder="Semoga keselamatan bagimu..."
+                    className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* Speaker 2 (Jawaban / Respon) */}
+              <div className="grid grid-cols-1 sm:grid-cols-6 gap-2 bg-white p-3 rounded-xl border border-slate-200">
+                <div className="sm:col-span-2">
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    Pembicara 2 (Orang / "جَوَابٌ")
+                  </label>
+                  <input
+                    type="text"
+                    value={speaker2}
+                    onChange={(e) => setSpeaker2(e.target.value)}
+                    placeholder='Manual: "عَلِيٌّ" atau "جَوَابٌ"'
+                    className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs font-bold font-arabic"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    Teks Jawaban / Arab Pembicara 2
+                  </label>
+                  <input
+                    type="text"
+                    value={arabic2}
+                    onChange={(e) => setArabic2(e.target.value)}
+                    placeholder="وَعَلَيْكُمُ السَّلاَمُ"
+                    className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs font-arabic font-bold text-right text-slate-900"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    Terjemahan Pembicara 2
+                  </label>
+                  <input
+                    type="text"
+                    value={translation2}
+                    onChange={(e) => setTranslation2(e.target.value)}
+                    placeholder="Dan semoga keselamatan bagimu juga..."
+                    className="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleAddPair}
+                className="w-full py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl flex items-center justify-center gap-1 text-xs shadow-xs"
+              >
+                <Plus size={16} /> Tambah Dialog Ke-#{dialoguePairs.length + 1}
+              </button>
+            </div>
+
+            {/* List of Dialogue Pairs with Automatic Numbering */}
+            <div className="max-h-72 overflow-y-auto space-y-3 border border-slate-200 rounded-2xl p-3 bg-slate-50/50">
+              {dialoguePairs.length === 0 ? (
+                <p className="text-center py-6 text-slate-400 font-medium">
+                  Belum ada dialog percakapan. Gunakan form di atas untuk menambahkan.
+                </p>
+              ) : (
+                dialoguePairs.map((pair, idx) => (
+                  <div key={pair.id || idx} className="bg-white border border-slate-200 rounded-2xl p-3 shadow-2xs space-y-2">
+                    {/* Header line with Automatic Numbering */}
+                    <div className="flex items-center justify-between border-b pb-1.5 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2.5 py-0.5 bg-sky-700 text-white font-bold rounded-lg text-xs">
+                          Percakapan #{pair.turnNumber || idx + 1} ({toArabicNumber(pair.turnNumber || idx + 1)})
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePair(pair.id)}
+                        className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50"
+                        title="Hapus Dialog"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+
+                    {/* Content Display */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                      {/* Turn 1 */}
+                      <div className="p-2.5 bg-slate-50 border border-slate-100 rounded-xl space-y-1">
+                        <span className="font-arabic font-extrabold text-sky-800 text-xs block">
+                          {pair.speaker1}
+                        </span>
+                        <p className="font-arabic font-bold text-base text-slate-900 text-right">
+                          {pair.arabic1}
+                        </p>
+                        <p className="text-[11px] text-slate-600 italic">
+                          "{pair.translation1}"
+                        </p>
+                      </div>
+
+                      {/* Turn 2 */}
+                      <div className="p-2.5 bg-emerald-50/60 border border-emerald-100 rounded-xl space-y-1">
+                        <span className="font-arabic font-extrabold text-emerald-800 text-xs block">
+                          {pair.speaker2}
+                        </span>
+                        <p className="font-arabic font-bold text-base text-slate-900 text-right">
+                          {pair.arabic2}
+                        </p>
+                        <p className="text-[11px] text-slate-600 italic">
+                          "{pair.translation2}"
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Submit */}
+          <div className="pt-3 border-t flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              className="px-5 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl font-bold flex items-center gap-2 shadow-md"
+            >
+              <Save size={16} /> Simpan Modul Hiwar
+            </button>
+          </div>
+
+        </form>
+
+        {/* Spreadsheet CSV Modal */}
+        {isSheetModalOpen && (
+          <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-950/70 p-4">
+            <div className="bg-white rounded-2xl max-w-xl w-full p-5 space-y-4 shadow-2xl border">
+              <div className="flex items-center justify-between border-b pb-2">
+                <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                  <FileSpreadsheet size={18} className="text-emerald-600" /> Import Dialog Hiwar Masal (Sheet/CSV)
+                </h4>
+                <button onClick={() => setIsSheetModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                  <X size={18} />
+                </button>
+              </div>
+
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Paste percakapan dari Google Sheets/Excel dengan 6 kolom per baris:<br />
+                <code className="bg-slate-100 px-2 py-0.5 rounded text-sky-800 font-mono text-[11px] block mt-1">
+                  Pembicara1, Arab1, Terjemah1, Pembicara2, Arab2, Terjemah2
+                </code>
+              </p>
+
+              <textarea
+                rows={8}
+                value={sheetText}
+                onChange={(e) => setSheetText(e.target.value)}
+                placeholder={`أَحْمَدُ, السَّلاَمُ عَلَيْكُمْ, Semoga keselamatan bagimu, عَلِيٌّ, وَعَلَيْكُمُ السَّلاَمُ, Dan bagimu juga keselamatan\nسُؤَالٌ, مَا اسْمُكَ؟, Siapa namamu?, جَوَابٌ, اسْمِي عَلِيٌّ, Namaku Ali`}
+                className="w-full p-3 border border-slate-300 rounded-xl font-mono text-xs focus:border-sky-500"
+              />
+
+              <div className="flex justify-end gap-2 pt-2 border-t text-xs">
+                <button
+                  type="button"
+                  onClick={() => setIsSheetModalOpen(false)}
+                  className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-xl font-bold"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleImportSheetText}
+                  className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold"
+                >
+                  Import Dialog
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+};

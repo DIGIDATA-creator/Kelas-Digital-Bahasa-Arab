@@ -3,6 +3,8 @@ import { Materi, CategoryType, Student } from '../../types';
 import { BookOpen, MessageSquare, List, Quote, FileText, CheckCircle2, Play, Volume2, Search, Sparkles, RefreshCw, ChevronRight } from 'lucide-react';
 import { AudioPlayerButton } from '../common/AudioPlayerButton';
 import { PdfViewerModal } from '../common/PdfViewerModal';
+import { KosakataTableView } from '../guru/materi/KosakataTableView';
+import { FlashcardModal, FlashcardItem } from '../common/FlashcardModal';
 
 interface MateriSiswaViewProps {
   materiList: Materi[];
@@ -21,22 +23,25 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
   const [activeMateriId, setActiveMateriId] = useState<string>(
     selectedMateriId || materiList[0]?.id || ''
   );
-  const [searchTerm, setSearchTerm] = useState('');
   
-  // Flashcard flip states for Kosakata
-  const [flippedCards, setFlippedCards] = useState<Record<string, boolean>>({});
-
   // PDF Viewer Modal state
   const [previewPdfMateri, setPreviewPdfMateri] = useState<Materi | null>(null);
+
+  // Flashcard Modal State
+  const [flashcardModalState, setFlashcardModalState] = useState<{
+    isOpen: boolean;
+    title: string;
+    items: FlashcardItem[];
+  }>({
+    isOpen: false,
+    title: '',
+    items: [],
+  });
 
   const categoryFiltered = materiList.filter(m => m.category === activeCategory);
   const currentMateri = materiList.find(m => m.id === activeMateriId) || categoryFiltered[0] || materiList[0];
 
   const isCompleted = currentMateri ? currentStudent.completedMaterials.includes(currentMateri.id) : false;
-
-  const toggleCardFlip = (id: string) => {
-    setFlippedCards(prev => ({ ...prev, [id]: !prev[id] }));
-  };
 
   const categoryInfo = {
     qowaid: { label: 'Qowaid (Tata Bahasa)', icon: BookOpen, arabic: 'الْقَوَاعِدُ' },
@@ -189,89 +194,112 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
                 <div className="space-y-4">
                   <div className="flex items-center justify-between text-xs text-slate-500 bg-slate-50 p-3 rounded-xl border">
                     <span>Klik tombol pengeras suara untuk mendengarkan pelafalan Bahasa Arab</span>
-                    <span className="font-semibold text-emerald-700">{currentMateri.dialogues?.length || 0} Baris Dialog</span>
+                    <span className="font-semibold text-sky-800 font-arabic">
+                      {currentMateri.dialoguePairs?.length || Math.ceil((currentMateri.dialogues?.length || 0) / 2)} Dialog Percakapan
+                    </span>
                   </div>
 
-                  <div className="space-y-3">
-                    {currentMateri.dialogues?.map((d, idx) => (
-                      <div
-                        key={d.id || idx}
-                        className={`p-4 rounded-2xl border transition-all ${
-                          idx % 2 === 0
-                            ? 'bg-emerald-50/50 border-emerald-200 ml-0 sm:mr-8'
-                            : 'bg-teal-50/50 border-teal-200 mr-0 sm:ml-8'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-bold text-xs text-slate-700 bg-white/80 px-2.5 py-1 rounded-lg border border-slate-200">
-                            {d.speaker}
-                          </span>
-                          <AudioPlayerButton arabicText={d.arabic} size="sm" />
-                        </div>
+                  {currentMateri.dialoguePairs && currentMateri.dialoguePairs.length > 0 ? (
+                    <div className="space-y-4">
+                      {currentMateri.dialoguePairs.map((pair, idx) => (
+                        <div key={pair.id || idx} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-2xs space-y-3">
+                          <div className="flex items-center justify-between border-b pb-2">
+                            <span className="px-3 py-1 bg-sky-100 text-sky-900 font-extrabold text-xs rounded-xl flex items-center gap-1.5">
+                              <MessageSquare size={13} className="text-sky-700" /> Percakapan #{pair.turnNumber || idx + 1}
+                            </span>
+                          </div>
 
-                        <p className="font-arabic text-2xl text-slate-900 text-right leading-loose my-2 font-bold">
-                          {d.arabic}
-                        </p>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="font-arabic font-extrabold text-sky-800 text-sm">
+                                  {pair.speaker1}
+                                </span>
+                                <AudioPlayerButton arabicText={pair.arabic1} size="sm" />
+                              </div>
+                              <p className="font-arabic font-extrabold text-xl text-slate-900 text-right leading-relaxed">
+                                {pair.arabic1}
+                              </p>
+                              <p className="text-xs text-slate-600 font-medium italic border-t pt-1.5">
+                                "{pair.translation1}"
+                              </p>
+                            </div>
 
-                        <div className="pt-2 border-t border-slate-200/60 text-xs space-y-0.5">
-                          <p className="text-slate-500 italic font-mono">{d.latin}</p>
-                          <p className="text-slate-800 font-medium">{d.translation}</p>
+                            <div className="p-3.5 bg-emerald-50/50 border border-emerald-200 rounded-xl space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="font-arabic font-extrabold text-emerald-800 text-sm">
+                                  {pair.speaker2}
+                                </span>
+                                <AudioPlayerButton arabicText={pair.arabic2} size="sm" />
+                              </div>
+                              <p className="font-arabic font-extrabold text-xl text-slate-900 text-right leading-relaxed">
+                                {pair.arabic2}
+                              </p>
+                              <p className="text-xs text-slate-600 font-medium italic border-t pt-1.5 border-emerald-200">
+                                "{pair.translation2}"
+                              </p>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {currentMateri.dialogues?.map((d, idx) => (
+                        <div
+                          key={d.id || idx}
+                          className={`p-4 rounded-2xl border transition-all ${
+                            idx % 2 === 0
+                              ? 'bg-emerald-50/50 border-emerald-200 ml-0 sm:mr-8'
+                              : 'bg-teal-50/50 border-teal-200 mr-0 sm:ml-8'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-bold text-xs text-slate-700 bg-white/80 px-2.5 py-1 rounded-lg border border-slate-200">
+                              {d.speaker}
+                            </span>
+                            <AudioPlayerButton arabicText={d.arabic} size="sm" />
+                          </div>
+
+                          <p className="font-arabic text-2xl text-slate-900 text-right leading-loose my-2 font-bold">
+                            {d.arabic}
+                          </p>
+
+                          <div className="pt-2 border-t border-slate-200/60 text-xs space-y-0.5">
+                            {d.latin && <p className="text-slate-500 italic font-mono">{d.latin}</p>}
+                            <p className="text-slate-800 font-medium">{d.translation}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* CATEGORY 3: KOSAKATA / FLASHCARDS */}
+              {/* CATEGORY 3: KOSAKATA / TABLE & FLASHCARDS */}
               {currentMateri.category === 'kosakata' && (
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between text-xs text-slate-500 bg-slate-50 p-3 rounded-xl border">
-                    <span>Klik kartu untuk membalik & melihat arti kosakata</span>
-                    <span className="font-semibold text-blue-700">{currentMateri.vocabularies?.length || 0} Kartu Flashcard</span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {currentMateri.vocabularies?.map((v) => {
-                      const isFlipped = !!flippedCards[v.id];
-
-                      return (
-                        <div
-                          key={v.id}
-                          onClick={() => toggleCardFlip(v.id)}
-                          className="cursor-pointer min-h-[160px] p-5 bg-gradient-to-br from-white to-slate-50 rounded-2xl border-2 border-slate-200 hover:border-emerald-500 shadow-xs hover:shadow-md transition-all flex flex-col justify-between relative group"
-                        >
-                          <div className="flex justify-between items-start">
-                            <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-bold rounded-md uppercase">
-                              {v.category || 'Mufradat'}
-                            </span>
-                            <AudioPlayerButton arabicText={v.word} size="sm" />
-                          </div>
-
-                          {!isFlipped ? (
-                            <div className="text-center py-2 space-y-1">
-                              <p className="font-arabic text-3xl text-slate-900 font-bold">{v.word}</p>
-                              <p className="text-xs text-emerald-700 font-mono font-semibold">{v.latin}</p>
-                              <p className="text-[10px] text-slate-400 mt-2 flex items-center justify-center gap-1">
-                                <RefreshCw size={10} /> Klik untuk lihat terjemahan
-                              </p>
-                            </div>
-                          ) : (
-                            <div className="text-center py-2 space-y-1 animate-fadeIn">
-                              <p className="text-lg font-extrabold text-emerald-800">{v.meaning}</p>
-                              {v.exampleArabic && (
-                                <p className="font-arabic text-base text-slate-700 mt-1">{v.exampleArabic}</p>
-                              )}
-                              {v.exampleTranslation && (
-                                <p className="text-[11px] text-slate-500 italic">"{v.exampleTranslation}"</p>
-                              )}
-                            </div>
-                          )}
-
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <KosakataTableView
+                    title={currentMateri.title}
+                    arabicTitle={currentMateri.arabicTitle}
+                    babNumber={currentMateri.babNumber}
+                    vocabularies={currentMateri.vocabularies || []}
+                    onLaunchFlashcard={() => {
+                      const vocabs = currentMateri.vocabularies || [];
+                      const items: FlashcardItem[] = vocabs.map(v => ({
+                        id: v.id,
+                        frontArabic: v.word,
+                        backTranslation: v.meaning,
+                        latin: v.latin,
+                      }));
+                      setFlashcardModalState({
+                        isOpen: true,
+                        title: `Flashcard Kosakata - ${currentMateri.title}`,
+                        items,
+                      });
+                    }}
+                    isEditable={false}
+                  />
                 </div>
               )}
 
@@ -328,6 +356,14 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
           textContent={previewPdfMateri.content}
         />
       )}
+
+      {/* Flashcard Modal */}
+      <FlashcardModal
+        isOpen={flashcardModalState.isOpen}
+        onClose={() => setFlashcardModalState(prev => ({ ...prev, isOpen: false }))}
+        title={flashcardModalState.title}
+        items={flashcardModalState.items}
+      />
 
     </div>
   );

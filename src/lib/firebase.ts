@@ -10,7 +10,6 @@ import {
   User,
   updateProfile,
 } from "firebase/auth";
-import { getAnalytics, isSupported } from "firebase/analytics";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -28,22 +27,6 @@ export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
-// Analytics initialized safely with error protection
-export let analytics: ReturnType<typeof getAnalytics> | null = null;
-if (typeof window !== "undefined") {
-  isSupported().then((supported) => {
-    if (supported) {
-      try {
-        analytics = getAnalytics(app);
-      } catch (err) {
-        console.warn("Firebase Analytics could not be initialized:", err);
-      }
-    }
-  }).catch((err) => {
-    console.warn("Firebase Analytics isSupported check failed:", err);
-  });
-}
-
 // Authentication Helpers
 export const signInWithGoogle = async () => {
   try {
@@ -51,6 +34,9 @@ export const signInWithGoogle = async () => {
     return result.user;
   } catch (error: any) {
     console.error("Firebase Google Auth error:", error);
+    if (error?.code === 'auth/api-key-not-valid' || error?.message?.includes('API key not valid')) {
+      throw new Error("API Key Firebase tidak valid. Silakan gunakan Login Email/Password atau perbarui API Key di Firebase Console.");
+    }
     throw error;
   }
 };
@@ -64,6 +50,9 @@ export const registerUser = async (email: string, pass: string, name: string) =>
     return userCred.user;
   } catch (error: any) {
     console.error("Firebase Register error:", error);
+    if (error?.code === 'auth/api-key-not-valid' || error?.message?.includes('API key not valid')) {
+      throw new Error("API Key Firebase belum diaktifkan/valid. Periksa konfigurasi Firebase Console.");
+    }
     throw error;
   }
 };
@@ -74,6 +63,9 @@ export const loginUser = async (email: string, pass: string) => {
     return userCred.user;
   } catch (error: any) {
     console.error("Firebase Login error:", error);
+    if (error?.code === 'auth/api-key-not-valid' || error?.message?.includes('API key not valid')) {
+      throw new Error("API Key Firebase belum diaktifkan/valid. Periksa konfigurasi Firebase Console.");
+    }
     throw error;
   }
 };

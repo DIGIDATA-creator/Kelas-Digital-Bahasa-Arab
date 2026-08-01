@@ -77,9 +77,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                   LMS v2.0
                 </span>
               </div>
-              <p className="text-xs text-slate-400 font-arabic mt-0.5">
-                فَصْلُ اللُّغَةِ الْعَرَبِيَّةِ الرَّقْمِيُّ
-              </p>
             </div>
           </div>
 

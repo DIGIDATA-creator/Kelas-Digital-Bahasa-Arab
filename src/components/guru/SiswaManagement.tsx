@@ -22,11 +22,27 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    nisn: '',
     email: '',
-    className: 'Kelas X Bahasa',
+    password: '',
+    tingkat: 'Dasar' as 'Dasar' | 'Menengah Pertama' | 'Menengah Atas' | 'Umum',
+    className: 'Kelas 1',
+    nisn: '',
     avatar: '',
   });
+
+  const getKelasOptions = (tingkat: string) => {
+    switch (tingkat) {
+      case 'Dasar':
+        return ['Kelas 1', 'Kelas 2', 'Kelas 3', 'Kelas 4', 'Kelas 5', 'Kelas 6'];
+      case 'Menengah Pertama':
+        return ['Kelas 7', 'Kelas 8', 'Kelas 9'];
+      case 'Menengah Atas':
+        return ['Kelas 10', 'Kelas 11', 'Kelas 12'];
+      case 'Umum':
+      default:
+        return ['Umum'];
+    }
+  };
 
   const classes = Array.from(new Set(students.map(s => s.className)));
 
@@ -42,9 +58,11 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
     setEditingStudent(null);
     setFormData({
       name: '',
-      nisn: `2026${Math.floor(1000 + Math.random() * 9000)}`,
       email: '',
-      className: 'Kelas X Bahasa',
+      password: '',
+      tingkat: 'Dasar',
+      className: 'Kelas 1',
+      nisn: `2026${Math.floor(1000 + Math.random() * 9000)}`,
       avatar: `https://images.unsplash.com/photo-${1530000000000 + Math.floor(Math.random() * 1000000)}?w=150&auto=format&fit=crop&q=80`,
     });
     setIsModalOpen(true);
@@ -52,11 +70,21 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
 
   const handleOpenEditModal = (std: Student) => {
     setEditingStudent(std);
+    const inferredTingkat = std.className.includes('10') || std.className.includes('11') || std.className.includes('12') || std.className.includes('X')
+      ? 'Menengah Atas'
+      : std.className.includes('7') || std.className.includes('8') || std.className.includes('9')
+      ? 'Menengah Pertama'
+      : std.className.includes('Umum')
+      ? 'Umum'
+      : 'Dasar';
+
     setFormData({
       name: std.name,
-      nisn: std.nisn,
       email: std.email,
+      password: (std as any).password || '',
+      tingkat: (std as any).tingkat || inferredTingkat,
       className: std.className,
+      nisn: std.nisn,
       avatar: std.avatar,
     });
     setIsModalOpen(true);
@@ -90,11 +118,13 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
           return {
             ...s,
             name: formData.name,
-            nisn: formData.nisn,
             email: formData.email,
+            password: formData.password,
+            tingkat: formData.tingkat,
             className: formData.className,
+            nisn: formData.nisn || s.nisn,
             avatar: formData.avatar || s.avatar,
-          };
+          } as Student;
         }
         return s;
       });
@@ -104,16 +134,18 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
       const newStudent: Student = {
         id: `std-${Date.now()}`,
         name: formData.name,
-        nisn: formData.nisn,
         email: formData.email || `${formData.name.toLowerCase().replace(/\s+/g, '')}@siswa.belajar.id`,
+        password: formData.password || '123456',
+        tingkat: formData.tingkat,
         className: formData.className,
+        nisn: formData.nisn || `2026${Math.floor(1000 + Math.random() * 9000)}`,
         avatar: formData.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
         totalXP: 0,
         completedMaterials: [],
         attempts: [],
         status: 'aktif',
         lastActive: new Date().toISOString(),
-      };
+      } as Student;
       onSaveStudents([...students, newStudent]);
     }
 
@@ -425,26 +457,14 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
 
             <div className="space-y-3 text-xs sm:text-sm">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Nama Lengkap Siswa</label>
+                <label className="block font-semibold text-slate-700 mb-1">Nama Lengkap</label>
                 <input
                   type="text"
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Contoh: Ahmad Fauzi"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-hidden focus:border-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">NISN Siswa</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.nisn}
-                  onChange={(e) => setFormData({ ...formData, nisn: e.target.value })}
-                  placeholder="2026xxxx"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-hidden focus:border-emerald-500"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-hidden focus:border-emerald-500 font-medium"
                 />
               </div>
 
@@ -452,25 +472,71 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                 <label className="block font-semibold text-slate-700 mb-1">Email Siswa</label>
                 <input
                   type="email"
+                  required
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="siswa@sekolah.id"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-hidden focus:border-emerald-500"
+                  placeholder="siswa@sekolah.sch.id"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-hidden focus:border-emerald-500 font-medium"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Rombongan Belajar / Kelas</label>
-                <select
-                  value={formData.className}
-                  onChange={(e) => setFormData({ ...formData, className: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-hidden focus:border-emerald-500"
-                >
-                  <option value="Kelas X Bahasa">Kelas X Bahasa</option>
-                  <option value="Kelas X IPA 1">Kelas X IPA 1</option>
-                  <option value="Kelas X IPS 1">Kelas X IPS 1</option>
-                  <option value="Kelas XI Bahasa">Kelas XI Bahasa</option>
-                </select>
+                <label className="block font-semibold text-slate-700 mb-1">Password Akun Siswa</label>
+                <input
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  placeholder={editingStudent ? "Kosongkan jika tidak ingin mengubah password" : "Password (min. 6 karakter)"}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-hidden focus:border-emerald-500 font-medium"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Tingkat Pendidikan</label>
+                  <select
+                    value={formData.tingkat}
+                    onChange={(e) => {
+                      const newTingkat = e.target.value as any;
+                      const opts = getKelasOptions(newTingkat);
+                      setFormData({
+                        ...formData,
+                        tingkat: newTingkat,
+                        className: opts[0],
+                      });
+                    }}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-hidden focus:border-emerald-500 font-semibold text-slate-800"
+                  >
+                    <option value="Dasar">Dasar (SD/MI)</option>
+                    <option value="Menengah Pertama">Menengah Pertama (SMP/MTs)</option>
+                    <option value="Menengah Atas">Menengah Atas (SMA/MA)</option>
+                    <option value="Umum">Umum</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Kelas / Rombel</label>
+                  <select
+                    value={formData.className}
+                    onChange={(e) => setFormData({ ...formData, className: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-hidden focus:border-emerald-500 font-semibold text-emerald-800"
+                  >
+                    {getKelasOptions(formData.tingkat).map((k) => (
+                      <option key={k} value={k}>{k}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">NISN (Nomor Induk Siswa Nasional)</label>
+                <input
+                  type="text"
+                  value={formData.nisn}
+                  onChange={(e) => setFormData({ ...formData, nisn: e.target.value })}
+                  placeholder="2026xxxx"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-hidden focus:border-emerald-500 font-mono"
+                />
               </div>
             </div>
 
