@@ -266,7 +266,7 @@ export const SiswaProfile: React.FC<SiswaProfileProps> = ({
                         ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
                         : 'bg-pink-50 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300 border border-pink-200 dark:border-pink-800'
                     }`}>
-                      {currentStudent.gender === 'Laki-laki' ? '👨 Laki-laki' : '👩 Perempuan'}
+                      {currentStudent.gender === 'Laki-laki' ? '👨 Laki-laki (طَالِبٌ)' : '👩 Perempuan (طَالِبَةٌ)'}
                     </span>
                   )}
                 </h2>
@@ -274,10 +274,10 @@ export const SiswaProfile: React.FC<SiswaProfileProps> = ({
                   {currentStudent.schoolName || 'Tanpa Sekolah'} • {currentStudent.className} ({currentStudent.rombelName || 'Rombel General'})
                 </p>
                 
-                {/* Arabic Title Badge with proper spacing to prevent collisions */}
+                {/* Arabic Title Badge with proper gender agreement (طَالِبٌ / طَالِبَةٌ) */}
                 <div className="mt-2.5 flex items-center justify-center sm:justify-start">
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800 rounded-xl font-arabic font-bold text-xs sm:text-base leading-relaxed tracking-wide shadow-2xs">
-                    🎓 طَالِبُ اللُّغَةِ الْعَرَبِيَّةِ
+                    {currentStudent.gender === 'Perempuan' ? '🎓 طَالِبَةُ اللُّغَةِ الْعَرَبِيَّةِ' : '🎓 طَالِبُ اللُّغَةِ الْعَرَبِيَّةِ'}
                   </span>
                 </div>
               </div>
@@ -375,18 +375,18 @@ export const SiswaProfile: React.FC<SiswaProfileProps> = ({
                       : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300'
                   }`}
                 >
-                  👨 Laki-laki
+                  👨 Laki-laki (طَالِبٌ)
                 </button>
                 <button
                   type="button"
                   onClick={() => setGender('Perempuan')}
                   className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
                     gender === 'Perempuan'
-                      ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-500 text-emerald-800 dark:text-emerald-300 ring-1 ring-emerald-500/20'
+                      ? 'bg-pink-50 dark:bg-pink-950/60 border-pink-500 text-pink-800 dark:text-pink-300 ring-1 ring-pink-500/20'
                       : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300'
                   }`}
                 >
-                  👩 Perempuan
+                  👩 Perempuan (طَالِبَةٌ)
                 </button>
               </div>
             </div>

@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { Role, Student, TingkatType } from '../../types';
 import { storageService, UserSession } from '../../services/storage';
 import { PendaftaranSiswaForm } from './PendaftaranSiswaForm';
-import { signInWithGoogle } from '../../lib/firebase';
+import { signInWithGoogle, registerUser } from '../../lib/firebase';
 import {
   Lock,
   Mail,
@@ -443,30 +443,19 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 Masuk dengan Akun Google
               </button>
 
-              {/* Demo Quick Login Box */}
+              {/* Demo Quick Login Box - Siswa Only (Akses Guru Terproteksi) */}
               <div className="mt-6 p-4 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50 space-y-3">
-                <div className="flex items-center gap-2 text-xs font-black text-amber-900 dark:text-amber-300">
-                  <Sparkles size={16} className="text-amber-600 dark:text-amber-400" />
-                  <span>Akses Pengujian Demo Cepat:</span>
+                <div className="flex items-center justify-between gap-2 text-xs font-black text-amber-900 dark:text-amber-300">
+                  <span className="flex items-center gap-1.5">
+                    <Sparkles size={16} className="text-amber-600 dark:text-amber-400" />
+                    <span>Uji Akses Demo Siswa:</span>
+                  </span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-1">
+                    <Lock size={10} className="text-amber-600" /> Akun Guru Terproteksi Password
+                  </span>
                 </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => handleQuickDemoLogin('guru', 'ahmad.dahlan@sekolah.sch.id', 'Ust. Ahmad Dahlan, M.Pd.')}
-                    className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-amber-200 dark:border-slate-700 hover:border-amber-400 text-left font-semibold flex items-center justify-between transition-all cursor-pointer group"
-                  >
-                    <div>
-                      <div className="font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-1">
-                        <Shield size={12} className="text-emerald-500" /> Ust. Ahmad Dahlan
-                      </div>
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400">Akun Guru / Admin</div>
-                    </div>
-                    <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-md font-bold group-hover:bg-emerald-600 group-hover:text-white transition-all">
-                      Masuk Guru
-                    </span>
-                  </button>
-
                   <button
                     type="button"
                     onClick={() => handleQuickDemoLogin('siswa', 'farhan@siswa.belajar.id', 'Muhammad Farhan', 'std-1')}
@@ -474,15 +463,35 @@ export const LoginView: React.FC<LoginViewProps> = ({
                   >
                     <div>
                       <div className="font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-1">
-                        <GraduationCap size={12} className="text-emerald-500" /> Muhammad Farhan
+                        <GraduationCap size={12} className="text-emerald-500" /> M. Farhan
                       </div>
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400">Akun Siswa Demo</div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400">Siswa Laki-laki (👨 طَالِبٌ)</div>
                     </div>
                     <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-md font-bold group-hover:bg-emerald-600 group-hover:text-white transition-all">
                       Masuk Siswa
                     </span>
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleQuickDemoLogin('siswa', 'aisyah@siswa.belajar.id', 'Siti Aisyah', 'std-2')}
+                    className="p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-amber-200 dark:border-slate-700 hover:border-amber-400 text-left font-semibold flex items-center justify-between transition-all cursor-pointer group"
+                  >
+                    <div>
+                      <div className="font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-1">
+                        <GraduationCap size={12} className="text-pink-500" /> Siti Aisyah
+                      </div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400">Siswi Perempuan (👩 طَالِبَةٌ)</div>
+                    </div>
+                    <span className="text-[10px] bg-pink-100 dark:bg-pink-950 text-pink-700 dark:text-pink-300 px-2 py-0.5 rounded-md font-bold group-hover:bg-pink-600 group-hover:text-white transition-all">
+                      Masuk Siswi
+                    </span>
+                  </button>
                 </div>
+
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 text-center italic pt-1">
+                  * Akses akun Guru/Admin tidak tersedia di tombol demo. Guru/Admin wajib masuk via form Log In kredensial di atas.
+                </p>
               </div>
 
             </form>
@@ -498,9 +507,46 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
               <PendaftaranSiswaForm
                 existingStudents={students}
-                onSuccess={() => {
-                  setSuccessMsg('Pendaftaran siswa baru berhasil dikirim! Menunggu persetujuan dari Guru.');
-                  setTimeout(() => setActiveTab('login'), 2000);
+                onRegisterSubmit={async (data) => {
+                  try {
+                    if (data.password) {
+                      try {
+                        await registerUser(data.email, data.password, data.name);
+                      } catch (fbErr: any) {
+                        console.warn("Firebase register skipped/handled:", fbErr);
+                      }
+                    }
+
+                    const newStudent: Student = {
+                      id: `std-${Date.now()}`,
+                      name: data.name,
+                      email: data.email,
+                      nisn: `2026${Math.floor(1000 + Math.random() * 9000)}`,
+                      gender: data.gender,
+                      tingkat: data.tingkat,
+                      schoolName: data.schoolName,
+                      className: data.className,
+                      rombelName: data.rombelName,
+                      avatar: data.gender === 'Perempuan'
+                        ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
+                        : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+                      totalXP: 0,
+                      completedMaterials: [],
+                      attempts: [],
+                      status: 'pending',
+                      lastActive: new Date().toISOString(),
+                      registeredAt: new Date().toISOString(),
+                    };
+
+                    const currentList = storageService.getStudents();
+                    const updatedList = [newStudent, ...currentList];
+                    storageService.saveStudents(updatedList);
+
+                    setSuccessMsg('Pendaftaran siswa baru berhasil dikirim! Menunggu persetujuan (ACC) dari Guru.');
+                    setTimeout(() => setActiveTab('login'), 2000);
+                  } catch (err: any) {
+                    setErrorMsg(err.message || 'Gagal mendaftar. Silakan coba beberapa saat lagi.');
+                  }
                 }}
               />
             </div>

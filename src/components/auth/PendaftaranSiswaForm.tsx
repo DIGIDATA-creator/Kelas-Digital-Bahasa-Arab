@@ -5,7 +5,7 @@ import { User, Mail, Lock, Building2, GraduationCap, Users, Sparkles, CheckCircl
 interface PendaftaranSiswaFormProps {
   existingStudents: Student[];
   initialStudent?: Student;
-  onRegisterSubmit: (studentData: {
+  onRegisterSubmit?: (studentData: {
     name: string;
     email: string;
     password?: string;
@@ -15,6 +15,7 @@ interface PendaftaranSiswaFormProps {
     className: string;
     rombelName: string;
   }) => void;
+  onSuccess?: () => void;
   isLoading?: boolean;
   isGuruAdminMode?: boolean; // If true, sets status to 'aktif' / 'disetujui' immediately
   editingStudentId?: string; // If editing an existing student, skip duplicate check for current student
@@ -24,6 +25,7 @@ export const PendaftaranSiswaForm: React.FC<PendaftaranSiswaFormProps> = ({
   existingStudents,
   initialStudent,
   onRegisterSubmit,
+  onSuccess,
   isLoading = false,
   isGuruAdminMode = false,
   editingStudentId,
@@ -101,16 +103,22 @@ export const PendaftaranSiswaForm: React.FC<PendaftaranSiswaFormProps> = ({
       return;
     }
 
-    onRegisterSubmit({
-      name: name.trim(),
-      email: email.trim(),
-      password,
-      gender,
-      tingkat,
-      schoolName: tingkat === 'Umum' ? (schoolName.trim() || 'Masyarakat Umum') : (schoolName.trim() || 'Tanpa Sekolah'),
-      className,
-      rombelName: rombelName.trim() || className,
-    });
+    if (onRegisterSubmit) {
+      onRegisterSubmit({
+        name: name.trim(),
+        email: email.trim(),
+        password,
+        gender,
+        tingkat,
+        schoolName: tingkat === 'Umum' ? (schoolName.trim() || 'Masyarakat Umum') : (schoolName.trim() || 'Tanpa Sekolah'),
+        className,
+        rombelName: rombelName.trim() || className,
+      });
+    }
+
+    if (onSuccess) {
+      onSuccess();
+    }
   };
 
   return (
@@ -148,18 +156,18 @@ export const PendaftaranSiswaForm: React.FC<PendaftaranSiswaFormProps> = ({
                 : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-400'
             }`}
           >
-            👨 Laki-laki
+            👨 Laki-laki (طَالِبٌ)
           </button>
           <button
             type="button"
             onClick={() => setGender('Perempuan')}
             className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
               gender === 'Perempuan'
-                ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-500 text-emerald-800 dark:text-emerald-300 ring-2 ring-emerald-500/20 shadow-xs'
+                ? 'bg-pink-50 dark:bg-pink-950/60 border-pink-500 text-pink-800 dark:text-pink-300 ring-2 ring-pink-500/20 shadow-xs'
                 : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-400'
             }`}
           >
-            👩 Perempuan
+            👩 Perempuan (طَالِبَةٌ)
           </button>
         </div>
       </div>

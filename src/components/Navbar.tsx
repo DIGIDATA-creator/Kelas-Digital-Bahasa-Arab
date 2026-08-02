@@ -9,6 +9,7 @@ import {
   Moon,
   LogOut,
   Lock,
+  UserCheck,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -24,6 +25,7 @@ interface NavbarProps {
   onToggleDarkMode?: () => void;
   userSession: UserSession | null;
   onLogout: () => void;
+  onSwitchToStudentSession?: (student: Student) => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -37,6 +39,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onToggleDarkMode,
   userSession,
   onLogout,
+  onSwitchToStudentSession,
 }) => {
   const currentStudent = students.find(s => s.id === currentStudentId) || students[0];
 
@@ -120,6 +123,30 @@ export const Navbar: React.FC<NavbarProps> = ({
                           {userSession.userName}
                         </span>
                       </div>
+
+                      {/* Quick Admin Student Testing Dropdown */}
+                      {onSwitchToStudentSession && students.length > 0 && (
+                        <div className="hidden lg:flex items-center ml-2 pl-2 border-l border-slate-700">
+                          <div className="relative flex items-center">
+                            <select
+                              value=""
+                              onChange={(e) => {
+                                const found = students.find(s => s.id === e.target.value);
+                                if (found) onSwitchToStudentSession(found);
+                              }}
+                              className="bg-slate-900 text-amber-300 border border-amber-500/40 hover:border-amber-400 text-[11px] font-bold rounded-lg px-2 py-1 pr-6 cursor-pointer focus:outline-none"
+                              title="Uji Akses Akun Siswa (Demo)"
+                            >
+                              <option value="" disabled>🧪 Simulasi Akun Siswa...</option>
+                              {students.map(s => (
+                                <option key={s.id} value={s.id}>
+                                  {s.gender === 'Perempuan' ? '👩' : '👨'} {s.name} ({s.className})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      )}
                     </>
                   ) : (
                     <>
@@ -131,7 +158,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <div className="flex flex-col text-left">
                         <div className="flex items-center gap-1">
                           <span className="text-[9px] text-emerald-400 font-black uppercase tracking-wider leading-tight">
-                            Siswa
+                            {currentStudent?.gender === 'Perempuan' ? 'طَالِبَةٌ' : 'طَالِبٌ'}
                           </span>
                           <span className="text-[10px] text-amber-300 font-extrabold bg-amber-400/20 px-1 rounded">
                             {currentStudent?.totalXP || 0} XP

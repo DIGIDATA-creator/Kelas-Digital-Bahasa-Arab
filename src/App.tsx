@@ -118,6 +118,23 @@ export default function App() {
     setActiveTab('dashboard');
   };
 
+  const handleSwitchToStudentSession = (student: Student) => {
+    const session: UserSession = {
+      role: 'siswa',
+      userEmail: student.email,
+      userName: student.name,
+      studentId: student.id,
+      avatar: student.avatar,
+      loggedInAt: new Date().toISOString(),
+    };
+    storageService.setUserSession(session);
+    setUserSession(session);
+    setCurrentRole('siswa');
+    setCurrentStudentId(student.id);
+    storageService.setCurrentStudentId(student.id);
+    setActiveTab('dashboard');
+  };
+
   // Data persistence handlers
   const handleSaveMateri = (updated: Materi[]) => {
     setMateriList(updated);
@@ -182,6 +199,7 @@ export default function App() {
         onToggleDarkMode={handleToggleDarkMode}
         userSession={userSession}
         onLogout={handleLogout}
+        onSwitchToStudentSession={handleSwitchToStudentSession}
       />
 
       {/* Main Content Area */}
@@ -214,6 +232,7 @@ export default function App() {
                       logs={logs}
                       onNavigate={setActiveTab}
                       isLoading={isLoadingData}
+                      onSwitchToStudentSession={handleSwitchToStudentSession}
                     />
                   )}
 
@@ -222,6 +241,7 @@ export default function App() {
                       students={students}
                       materiList={materiList}
                       onSaveStudents={handleSaveStudents}
+                      onSwitchToStudentSession={handleSwitchToStudentSession}
                     />
                   )}
 

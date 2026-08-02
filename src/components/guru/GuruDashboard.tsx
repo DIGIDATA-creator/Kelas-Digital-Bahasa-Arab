@@ -1,6 +1,6 @@
 import React from 'react';
 import { Materi, Penilaian, Student, ActivityLog } from '../../types';
-import { Users, BookOpen, FileCheck2, Award, Plus, FileUp, Sparkles, TrendingUp, Clock, CheckCircle2 } from 'lucide-react';
+import { Users, BookOpen, FileCheck2, Award, Plus, FileUp, Sparkles, TrendingUp, Clock, CheckCircle2, UserCheck, GraduationCap, ArrowRight } from 'lucide-react';
 import { DistribusiKemahiranChart } from './DistribusiKemahiranChart';
 import { GuruDashboardSkeleton } from '../common/Skeleton';
 import { MahfudzotOfTheDayCard } from '../common/MahfudzotOfTheDayCard';
@@ -12,6 +12,7 @@ interface GuruDashboardProps {
   logs: ActivityLog[];
   onNavigate: (tab: string) => void;
   isLoading?: boolean;
+  onSwitchToStudentSession?: (student: Student) => void;
 }
 
 export const GuruDashboard: React.FC<GuruDashboardProps> = ({
@@ -21,6 +22,7 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({
   logs,
   onNavigate,
   isLoading = false,
+  onSwitchToStudentSession,
 }) => {
   if (isLoading) {
     return <GuruDashboardSkeleton />;
@@ -135,6 +137,75 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({
         </div>
 
       </div>
+
+      {/* Widget Pengujian Demo Cepat Akun Siswa untuk Admin/Guru */}
+      {onSwitchToStudentSession && (
+        <div className="bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-emerald-500/10 dark:from-amber-950/40 dark:to-emerald-950/40 rounded-2xl p-5 border border-amber-300/60 dark:border-amber-800/60 shadow-xs space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200/60 dark:border-amber-800/40 pb-2.5">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-amber-500 text-amber-950 font-black rounded-xl shadow-xs">
+                <UserCheck size={18} />
+              </div>
+              <div>
+                <h3 className="text-sm font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                  Pengujian Akses Akun Siswa (Demo / Simulasi)
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Fitur Admin: Pilih akun siswa dummy di bawah untuk mensimulasikan tampilan portal LMS dari sudut pandang siswa (طَالِبٌ / طَالِبَةٌ).
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => onNavigate('siswa')}
+              className="text-xs font-bold text-amber-800 dark:text-amber-300 hover:underline flex items-center gap-1 self-start sm:self-auto shrink-0"
+            >
+              Kelola Semua Siswa <ArrowRight size={14} />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+            {students.slice(0, 4).map((std) => (
+              <div
+                key={std.id}
+                className="bg-white dark:bg-slate-900 rounded-xl p-3 border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col justify-between space-y-2 hover:border-amber-400 transition-all"
+              >
+                <div className="flex items-center gap-2.5">
+                  <img
+                    src={std.avatar}
+                    alt={std.name}
+                    className="w-9 h-9 rounded-full object-cover border border-slate-200 shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <h4 className="font-extrabold text-xs text-slate-900 dark:text-slate-100 truncate">
+                      {std.name}
+                    </h4>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                        std.gender === 'Perempuan'
+                          ? 'bg-pink-100 dark:bg-pink-950 text-pink-700 dark:text-pink-300'
+                          : 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300'
+                      }`}>
+                        {std.gender === 'Perempuan' ? '👩 طَالِبَةٌ' : '👨 طَالِبٌ'}
+                      </span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                        {std.className}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => onSwitchToStudentSession(std)}
+                  className="w-full py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                >
+                  <UserCheck size={13} />
+                  <span>Simulasi Log In</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Bar Chart: Student Proficiency Distribution by School & Class */}
       <DistribusiKemahiranChart students={students} />

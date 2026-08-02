@@ -66,7 +66,7 @@ export const SiswaDashboard: React.FC<SiswaDashboardProps> = ({
         </div>
 
         <div className="absolute -right-6 -bottom-6 opacity-10 font-arabic text-[160px] pointer-events-none select-none text-white">
-          طَالِبٌ
+          {currentStudent.gender === 'Perempuan' ? 'طَالِبَةٌ' : 'طَالِبٌ'}
         </div>
       </div>
 

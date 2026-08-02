@@ -34,12 +34,14 @@ interface SiswaManagementProps {
   students: Student[];
   materiList: Materi[];
   onSaveStudents: (updated: Student[]) => void;
+  onSwitchToStudentSession?: (student: Student) => void;
 }
 
 export const SiswaManagement: React.FC<SiswaManagementProps> = ({
   students,
   materiList,
   onSaveStudents,
+  onSwitchToStudentSession,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState('semua');
@@ -798,6 +800,16 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                                           </select>
 
                                           <div className="flex items-center gap-1">
+                                            {onSwitchToStudentSession && (
+                                              <button
+                                                onClick={() => onSwitchToStudentSession(std)}
+                                                className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg text-[11px] font-extrabold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                                                title="Uji Akses / Simulasi Log In Sebagai Siswa Ini"
+                                              >
+                                                <UserCheck size={13} className="text-amber-600" />
+                                                <span>Uji Log In</span>
+                                              </button>
+                                            )}
                                             <button
                                               onClick={() => setStudentForHafalanChecklist(std)}
                                               className="px-2 py-1 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-lg text-[11px] font-extrabold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
@@ -923,7 +935,7 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                                       ? 'bg-blue-50 text-blue-700 border border-blue-200'
                                       : 'bg-pink-50 text-pink-700 border border-pink-200'
                                   }`}>
-                                    {std.gender === 'Laki-laki' ? '👨 L' : '👩 P'}
+                                    {std.gender === 'Laki-laki' ? '👨 L (طَالِبٌ)' : '👩 P (طَالِبَةٌ)'}
                                   </span>
                                 )}
                               </div>
@@ -983,6 +995,16 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                         </td>
                         <td className="py-3.5 px-3 sm:px-4 text-right">
                           <div className="flex items-center justify-end gap-1">
+                            {onSwitchToStudentSession && (
+                              <button
+                                onClick={() => onSwitchToStudentSession(std)}
+                                className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg text-xs font-extrabold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                                title="Uji Akses / Simulasi Log In Sebagai Siswa Ini"
+                              >
+                                <UserCheck size={14} className="text-amber-600" />
+                                <span>Uji Log In</span>
+                              </button>
+                            )}
                             <button
                               onClick={() => setStudentForHafalanChecklist(std)}
                               className="px-2 py-1 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-lg text-xs font-extrabold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
@@ -1092,8 +1114,11 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                     className="w-12 h-12 rounded-full object-cover border-2 border-emerald-400"
                   />
                   <div>
-                    <h3 className="font-extrabold text-base text-white">
-                      {selectedStudentForDetail.name}
+                    <h3 className="font-extrabold text-base text-white flex items-center gap-2">
+                      <span>{selectedStudentForDetail.name}</span>
+                      <span className="text-xs px-2 py-0.5 rounded bg-white/20 text-white font-bold">
+                        {selectedStudentForDetail.gender === 'Perempuan' ? '👩 Perempuan (طَالِبَةٌ)' : '👨 Laki-laki (طَالِبٌ)'}
+                      </span>
                     </h3>
                     <p className="text-xs text-slate-300">
                       {selectedStudentForDetail.schoolName || 'Tanpa Sekolah'} • {selectedStudentForDetail.className} ({selectedStudentForDetail.rombelName || '-'})
@@ -1143,6 +1168,22 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                     </div>
                   )}
                 </div>
+
+                {onSwitchToStudentSession && (
+                  <div className="pt-3 border-t border-slate-200">
+                    <button
+                      onClick={() => {
+                        const std = selectedStudentForDetail;
+                        setSelectedStudentForDetail(null);
+                        onSwitchToStudentSession(std);
+                      }}
+                      className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
+                    >
+                      <UserCheck size={16} />
+                      <span>Uji Akses / Simulasi Log In Sebagai Siswa Ini</span>
+                    </button>
+                  </div>
+                )}
               </div>
             </motion.div>
           </motion.div>
