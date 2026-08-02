@@ -101,32 +101,32 @@ export const KosakataFormModal: React.FC<KosakataFormModalProps> = ({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.18 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-5 overflow-hidden"
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 15 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 my-8 space-y-5"
+            className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden"
           >
-        
-        {/* Header */}
-        <div className="flex items-center justify-between border-b pb-4">
-          <div>
-            <span className="px-2.5 py-0.5 bg-teal-100 text-teal-800 text-[11px] font-extrabold rounded-full">
-              Formulir Materi Kosakata
-            </span>
-            <h3 className="text-lg font-extrabold text-slate-900 mt-1">
-              {editingMateri ? `Edit Kosakata - ${editingMateri.title}` : 'Tambah Paket Kosakata Baru'}
-            </h3>
-          </div>
-          <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100">
-            <X size={20} />
-          </button>
-        </div>
+            {/* Header - Fixed Top */}
+            <div className="p-4 sm:p-5 border-b border-slate-200 bg-white flex items-center justify-between shrink-0">
+              <div>
+                <span className="px-2.5 py-0.5 bg-teal-100 text-teal-800 text-[11px] font-extrabold rounded-full">
+                  Formulir Materi Kosakata
+                </span>
+                <h3 className="text-base sm:text-lg font-extrabold text-slate-900 mt-1">
+                  {editingMateri ? `Edit Kosakata - ${editingMateri.title}` : 'Tambah Paket Kosakata Baru'}
+                </h3>
+              </div>
+              <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+            <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden text-xs">
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
           
           {/* Bab Number & Judul */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -251,24 +251,25 @@ export const KosakataFormModal: React.FC<KosakataFormModalProps> = ({
             </div>
           </div>
 
-          {/* Submit */}
-          <div className="pt-3 border-t flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold flex items-center gap-2 shadow-md"
-            >
-              <Save size={16} /> Simpan Paket Kosakata
-            </button>
-          </div>
+              </div>
 
-        </form>
+              {/* Submit Footer - Fixed Bottom */}
+              <div className="p-4 bg-slate-50 border-t border-slate-200 shrink-0 flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-xl font-bold cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold flex items-center gap-2 shadow-md cursor-pointer"
+                >
+                  <Save size={16} /> Simpan Paket Kosakata
+                </button>
+              </div>
+            </form>
 
         {/* Spreadsheet Modal */}
         {isSheetModalOpen && (

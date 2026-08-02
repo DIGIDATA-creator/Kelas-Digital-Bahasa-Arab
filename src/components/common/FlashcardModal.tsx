@@ -170,8 +170,8 @@ export const FlashcardModal: React.FC<FlashcardModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-      <div className="relative w-full max-w-xl bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col text-white">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-3 sm:p-5 overflow-hidden">
+      <div className="relative w-full max-w-xl max-h-[90vh] my-auto bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col text-white">
         
         {/* Header */}
         <div className="p-5 bg-gradient-to-r from-emerald-900 to-slate-900 border-b border-slate-800 flex items-center justify-between">
@@ -247,19 +247,24 @@ export const FlashcardModal: React.FC<FlashcardModalProps> = ({
           </div>
         ) : (
           <>
-            <div className="p-6 flex-1 flex flex-col items-center justify-center min-h-[300px]">
+            <div className="p-6 flex-1 flex flex-col items-center justify-center min-h-[320px]">
               <div
                 onClick={() => setIsFlipped(!isFlipped)}
-                className="w-full max-w-md h-64 cursor-pointer perspective-1000 select-none group"
+                className="w-full max-w-md h-72 cursor-pointer perspective-1000 select-none group"
               >
                 <div
-                  className={`relative w-full h-full rounded-3xl p-6 transition-all duration-500 transform-gpu flex flex-col items-center justify-center text-center shadow-xl border ${
+                  className={`relative w-full h-full rounded-3xl p-6 transition-all duration-500 transform-gpu flex flex-col items-center justify-center text-center shadow-2xl border-2 overflow-hidden ${
                     isFlipped
-                      ? 'bg-gradient-to-br from-slate-800 to-slate-900 border-emerald-500/50 shadow-emerald-950/40'
-                      : 'bg-gradient-to-br from-emerald-950 to-slate-900 border-emerald-600/40 hover:border-emerald-500'
+                      ? 'bg-gradient-to-br from-indigo-950 via-purple-950 to-slate-900 border-indigo-500/60 shadow-indigo-950/60'
+                      : 'bg-gradient-to-br from-emerald-950 via-teal-900 to-cyan-950 border-emerald-400/60 shadow-emerald-950/60 hover:border-emerald-300 hover:scale-[1.01]'
                   }`}
                 >
-                  <div className="absolute top-4 left-4 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-slate-800/80 text-emerald-400 border border-slate-700">
+                  {/* Decorative ambient background light */}
+                  <div className={`absolute -top-16 -right-16 w-40 h-40 rounded-full blur-2xl pointer-events-none ${isFlipped ? 'bg-purple-500/20' : 'bg-emerald-400/20'}`} />
+                  <div className={`absolute -bottom-16 -left-16 w-40 h-40 rounded-full blur-2xl pointer-events-none ${isFlipped ? 'bg-indigo-500/20' : 'bg-teal-400/20'}`} />
+
+                  {/* Header Badge */}
+                  <div className="absolute top-4 left-4 z-10 text-[10px] font-extrabold uppercase tracking-wider px-3 py-1 rounded-full bg-slate-950/70 text-emerald-300 border border-emerald-500/40 backdrop-blur-md shadow-sm">
                     {isFlipped
                       ? currentCard.speaker2Name
                         ? `Jawaban (${currentCard.speaker2Name})`
@@ -269,13 +274,14 @@ export const FlashcardModal: React.FC<FlashcardModalProps> = ({
                       : 'Soal / Bahasa Arab'}
                   </div>
 
+                  {/* Audio Button */}
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleSpeak(isFlipped ? currentCard.backArabic || currentCard.frontArabic : currentCard.frontArabic);
                     }}
-                    className="absolute top-4 right-4 p-2 bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-300 rounded-full transition-all cursor-pointer"
+                    className="absolute top-4 right-4 z-10 p-2.5 bg-emerald-500/30 hover:bg-emerald-500/60 text-emerald-200 hover:text-white rounded-full transition-all shadow-md cursor-pointer border border-emerald-400/40 hover:scale-110"
                     title="Dengarkan Pelafalan"
                   >
                     <Volume2 size={18} />
@@ -283,20 +289,20 @@ export const FlashcardModal: React.FC<FlashcardModalProps> = ({
 
                   {/* Card Face Content */}
                   {!isFlipped ? (
-                    <div className="space-y-3.5 my-auto w-full px-2">
-                      <p className="font-arabic text-3xl sm:text-4xl font-extrabold text-emerald-200 leading-relaxed drop-shadow-md">
+                    <div className="space-y-4 my-auto w-full px-2 z-10">
+                      <p className="font-arabic text-3xl sm:text-4xl font-extrabold text-amber-200 leading-relaxed drop-shadow-xl my-1">
                         {currentCard.frontArabic}
                       </p>
 
                       {currentCard.latin && (
-                        <p className="text-xs text-slate-400 italic font-medium">
+                        <span className="inline-block px-3 py-1 bg-slate-900/80 border border-emerald-500/30 text-emerald-300 text-xs italic font-medium rounded-full shadow-inner">
                           "{currentCard.latin}"
-                        </p>
+                        </span>
                       )}
 
                       {/* Terjemah Jawaban di Bawah Soal */}
                       {currentCard.frontSubtext && (
-                        <div className="p-2.5 bg-sky-950/80 rounded-xl border border-sky-500/40 text-xs text-sky-200 shadow-inner">
+                        <div className="p-3 bg-slate-900/90 rounded-2xl border border-sky-500/50 text-xs text-sky-200 shadow-lg text-left">
                           <span className="text-[10px] text-sky-400 font-extrabold block uppercase tracking-wider">
                             Terjemah Jawaban:
                           </span>
@@ -306,24 +312,26 @@ export const FlashcardModal: React.FC<FlashcardModalProps> = ({
                         </div>
                       )}
 
-                      <p className="text-[11px] text-slate-500 font-semibold flex items-center justify-center gap-1 pt-1">
-                        <Eye size={12} /> Klik kartu untuk melihat jawaban lengkap
-                      </p>
+                      <div className="pt-2">
+                        <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-300 bg-slate-950/60 px-3 py-1 rounded-full border border-emerald-500/30 animate-pulse">
+                          <Eye size={13} /> Klik kartu untuk melihat jawaban lengkap
+                        </span>
+                      </div>
                     </div>
                   ) : (
-                    <div className="space-y-3 my-auto animate-fadeIn w-full px-2">
-                      <span className="text-xs uppercase font-extrabold tracking-widest text-emerald-400 block">
+                    <div className="space-y-3.5 my-auto animate-fadeIn w-full px-2 z-10">
+                      <span className="text-xs uppercase font-extrabold tracking-widest text-purple-300 block">
                         {currentCard.backArabic ? 'Jawaban (Bahasa Arab):' : 'Terjemahan / Arti:'}
                       </span>
 
                       {currentCard.backArabic && (
-                        <p className="font-arabic text-3xl sm:text-4xl font-extrabold text-emerald-300 leading-relaxed drop-shadow-md my-1">
+                        <p className="font-arabic text-3xl sm:text-4xl font-extrabold text-amber-200 leading-relaxed drop-shadow-xl my-1">
                           {currentCard.backArabic}
                         </p>
                       )}
 
-                      <div className="p-2.5 bg-slate-800/80 rounded-xl border border-slate-700">
-                        <span className="text-[10px] uppercase font-bold text-slate-400 block">Terjemahan Jawaban:</span>
+                      <div className="p-3 bg-slate-950/80 rounded-2xl border border-purple-500/40 shadow-inner">
+                        <span className="text-[10px] uppercase font-bold text-purple-400 block">Terjemahan Jawaban:</span>
                         <p className="text-base sm:text-lg font-black text-white tracking-tight mt-0.5">
                           "{currentCard.backTranslation}"
                         </p>
@@ -335,9 +343,11 @@ export const FlashcardModal: React.FC<FlashcardModalProps> = ({
                         </p>
                       )}
 
-                      <p className="text-[11px] text-slate-400 font-semibold flex items-center justify-center gap-1 pt-1">
-                        <RotateCw size={12} /> Klik kartu untuk kembali ke Soal
-                      </p>
+                      <div className="pt-1">
+                        <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-purple-300 bg-slate-950/60 px-3 py-1 rounded-full border border-purple-500/30">
+                          <RotateCw size={13} /> Klik kartu untuk kembali ke Soal
+                        </span>
+                      </div>
                     </div>
                   )}
                 </div>

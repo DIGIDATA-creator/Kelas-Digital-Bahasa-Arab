@@ -79,6 +79,8 @@ export const HiwarFormModal: React.FC<HiwarFormModalProps> = ({
   // Sheet Modal State
   const [isSheetModalOpen, setIsSheetModalOpen] = useState(false);
   const [sheetText, setSheetText] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
+  const modalScrollRef = React.useRef<HTMLDivElement>(null);
 
   // Synchronize modal fields whenever isOpen or editingMateri changes
   useEffect(() => {
@@ -184,14 +186,26 @@ export const HiwarFormModal: React.FC<HiwarFormModalProps> = ({
     const lines = sheetText.split('\n').filter(line => line.trim().length > 0);
     const parsedPairs: DialogueTurnPair[] = [];
 
-    lines.forEach((line, idx) => {
-      // Split by tab or comma
-      const cols = line.includes('\t') ? line.split('\t') : line.split(',');
-      const cleaned = cols.map(c => c.trim());
+    const tokenizeLine = (rawLine: string): string[] => {
+      let sep = '\t';
+      if (rawLine.includes('\t')) sep = '\t';
+      else if (rawLine.includes(';')) sep = ';';
+      else if (rawLine.includes('|')) sep = '|';
+      else if (rawLine.includes(',')) sep = ',';
+
+      return rawLine.split(sep).map(col => col.trim().replace(/^["']|["']$/g, '').trim());
+    };
+
+    // Temporary storage for single-turn accumulation (if user pastes 2 or 3 cols per row)
+    const singleTurns: { speaker: string; arabic: string; translation: string }[] = [];
+
+    lines.forEach((line) => {
+      const cleaned = tokenizeLine(line);
 
       if (cleaned.length >= 6) {
+        // Format 6 kolom (Pembicara1, Arab1, Terjemah1, Pembicara2, Arab2, Terjemah2)
         parsedPairs.push({
-          id: `sheet-pair-${Date.now()}-${idx}`,
+          id: `sheet-pair-${Date.now()}-${Math.random()}`,
           turnNumber: dialoguePairs.length + parsedPairs.length + 1,
           speaker1: cleaned[0] || 'سُؤَالٌ',
           arabic1: cleaned[1] || '',
@@ -201,9 +215,9 @@ export const HiwarFormModal: React.FC<HiwarFormModalProps> = ({
           translation2: cleaned[5] || '',
         });
       } else if (cleaned.length >= 4) {
-        // Default speakers to سؤال & جواب
+        // Format 4 kolom (Arab1, Terjemah1, Arab2, Terjemah2)
         parsedPairs.push({
-          id: `sheet-pair-${Date.now()}-${idx}`,
+          id: `sheet-pair-${Date.now()}-${Math.random()}`,
           turnNumber: dialoguePairs.length + parsedPairs.length + 1,
           speaker1: 'سُؤَالٌ',
           arabic1: cleaned[0] || '',
@@ -212,11 +226,42 @@ export const HiwarFormModal: React.FC<HiwarFormModalProps> = ({
           arabic2: cleaned[2] || '',
           translation2: cleaned[3] || '',
         });
+      } else if (cleaned.length === 3) {
+        // Format 3 kolom (Pembicara, Arab, Terjemah) per baris single turn
+        singleTurns.push({
+          speaker: cleaned[0] || 'مُتَكَلِّمٌ',
+          arabic: cleaned[1] || '',
+          translation: cleaned[2] || '',
+        });
+      } else if (cleaned.length === 2) {
+        // Format 2 kolom (Arab, Terjemah) per baris single turn
+        const isAnswer = singleTurns.length % 2 === 1;
+        singleTurns.push({
+          speaker: isAnswer ? 'جَوَابٌ' : 'سُؤَالٌ',
+          arabic: cleaned[0] || '',
+          translation: cleaned[1] || '',
+        });
       }
     });
 
+    // Pair up accumulated single turns (if any)
+    for (let i = 0; i < singleTurns.length; i += 2) {
+      const t1 = singleTurns[i];
+      const t2 = singleTurns[i + 1];
+      parsedPairs.push({
+        id: `sheet-pair-${Date.now()}-${Math.random()}`,
+        turnNumber: dialoguePairs.length + parsedPairs.length + 1,
+        speaker1: t1.speaker || 'سُؤَالٌ',
+        arabic1: t1.arabic,
+        translation1: t1.translation,
+        speaker2: t2 ? t2.speaker : 'جَوَابٌ',
+        arabic2: t2 ? t2.arabic : '',
+        translation2: t2 ? t2.translation : '',
+      });
+    }
+
     if (parsedPairs.length === 0) {
-      alert('Tidak dapat mengurai data sheet. Gunakan format 6 kolom:\n"Pembicara1, Arab1, Terjemah1, Pembicara2, Arab2, Terjemah2"');
+      alert('Tidak dapat mengurai data sheet. Pastikan format mengandung minimal 2 kolom per baris:\n- 6 kolom: Pembicara1, Arab1, Terjemah1, Pembicara2, Arab2, Terjemah2\n- 4 kolom: Arab1, Terjemah1, Arab2, Terjemah2\n- 3 kolom per baris: Pembicara, Arab, Terjemah\n- 2 kolom per baris: Arab, Terjemah');
       return;
     }
 
@@ -227,6 +272,24 @@ export const HiwarFormModal: React.FC<HiwarFormModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!title.trim()) {
+      setFormError('Harap isi Judul Utama Materi Hiwar (Langkah 1) terlebih dahulu!');
+      if (modalScrollRef.current) {
+        modalScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      return;
+    }
+
+    if (!babNumber || babNumber < 1) {
+      setFormError('Harap isi Nomor Bab yang valid (Langkah 1) terlebih dahulu!');
+      if (modalScrollRef.current) {
+        modalScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      return;
+    }
+
+    setFormError(null);
 
     // Flatten dialoguePairs to dialogues array for compatibility
     const flatDialogues = dialoguePairs.flatMap((pair) => [
@@ -272,73 +335,90 @@ export const HiwarFormModal: React.FC<HiwarFormModalProps> = ({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.18 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-5 overflow-hidden"
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 15 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="bg-white rounded-3xl max-w-3xl w-full p-6 shadow-2xl border border-slate-200 my-8 space-y-5"
+            className="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden"
           >
-        
-        {/* Header */}
-        <div className="flex items-center justify-between border-b pb-4">
-          <div>
-            <span className="px-2.5 py-0.5 bg-sky-100 text-sky-800 text-[11px] font-extrabold rounded-full">
-              Formulir Modul Hiwar (Percakapan)
-            </span>
-            <h3 className="text-lg font-extrabold text-slate-900 mt-1">
-              {editingMateri ? `Edit Hiwar - ${editingMateri.title}` : 'Tambah Modul Hiwar Baru'}
-            </h3>
-          </div>
-          <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100">
-            <X size={20} />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-          
-          {/* Langkah 1: Input Materi & Video */}
-          <div className="p-4 bg-gradient-to-r from-sky-50 via-sky-50/80 to-blue-50 border-2 border-sky-400 rounded-2xl space-y-3 shadow-2xs">
-            <div className="font-extrabold text-slate-900 text-xs flex items-center justify-between border-b border-sky-200 pb-2">
-              <span className="flex items-center gap-2 text-sky-900">
-                <span className="w-6 h-6 rounded-full bg-sky-700 text-white text-xs font-black flex items-center justify-center shadow-xs">1</span>
-                <span className="text-sm">Langkah 1: Input Data Bab, Judul Utama & Link Video Panduan</span>
-              </span>
-              <span className="text-[11px] font-bold text-sky-700 bg-sky-100/80 px-2.5 py-0.5 rounded-md">Wajib Diisi</span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            {/* Header - Fixed Top */}
+            <div className="p-4 sm:p-5 border-b border-slate-200 bg-white flex items-center justify-between shrink-0">
               <div>
-                <label className="block font-bold text-slate-800 mb-1">
-                  Nomor Bab <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  min={1}
-                  max={50}
-                  required
-                  value={babNumber}
-                  onChange={(e) => setBabNumber(Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-sky-300 rounded-xl focus:border-sky-500 font-extrabold text-sky-900 bg-white"
-                />
+                <span className="px-2.5 py-0.5 bg-sky-100 text-sky-800 text-[11px] font-extrabold rounded-full">
+                  Formulir Modul Hiwar (Percakapan)
+                </span>
+                <h3 className="text-base sm:text-lg font-extrabold text-slate-900 mt-1">
+                  {editingMateri ? `Edit Hiwar - ${editingMateri.title}` : 'Tambah Modul Hiwar Baru'}
+                </h3>
               </div>
-
-              <div className="sm:col-span-3">
-                <label className="block font-bold text-slate-800 mb-1">
-                  Judul Materi Hiwar (Indonesia) <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Contoh: Perkenalan Diri di Sekolah"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="w-full px-3 py-2 border border-sky-300 rounded-xl focus:border-sky-500 font-bold text-slate-900 bg-white"
-                />
-              </div>
+              <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition-colors">
+                <X size={20} />
+              </button>
             </div>
+
+            <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden text-xs">
+              {/* Scrollable Form Body */}
+              <div ref={modalScrollRef} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+                {formError && (
+                  <div className="p-3 bg-rose-50 border-2 border-rose-400 text-rose-800 rounded-xl font-bold flex items-center justify-between shadow-xs">
+                    <span className="flex items-center gap-2">⚠️ {formError}</span>
+                    <button type="button" onClick={() => setFormError(null)} className="text-rose-600 hover:text-rose-900 font-bold text-sm">✕</button>
+                  </div>
+                )}
+                
+                {/* Langkah 1: Input Data Bab, Judul & Video */}
+                <div className="p-4 bg-gradient-to-r from-sky-50 via-sky-50/80 to-blue-50 border-2 border-sky-400 rounded-2xl space-y-3 shadow-2xs">
+                  <div className="font-extrabold text-slate-900 text-xs flex items-center justify-between border-b border-sky-200 pb-2">
+                    <span className="flex items-center gap-2 text-sky-900">
+                      <span className="w-6 h-6 rounded-full bg-sky-700 text-white text-xs font-black flex items-center justify-center shadow-xs">1</span>
+                      <span className="text-sm">Langkah 1: Input Data Bab, Judul Utama & Link Video Panduan</span>
+                    </span>
+                    <span className="text-[11px] font-bold text-sky-700 bg-sky-100/80 px-2.5 py-0.5 rounded-md">Wajib Diisi</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                    <div>
+                      <label className="block font-bold text-slate-800 mb-1">
+                        Nomor Bab <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={50}
+                        value={babNumber}
+                        onChange={(e) => {
+                          setBabNumber(Number(e.target.value));
+                          if (formError) setFormError(null);
+                        }}
+                        className={`w-full px-3 py-2 border rounded-xl font-extrabold bg-white ${
+                          !babNumber ? 'border-rose-500 bg-rose-50/30' : 'border-sky-300 focus:border-sky-500 text-sky-900'
+                        }`}
+                      />
+                    </div>
+
+                    <div className="sm:col-span-3">
+                      <label className="block font-bold text-slate-800 mb-1">
+                        Judul Materi Hiwar (Indonesia) <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: Perkenalan Diri di Sekolah"
+                        value={title}
+                        onChange={(e) => {
+                          setTitle(e.target.value);
+                          if (formError) setFormError(null);
+                        }}
+                        className={`w-full px-3 py-2 border rounded-xl font-bold bg-white ${
+                          formError && !title.trim()
+                            ? 'border-rose-500 bg-rose-50/50 ring-2 ring-rose-200 text-rose-900'
+                            : 'border-sky-300 focus:border-sky-500 text-slate-900'
+                        }`}
+                      />
+                    </div>
+                  </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
@@ -576,24 +656,33 @@ export const HiwarFormModal: React.FC<HiwarFormModalProps> = ({
             </div>
           </div>
 
-          {/* Submit */}
-          <div className="pt-3 border-t flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl font-bold flex items-center gap-2 shadow-md"
-            >
-              <Save size={16} /> Simpan Modul Hiwar
-            </button>
-          </div>
+              </div>
 
-        </form>
+              {/* Error notice before submit */}
+              {formError && (
+                <div className="px-5 py-2.5 bg-rose-50 border-t border-rose-200 text-rose-800 text-xs font-bold flex items-center justify-between shrink-0">
+                  <span className="flex items-center gap-2">⚠️ {formError}</span>
+                  <button type="button" onClick={() => setFormError(null)} className="text-rose-600 hover:text-rose-900 font-bold text-sm">✕</button>
+                </div>
+              )}
+
+              {/* Submit Footer - Fixed Bottom */}
+              <div className="p-4 bg-slate-50 border-t border-slate-200 shrink-0 flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-xl font-bold cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl font-bold flex items-center gap-2 shadow-md cursor-pointer"
+                >
+                  <Save size={16} /> Simpan Modul Hiwar
+                </button>
+              </div>
+            </form>
 
         {/* Spreadsheet CSV Modal */}
         {isSheetModalOpen && (

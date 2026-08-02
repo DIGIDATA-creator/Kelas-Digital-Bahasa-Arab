@@ -206,7 +206,7 @@ export const MahfudzotFormModal: React.FC<MahfudzotFormModalProps> = ({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.18 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-5 overflow-hidden"
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 15 }}

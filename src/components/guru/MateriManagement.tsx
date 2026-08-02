@@ -9,6 +9,7 @@ import { KosakataFormModal } from './materi/KosakataFormModal';
 import { MahfudzotFormModal } from './materi/MahfudzotFormModal';
 import { HiwarView } from './materi/HiwarView';
 import { KosakataTableView } from './materi/KosakataTableView';
+import { KosakataView } from './materi/KosakataView';
 import { MahfudzotView } from './materi/MahfudzotView';
 import { FlashcardModal, FlashcardItem } from '../common/FlashcardModal';
 
@@ -222,6 +223,7 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
         authorName: 'Ust. Ahmad Dahlan, M.Pd.',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        ...partial,
       };
       onSaveMateri([...materiList, newMateri]);
     }
@@ -461,29 +463,17 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
 
       {/* CATEGORY VIEW 3: KOSAKATA */}
       {activeCategory === 'kosakata' && (
-        <div className="space-y-6">
-          {searchFiltered.length === 0 ? (
-            <div className="p-12 text-center bg-white rounded-2xl border border-slate-200 text-slate-400 text-xs font-medium">
-              Belum ada materi Kosakata. Klik tombol "Tambah Materi KOSAKATA" di atas.
-            </div>
-          ) : (
-            searchFiltered.map((materi) => (
-              <KosakataTableView
-                key={materi.id}
-                title={materi.title}
-                arabicTitle={materi.arabicTitle}
-                babNumber={materi.babNumber}
-                vocabularies={materi.vocabularies || []}
-                onEditItem={() => handleOpenEditModal(materi)}
-                onDeleteMateri={() => requestDeleteMateri(materi)}
-                onDeleteItem={(vocabId) => requestDeleteVocabItem(materi.id, vocabId)}
-                onAddItem={() => handleOpenEditModal(materi)}
-                onLaunchFlashcard={() => handleLaunchKosakataFlashcards(materi)}
-                isEditable={true}
-              />
-            ))
-          )}
-        </div>
+        <KosakataView
+          materiList={materiList}
+          onEditMateri={handleOpenEditModal}
+          onDeleteMateri={(id) => {
+            const mat = materiList.find(m => m.id === id);
+            if (mat) requestDeleteMateri(mat);
+          }}
+          onDeleteVocabItem={(materiId, vocabId) => requestDeleteVocabItem(materiId, vocabId)}
+          onAddMateri={handleOpenAddModal}
+          isEditable={true}
+        />
       )}
 
       {/* CATEGORY VIEW 4: MAHFUDZOT */}

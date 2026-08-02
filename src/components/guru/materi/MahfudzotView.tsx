@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Materi } from '../../../types';
+import { AudioPlayerButton } from '../../common/AudioPlayerButton';
 import {
   Quote,
   Play,
@@ -15,6 +16,7 @@ import {
   Filter,
   Tag,
   X,
+  Sparkles,
   ChevronDown,
   ChevronUp,
   Layers
@@ -52,11 +54,17 @@ export const MahfudzotView: React.FC<MahfudzotViewProps> = ({
   onOpenSheetModal,
   isEditable = true,
 }) => {
+  const [viewType, setViewType] = useState<'tabel' | 'flashcard'>('tabel');
   const [displayMode, setDisplayMode] = useState<'all' | 'arabic_only' | 'translation_only'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Semua');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<number>>(new Set());
+  const [mahfudzotCardIndex, setMahfudzotCardIndex] = useState(0);
+  const [isMahfudzotFlipped, setIsMahfudzotFlipped] = useState(false);
+
+  // Flashcard Scope: 'all' | 'selected'
+  const [flashcardScope, setFlashcardScope] = useState<'all' | 'selected'>('selected');
 
   const toggleGroupCollapse = (groupIndex: number) => {
     setCollapsedGroups(prev => {
@@ -198,8 +206,38 @@ export const MahfudzotView: React.FC<MahfudzotViewProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            {/* Mode Switcher: Daftar vs Flashcard */}
+            <div className="bg-purple-100 p-1 rounded-xl border border-purple-200 flex items-center text-xs font-bold gap-1 shadow-inner">
+              <button
+                type="button"
+                onClick={() => setViewType('tabel')}
+                className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all ${
+                  viewType === 'tabel'
+                    ? 'bg-purple-700 text-white shadow-xs'
+                    : 'text-purple-800 hover:bg-purple-200/80'
+                }`}
+              >
+                <BookOpen size={14} /> Daftar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setViewType('flashcard');
+                  setMahfudzotCardIndex(0);
+                  setIsMahfudzotFlipped(false);
+                }}
+                className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all ${
+                  viewType === 'flashcard'
+                    ? 'bg-purple-700 text-white shadow-xs'
+                    : 'text-purple-800 hover:bg-purple-200/80'
+                }`}
+              >
+                <Play size={14} /> Flashcard
+              </button>
+            </div>
+
             {/* Minimize Per 10 Button */}
-            {filteredMahfudzot.length > 0 && (
+            {filteredMahfudzot.length > 0 && viewType === 'tabel' && (
               <button
                 onClick={toggleCollapseAllPer10}
                 className="px-3.5 py-2.5 bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-300 font-bold text-xs sm:text-sm rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
@@ -367,8 +405,162 @@ export const MahfudzotView: React.FC<MahfudzotViewProps> = ({
         </div>
       )}
 
+      {/* Flashcard View Mode */}
+      {viewType === 'flashcard' && (
+        <div className="p-6 bg-white rounded-3xl border-2 border-purple-200 shadow-md space-y-5">
+          {/* Top Option: "Semua Materi" vs "Materi yang Dipilih Saja" */}
+          <div className="p-3.5 bg-purple-50/80 rounded-2xl border border-purple-200 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-extrabold text-purple-950 flex items-center gap-1.5">
+                <Sparkles size={15} className="text-purple-600" /> Sumber Flashcard Mahfudzot:
+              </span>
+              <div className="flex items-center bg-white p-1 rounded-xl border border-purple-300 text-xs font-bold gap-1 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFlashcardScope('all');
+                    setMahfudzotCardIndex(0);
+                    setIsMahfudzotFlipped(false);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                    flashcardScope === 'all'
+                      ? 'bg-purple-700 text-white shadow-xs'
+                      : 'text-purple-900 hover:bg-purple-100'
+                  }`}
+                >
+                  Semua Materi ({mahfudzotMateri.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFlashcardScope('selected');
+                    setMahfudzotCardIndex(0);
+                    setIsMahfudzotFlipped(false);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                    flashcardScope === 'selected'
+                      ? 'bg-purple-700 text-white shadow-xs'
+                      : 'text-purple-900 hover:bg-purple-100'
+                  }`}
+                >
+                  Materi yang Dipilih Saja ({selectedIds.length > 0 ? selectedIds.length : filteredMahfudzot.length})
+                </button>
+              </div>
+            </div>
+
+            {flashcardScope === 'selected' && (
+              <span className="text-xs font-semibold text-purple-800">
+                Kategori: <strong>{selectedCategory}</strong> {searchQuery && `• Pencarian: "${searchQuery}"`}
+              </span>
+            )}
+          </div>
+
+          {(() => {
+            const activeDeck = flashcardScope === 'all'
+              ? mahfudzotMateri
+              : (selectedIds.length > 0 ? mahfudzotMateri.filter(m => selectedIds.includes(m.id)) : filteredMahfudzot);
+
+            if (activeDeck.length === 0) {
+              return (
+                <div className="p-8 text-center text-slate-400 font-medium text-xs">
+                  Tidak ada data Mahfudzot untuk ditampilkan dalam Flashcard.
+                </div>
+              );
+            }
+
+            const safeIndex = mahfudzotCardIndex % activeDeck.length;
+
+            return (
+              <div className="max-w-xl mx-auto space-y-4">
+                {/* Controls & Counter */}
+                <div className="flex items-center justify-between text-xs font-bold text-purple-900">
+                  <span className="bg-purple-100 text-purple-900 px-3 py-1 rounded-xl border border-purple-200">
+                    Kartu {safeIndex + 1} dari {activeDeck.length} {flashcardScope === 'all' ? '(Semua Materi)' : '(Dipilih)'}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMahfudzotFlipped(false);
+                        setMahfudzotCardIndex((prev) => (prev - 1 + activeDeck.length) % activeDeck.length);
+                      }}
+                      className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl border shadow-2xs font-bold text-xs cursor-pointer"
+                    >
+                      ← Prev
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsMahfudzotFlipped(false);
+                        setMahfudzotCardIndex((prev) => (prev + 1) % activeDeck.length);
+                      }}
+                      className="px-3.5 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-xl shadow-2xs font-bold text-xs cursor-pointer"
+                    >
+                      Next →
+                    </button>
+                  </div>
+                </div>
+
+                {/* Interactive Card */}
+                {(() => {
+                  const item = activeDeck[safeIndex];
+                  const arabic = item?.mahfudzot?.arabic || item?.content || '';
+                  const translation = item?.mahfudzot?.translation || item?.description || '';
+                  const categoryTag = getItemCategory(item);
+
+                  return (
+                    <div
+                      onClick={() => setIsMahfudzotFlipped(!isMahfudzotFlipped)}
+                      className={`relative w-full min-h-[280px] rounded-3xl border-2 p-8 flex flex-col items-center justify-center text-center space-y-4 cursor-pointer transition-all duration-300 shadow-2xl overflow-hidden ${
+                        isMahfudzotFlipped
+                          ? 'bg-gradient-to-br from-slate-950 via-fuchsia-950 to-purple-950 border-purple-400/60 shadow-purple-950/60'
+                          : 'bg-gradient-to-br from-purple-900 via-violet-950 to-slate-950 border-purple-300/60 shadow-purple-950/60 hover:scale-[1.01]'
+                      }`}
+                    >
+                      {/* Decorative ambient background light */}
+                      <div className={`absolute -top-16 -right-16 w-40 h-40 rounded-full blur-2xl pointer-events-none ${isMahfudzotFlipped ? 'bg-fuchsia-500/20' : 'bg-purple-400/20'}`} />
+                      <div className={`absolute -bottom-16 -left-16 w-40 h-40 rounded-full blur-2xl pointer-events-none ${isMahfudzotFlipped ? 'bg-purple-500/20' : 'bg-violet-400/20'}`} />
+
+                      <div className="absolute top-4 right-4 z-10 text-[10px] font-extrabold text-purple-200 bg-slate-950/70 border border-purple-500/40 px-3 py-1 rounded-full backdrop-blur-md">
+                        Klik Kartu untuk Membalik 🔄
+                      </div>
+
+                      <div className="absolute top-4 left-4 z-10">
+                        <span className={`px-3 py-1 border text-[11px] font-extrabold rounded-full backdrop-blur-md shadow-sm ${getCategoryBadgeClass(categoryTag)}`}>
+                          {categoryTag}
+                        </span>
+                      </div>
+
+                      {!isMahfudzotFlipped ? (
+                        <div className="space-y-4 pt-6 my-auto z-10">
+                          <p className="font-arabic text-3xl sm:text-4xl font-extrabold text-amber-200 leading-relaxed dir-rtl drop-shadow-xl my-2">
+                            {arabic}
+                          </p>
+                          <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
+                            <AudioPlayerButton arabicText={arabic} size="md" />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-4 pt-6 my-auto z-10 animate-fadeIn">
+                          <span className="inline-block text-[11px] font-extrabold uppercase tracking-widest text-purple-300 bg-purple-950/80 px-3.5 py-1 rounded-full border border-purple-500/40">
+                            Arti / Terjemahan Mahfudzot
+                          </span>
+                          <p className="text-xl sm:text-2xl font-extrabold text-white max-w-lg leading-relaxed drop-shadow-md">
+                            "{translation}"
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
       {/* Mahfudzot Cards Grouped per 10 Items */}
-      {filteredMahfudzot.length > 0 && (
+      {viewType === 'tabel' && filteredMahfudzot.length > 0 && (
         <div className="space-y-6">
           {Array.from({ length: totalGroups }).map((_, groupIdx) => {
             const startIdx = groupIdx * 10;

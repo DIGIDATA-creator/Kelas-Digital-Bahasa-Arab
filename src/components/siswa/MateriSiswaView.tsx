@@ -5,6 +5,7 @@ import { AudioPlayerButton } from '../common/AudioPlayerButton';
 import { PdfViewerModal } from '../common/PdfViewerModal';
 import { HiwarView } from '../guru/materi/HiwarView';
 import { KosakataTableView } from '../guru/materi/KosakataTableView';
+import { KosakataView } from '../guru/materi/KosakataView';
 import { MahfudzotView } from '../guru/materi/MahfudzotView';
 import { FlashcardModal, FlashcardItem } from '../common/FlashcardModal';
 import { storageService } from '../../services/storage';
@@ -301,7 +302,7 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
               {currentMateri.category === 'hiwar' && (
                 <div className="space-y-4">
                   <HiwarView
-                    materiList={[currentMateri]}
+                    materiList={materiList}
                     isEditable={false}
                   />
                 </div>
@@ -310,25 +311,9 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
               {/* CATEGORY 3: KOSAKATA / TABLE & FLASHCARDS */}
               {currentMateri.category === 'kosakata' && (
                 <div className="space-y-4">
-                  <KosakataTableView
-                    title={currentMateri.title}
-                    arabicTitle={currentMateri.arabicTitle}
-                    babNumber={currentMateri.babNumber}
-                    vocabularies={currentMateri.vocabularies || []}
-                    onLaunchFlashcard={() => {
-                      const vocabs = currentMateri.vocabularies || [];
-                      const items: FlashcardItem[] = vocabs.map(v => ({
-                        id: v.id,
-                        frontArabic: v.word,
-                        backTranslation: v.meaning,
-                        latin: v.latin,
-                      }));
-                      setFlashcardModalState({
-                        isOpen: true,
-                        title: `Flashcard Kosakata - ${currentMateri.title}`,
-                        items,
-                      });
-                    }}
+                  <KosakataView
+                    materiList={materiList}
+                    selectedMateriId={currentMateri.id}
                     isEditable={false}
                   />
                 </div>
