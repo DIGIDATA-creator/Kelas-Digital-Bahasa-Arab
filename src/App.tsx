@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Role, Materi, Penilaian, Student, ActivityLog, QuizAttempt, ForumPost } from './types';
-import { storageService } from './services/storage';
+import { storageService, UserSession } from './services/storage';
 import { Navbar } from './components/Navbar';
+import { LoginView } from './components/auth/LoginView';
 
 // Guru Components
 import { GuruDashboard } from './components/guru/GuruDashboard';
@@ -22,7 +24,14 @@ import { SiswaProfile } from './components/siswa/SiswaProfile';
 import { ForumDiskusi } from './components/forum/ForumDiskusi';
 
 export default function App() {
-  const [currentRole, setCurrentRole] = useState<Role>(() => storageService.getRole());
+  // Active Authenticated User Session
+  const [userSession, setUserSession] = useState<UserSession | null>(() => storageService.getUserSession());
+
+  const [currentRole, setCurrentRole] = useState<Role>(() => {
+    const session = storageService.getUserSession();
+    return session ? session.role : storageService.getRole();
+  });
+
   const [activeTab, setActiveTab] = useState<string>('dashboard');
 
   // Dark mode state
@@ -49,7 +58,12 @@ export default function App() {
   const [students, setStudents] = useState<Student[]>(() => storageService.getStudents());
   const [logs, setLogs] = useState<ActivityLog[]>(() => storageService.getLogs());
   const [forumPosts, setForumPosts] = useState<ForumPost[]>(() => storageService.getForumPosts());
-  const [currentStudentId, setCurrentStudentId] = useState<string>(() => storageService.getCurrentStudentId());
+  
+  const [currentStudentId, setCurrentStudentId] = useState<string>(() => {
+    const session = storageService.getUserSession();
+    if (session && session.studentId) return session.studentId;
+    return storageService.getCurrentStudentId();
+  });
 
   const [selectedMateriIdForSiswa, setSelectedMateriIdForSiswa] = useState<string | undefined>(undefined);
   const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
@@ -83,6 +97,25 @@ export default function App() {
   const handleStudentChange = (stdId: string) => {
     setCurrentStudentId(stdId);
     storageService.setCurrentStudentId(stdId);
+  };
+
+  // Login Success Handler
+  const handleLoginSuccess = (session: UserSession) => {
+    storageService.setUserSession(session);
+    setUserSession(session);
+    setCurrentRole(session.role);
+    if (session.studentId) {
+      setCurrentStudentId(session.studentId);
+      storageService.setCurrentStudentId(session.studentId);
+    }
+    setActiveTab('dashboard');
+  };
+
+  // Logout Handler
+  const handleLogout = () => {
+    storageService.clearUserSession();
+    setUserSession(null);
+    setActiveTab('dashboard');
   };
 
   // Data persistence handlers
@@ -147,140 +180,160 @@ export default function App() {
         onResetData={handleResetData}
         isDarkMode={isDarkMode}
         onToggleDarkMode={handleToggleDarkMode}
+        userSession={userSession}
+        onLogout={handleLogout}
       />
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <div key={`${currentRole}-${activeTab}`} className="animate-fade-in">
-          {/* ================= GURU / ADMIN MODULE ================= */}
-            {currentRole === 'guru' && (
-              <>
-                {activeTab === 'dashboard' && (
-                  <GuruDashboard
-                    materiList={materiList}
-                    penilaianList={penilaianList}
-                    students={students}
-                    logs={logs}
-                    onNavigate={setActiveTab}
-                    isLoading={isLoadingData}
-                  />
-                )}
+        
+        {/* If NOT LOGGED IN -> Show Strict Protected Login Screen */}
+        {!userSession ? (
+          <LoginView
+            students={students}
+            onLoginSuccess={handleLoginSuccess}
+          />
+        ) : (
+          /* LOGGED IN MODULE VIEWS WITH MOTION TRANSITIONS */
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={`${userSession.role}-${currentRole}-${activeTab}-${currentStudentId}`}
+              initial={{ opacity: 0, y: 12, scale: 0.995 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -12, scale: 0.995 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+            >
+              {/* ================= GURU / ADMIN MODULE ================= */}
+              {currentRole === 'guru' && (
+                <>
+                  {activeTab === 'dashboard' && (
+                    <GuruDashboard
+                      materiList={materiList}
+                      penilaianList={penilaianList}
+                      students={students}
+                      logs={logs}
+                      onNavigate={setActiveTab}
+                      isLoading={isLoadingData}
+                    />
+                  )}
 
-                {activeTab === 'siswa' && (
-                  <SiswaManagement
-                    students={students}
-                    materiList={materiList}
-                    onSaveStudents={handleSaveStudents}
-                  />
-                )}
+                  {activeTab === 'siswa' && (
+                    <SiswaManagement
+                      students={students}
+                      materiList={materiList}
+                      onSaveStudents={handleSaveStudents}
+                    />
+                  )}
 
-                {activeTab === 'materi' && (
-                  <MateriManagement
-                    materiList={materiList}
-                    onSaveMateri={handleSaveMateri}
-                  />
-                )}
+                  {activeTab === 'materi' && (
+                    <MateriManagement
+                      materiList={materiList}
+                      onSaveMateri={handleSaveMateri}
+                    />
+                  )}
 
-                {activeTab === 'penilaian' && (
-                  <PenilaianManagement
-                    penilaianList={penilaianList}
-                    onSavePenilaian={handleSavePenilaian}
-                  />
-                )}
+                  {activeTab === 'penilaian' && (
+                    <PenilaianManagement
+                      penilaianList={penilaianList}
+                      onSavePenilaian={handleSavePenilaian}
+                    />
+                  )}
 
-                {activeTab === 'forum' && (
-                  <ForumDiskusi
-                    currentRole={currentRole}
-                    currentStudent={currentStudent}
-                    materiList={materiList}
-                    forumPosts={forumPosts}
-                  />
-                )}
+                  {activeTab === 'forum' && (
+                    <ForumDiskusi
+                      currentRole={currentRole}
+                      currentStudent={currentStudent}
+                      materiList={materiList}
+                      forumPosts={forumPosts}
+                    />
+                  )}
 
-                {activeTab === 'leaderboard' && (
-                  <LeaderboardView
-                    students={students}
-                    currentStudentId={currentStudentId}
-                  />
-                )}
+                  {activeTab === 'leaderboard' && (
+                    <LeaderboardView
+                      students={students}
+                      currentStudentId={currentStudentId}
+                    />
+                  )}
 
-                {activeTab === 'profil' && (
-                  <GuruProfile />
-                )}
-              </>
-            )}
+                  {activeTab === 'profil' && (
+                    <GuruProfile />
+                  )}
+                </>
+              )}
 
-            {/* ================= SISWA MODULE ================= */}
-            {currentRole === 'siswa' && currentStudent && (
-              <>
-                {activeTab === 'dashboard' && (
-                  <SiswaDashboard
-                    currentStudent={currentStudent}
-                    materiList={materiList}
-                    penilaianList={penilaianList}
-                    onNavigate={setActiveTab}
-                    isLoading={isLoadingData}
-                    onSelectMateri={(id) => {
-                      setSelectedMateriIdForSiswa(id);
-                      setActiveTab('materi');
-                    }}
-                    onStartPenilaian={(penId) => {
-                      setActiveTab('penilaian');
-                    }}
-                  />
-                )}
+              {/* ================= SISWA MODULE ================= */}
+              {currentRole === 'siswa' && currentStudent && (
+                <>
+                  {activeTab === 'dashboard' && (
+                    <SiswaDashboard
+                      currentStudent={currentStudent}
+                      materiList={materiList}
+                      penilaianList={penilaianList}
+                      onNavigate={setActiveTab}
+                      isLoading={isLoadingData}
+                      onSelectMateri={(id) => {
+                        setSelectedMateriIdForSiswa(id);
+                        setActiveTab('materi');
+                      }}
+                      onStartPenilaian={(penId) => {
+                        setActiveTab('penilaian');
+                      }}
+                    />
+                  )}
 
-                {activeTab === 'materi' && (
-                  <MateriSiswaView
-                    materiList={materiList}
-                    currentStudent={currentStudent}
-                    selectedMateriId={selectedMateriIdForSiswa}
-                    onMarkComplete={handleMarkMaterialComplete}
-                  />
-                )}
+                  {activeTab === 'materi' && (
+                    <MateriSiswaView
+                      materiList={materiList}
+                      currentStudent={currentStudent}
+                      selectedMateriId={selectedMateriIdForSiswa}
+                      onMarkComplete={handleMarkMaterialComplete}
+                    />
+                  )}
 
-                {activeTab === 'penilaian' && (
-                  <PenilaianSiswaView
-                    penilaianList={penilaianList}
-                    currentStudent={currentStudent}
-                    onFinishQuiz={handleFinishQuiz}
-                  />
-                )}
+                  {activeTab === 'penilaian' && (
+                    <PenilaianSiswaView
+                      penilaianList={penilaianList}
+                      currentStudent={currentStudent}
+                      onFinishQuiz={handleFinishQuiz}
+                    />
+                  )}
 
-                {activeTab === 'forum' && (
-                  <ForumDiskusi
-                    currentRole={currentRole}
-                    currentStudent={currentStudent}
-                    materiList={materiList}
-                    forumPosts={forumPosts}
-                  />
-                )}
+                  {activeTab === 'forum' && (
+                    <ForumDiskusi
+                      currentRole={currentRole}
+                      currentStudent={currentStudent}
+                      materiList={materiList}
+                      forumPosts={forumPosts}
+                    />
+                  )}
 
-                {activeTab === 'progres' && (
-                  <ProgresBelajarView
-                    currentStudent={currentStudent}
-                    materiList={materiList}
-                    penilaianList={penilaianList}
-                  />
-                )}
+                  {activeTab === 'progres' && (
+                    <ProgresBelajarView
+                      currentStudent={currentStudent}
+                      materiList={materiList}
+                      penilaianList={penilaianList}
+                    />
+                  )}
 
-                {activeTab === 'leaderboard' && (
-                  <LeaderboardView
-                    students={students}
-                    currentStudentId={currentStudentId}
-                  />
-                )}
+                  {activeTab === 'leaderboard' && (
+                    <LeaderboardView
+                      students={students}
+                      currentStudentId={currentStudentId}
+                    />
+                  )}
 
-                {activeTab === 'profil' && (
-                  <SiswaProfile
-                    currentStudent={currentStudent}
-                    materiList={materiList}
-                    onUpdateStudentProfile={handleUpdateStudentProfile}
-                  />
-                )}
-              </>
-            )}
-        </div>
+                  {activeTab === 'profil' && (
+                    <SiswaProfile
+                      currentStudent={currentStudent}
+                      materiList={materiList}
+                      onUpdateStudentProfile={handleUpdateStudentProfile}
+                    />
+                  )}
+                </>
+              )}
+            </motion.div>
+          </AnimatePresence>
+        )}
       </main>
 
       {/* Footer */}

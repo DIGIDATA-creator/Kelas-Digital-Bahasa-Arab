@@ -1,8 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Role, Student } from '../types';
-import { BookOpen, GraduationCap, UserCheck, Shield, RotateCcw, Award, ChevronDown, User as UserIcon, LogIn, Sun, Moon } from 'lucide-react';
-import { auth, onAuthStateChanged, User } from '../lib/firebase';
-import { AuthModal } from './auth/AuthModal';
+import { UserSession } from '../services/storage';
+import {
+  GraduationCap,
+  Shield,
+  RotateCcw,
+  Sun,
+  Moon,
+  LogOut,
+  Lock,
+} from 'lucide-react';
 
 interface NavbarProps {
   currentRole: Role;
@@ -15,30 +22,22 @@ interface NavbarProps {
   onResetData: () => void;
   isDarkMode?: boolean;
   onToggleDarkMode?: () => void;
+  userSession: UserSession | null;
+  onLogout: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   currentRole,
-  onRoleChange,
   activeTab,
   onTabChange,
   students,
   currentStudentId,
-  onStudentChange,
   onResetData,
   isDarkMode = false,
   onToggleDarkMode,
+  userSession,
+  onLogout,
 }) => {
-  const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setFirebaseUser(user);
-    });
-    return () => unsubscribe();
-  }, []);
-
   const currentStudent = students.find(s => s.id === currentStudentId) || students[0];
 
   const guruTabs = [
@@ -65,13 +64,13 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <header className="bg-slate-900 text-white shadow-lg sticky top-0 z-40 border-b border-slate-800">
-      {/* Top Banner & Role Toggle Bar */}
+      {/* Top Banner Bar */}
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between py-1.5 sm:py-3 border-b border-slate-800/80 gap-2 sm:gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2 sm:py-3 border-b border-slate-800/80 gap-2 sm:gap-3">
           
           {/* Logo & App Title */}
           <div className="flex items-center justify-between sm:justify-start gap-2">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-md shadow-emerald-900/30 font-arabic text-xl sm:text-2xl shrink-0">
                 ع
               </div>
@@ -98,99 +97,70 @@ export const Navbar: React.FC<NavbarProps> = ({
                   {isDarkMode ? <Sun size={14} className="text-amber-400" /> : <Moon size={14} className="text-slate-300" />}
                 </button>
               )}
-              <button
-                onClick={() => {
-                  if (confirm('Apakah Anda yakin ingin mereset data LMS ke data awal?')) {
-                    onResetData();
-                  }
-                }}
-                title="Reset Data"
-                className="p-1.5 text-slate-400 hover:text-rose-400 bg-slate-800 rounded-lg border border-slate-700"
-              >
-                <RotateCcw size={14} />
-              </button>
             </div>
           </div>
 
-          {/* Controls: Role Switcher, Student Dropdown & Auth */}
-          <div className="flex items-center justify-between sm:justify-end gap-1.5 sm:gap-3 flex-wrap">
+          {/* Controls Area: Logged In Account Info OR Locked Badge */}
+          <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 flex-wrap">
             
-            {/* Student Switcher when in Siswa Role */}
-            {currentRole === 'siswa' && (
-              <div className="flex items-center gap-1 bg-slate-800/90 border border-slate-700/80 rounded-lg px-2 py-1 text-[11px] sm:text-xs text-slate-300">
-                <GraduationCap size={14} className="text-emerald-400 shrink-0" />
-                <select
-                  value={currentStudentId}
-                  onChange={(e) => onStudentChange(e.target.value)}
-                  className="bg-transparent text-emerald-300 font-semibold focus:outline-hidden cursor-pointer max-w-[110px] sm:max-w-none truncate"
+            {userSession ? (
+              <>
+                {/* Active Session Identity Badge (NO direct switching allowed) */}
+                <div className="flex items-center gap-2 bg-slate-800/90 border border-emerald-500/40 rounded-xl px-2.5 py-1 sm:px-3 sm:py-1.5 shadow-xs">
+                  {userSession.role === 'guru' ? (
+                    <>
+                      <div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                        <Shield size={13} />
+                      </div>
+                      <div className="flex flex-col text-left">
+                        <span className="text-[9px] text-emerald-400 font-black uppercase tracking-wider leading-tight">
+                          Guru / Admin
+                        </span>
+                        <span className="font-bold text-white text-xs truncate max-w-[120px] sm:max-w-[180px]">
+                          {userSession.userName}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <img
+                        src={currentStudent?.avatar || userSession.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'}
+                        alt="Student"
+                        className="w-6 h-6 rounded-full object-cover border border-emerald-400 shrink-0"
+                      />
+                      <div className="flex flex-col text-left">
+                        <div className="flex items-center gap-1">
+                          <span className="text-[9px] text-emerald-400 font-black uppercase tracking-wider leading-tight">
+                            Siswa
+                          </span>
+                          <span className="text-[10px] text-amber-300 font-extrabold bg-amber-400/20 px-1 rounded">
+                            {currentStudent?.totalXP || 0} XP
+                          </span>
+                        </div>
+                        <span className="font-bold text-white text-xs truncate max-w-[110px] sm:max-w-[160px]">
+                          {currentStudent?.name || userSession.userName}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Logout Button */}
+                <button
+                  onClick={onLogout}
+                  className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 bg-rose-900/40 hover:bg-rose-900/70 text-rose-300 border border-rose-700/60 hover:border-rose-500 rounded-xl text-xs font-extrabold transition-all cursor-pointer shadow-2xs"
+                  title="Keluar dari Sesi LMS (Log Out)"
                 >
-                  {students.map(s => (
-                    <option key={s.id} value={s.id} className="bg-slate-900 text-white">
-                      {s.name} ({s.totalXP} XP)
-                    </option>
-                  ))}
-                </select>
+                  <LogOut size={14} className="shrink-0" />
+                  <span>Keluar</span>
+                </button>
+              </>
+            ) : (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800/90 border border-amber-500/30 rounded-xl text-xs text-amber-300 font-bold">
+                <Lock size={14} className="text-amber-400 shrink-0" />
+                <span>Akses Terkunci • Silakan Log In</span>
               </div>
             )}
-
-            {/* Role Switcher Pills */}
-            <div className="flex items-center bg-slate-800 p-0.5 sm:p-1 rounded-xl border border-slate-700">
-              <button
-                onClick={() => {
-                  onRoleChange('guru');
-                  onTabChange('dashboard');
-                }}
-                className={`flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all ${
-                  currentRole === 'guru'
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
-                }`}
-              >
-                <Shield size={12} className="sm:w-3.5 sm:h-3.5" />
-                <span>Guru</span>
-              </button>
-              <button
-                onClick={() => {
-                  onRoleChange('siswa');
-                  onTabChange('dashboard');
-                }}
-                className={`flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all ${
-                  currentRole === 'siswa'
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
-                }`}
-              >
-                <GraduationCap size={12} className="sm:w-3.5 sm:h-3.5" />
-                <span>Siswa</span>
-              </button>
-            </div>
-
-            {/* Firebase Auth Account Button */}
-            <button
-              onClick={() => setIsAuthModalOpen(true)}
-              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-[11px] sm:text-xs font-semibold transition-all shadow-2xs"
-              title="Firebase Authentication"
-            >
-              {firebaseUser ? (
-                <>
-                  {firebaseUser.photoURL ? (
-                    <img src={firebaseUser.photoURL} alt="User" className="w-4 h-4 sm:w-5 sm:h-5 rounded-full border border-emerald-400" />
-                  ) : (
-                    <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-emerald-600 text-white font-bold text-[9px] sm:text-[10px] flex items-center justify-center">
-                      {(firebaseUser.displayName || firebaseUser.email || 'U')[0].toUpperCase()}
-                    </div>
-                  )}
-                  <span className="max-w-[70px] sm:max-w-[100px] truncate text-emerald-300">
-                    {firebaseUser.displayName || firebaseUser.email?.split('@')[0]}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <LogIn size={13} className="text-emerald-400" />
-                  <span>Auth</span>
-                </>
-              )}
-            </button>
 
             {/* Desktop Dark Mode & Reset Buttons */}
             <div className="hidden sm:flex items-center gap-2">
@@ -211,45 +181,38 @@ export const Navbar: React.FC<NavbarProps> = ({
                   }
                 }}
                 title="Reset Data Demo"
-                className="p-2 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-xl transition-colors border border-transparent hover:border-slate-700"
+                className="p-2 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-xl transition-colors border border-transparent hover:border-slate-700 cursor-pointer"
               >
                 <RotateCcw size={16} />
               </button>
             </div>
+
           </div>
 
         </div>
 
-        {/* Navigation Tabs Bar */}
-        <nav className="flex items-center gap-1 overflow-x-auto py-1 sm:py-2 no-scrollbar">
-          {activeNavTabs.map((tab) => {
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => onTabChange(tab.id)}
-                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-all ${
-                  isActive
-                    ? 'bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/30'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
-                }`}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
-        </nav>
+        {/* Navigation Tabs Bar (Visible ONLY when logged in) */}
+        {userSession && (
+          <nav className="flex items-center gap-1 overflow-x-auto py-1 sm:py-2 no-scrollbar">
+            {activeNavTabs.map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => onTabChange(tab.id)}
+                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-all cursor-pointer ${
+                    isActive
+                      ? 'bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/30'
+                      : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </nav>
+        )}
       </div>
-
-      {/* Firebase Auth Modal */}
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        currentUser={firebaseUser}
-        existingStudents={students}
-        onSelectStudent={onStudentChange}
-        onRoleChange={onRoleChange}
-      />
     </header>
   );
 };

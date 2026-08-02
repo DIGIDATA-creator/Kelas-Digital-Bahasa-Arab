@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Student, TingkatType } from '../../types';
-import { User, Mail, Lock, Building2, GraduationCap, Users, Sparkles, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { User, Mail, Lock, Building2, GraduationCap, Users, Sparkles, CheckCircle2, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 
 interface PendaftaranSiswaFormProps {
   existingStudents: Student[];
@@ -31,6 +31,7 @@ export const PendaftaranSiswaForm: React.FC<PendaftaranSiswaFormProps> = ({
   const [name, setName] = useState(initialStudent?.name || '');
   const [email, setEmail] = useState(initialStudent?.email || '');
   const [password, setPassword] = useState(initialStudent?.password || '');
+  const [showPassword, setShowPassword] = useState(false);
   const [gender, setGender] = useState<'Laki-laki' | 'Perempuan'>(initialStudent?.gender || 'Laki-laki');
   const [tingkat, setTingkat] = useState<TingkatType>(initialStudent?.tingkat || 'Dasar');
   const [schoolName, setSchoolName] = useState(initialStudent?.schoolName || '');
@@ -202,14 +203,21 @@ export const PendaftaranSiswaForm: React.FC<PendaftaranSiswaFormProps> = ({
         <div className="relative">
           <Lock size={16} className="absolute left-3 top-2.5 text-slate-400" />
           <input
-            type="password"
+            type={showPassword ? 'text' : 'password'}
             required={!isGuruAdminMode}
             minLength={6}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Minimal 6 Karakter"
-            className="w-full pl-9 pr-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-hidden focus:border-emerald-500 font-medium"
+            className="w-full pl-9 pr-10 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-hidden focus:border-emerald-500 font-medium"
           />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+          >
+            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+          </button>
         </div>
       </div>
 

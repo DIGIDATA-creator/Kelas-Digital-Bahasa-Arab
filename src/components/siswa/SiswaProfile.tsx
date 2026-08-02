@@ -16,7 +16,11 @@ import {
   Users,
   User,
   AlertCircle,
-  Loader2
+  Loader2,
+  Lock,
+  Key,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 interface SiswaProfileProps {
@@ -40,6 +44,14 @@ export const SiswaProfile: React.FC<SiswaProfileProps> = ({
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
+  // Credentials reset states
+  const [studentEmail, setStudentEmail] = useState(currentStudent.email || '');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [credMsg, setCredMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
   // Sync state whenever currentStudent changes
   useEffect(() => {
     setName(currentStudent.name || '');
@@ -48,7 +60,45 @@ export const SiswaProfile: React.FC<SiswaProfileProps> = ({
     setSchoolName(currentStudent.schoolName || '');
     setClassName(currentStudent.className || '');
     setRombelName(currentStudent.rombelName || '');
+    setStudentEmail(currentStudent.email || '');
   }, [currentStudent]);
+
+  const handleSaveCredentials = (e: React.FormEvent) => {
+    e.preventDefault();
+    setCredMsg(null);
+
+    if (!studentEmail.trim()) {
+      setCredMsg({ type: 'error', text: 'Email / Username tidak boleh kosong' });
+      return;
+    }
+
+    if (newPassword) {
+      if (newPassword.length < 6) {
+        setCredMsg({ type: 'error', text: 'Password baru minimal 6 karakter' });
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        setCredMsg({ type: 'error', text: 'Konfirmasi password baru tidak cocok' });
+        return;
+      }
+    }
+
+    const updatedStudent: Student = {
+      ...currentStudent,
+      email: studentEmail.trim(),
+      password: newPassword ? newPassword : (currentStudent.password || '123456'),
+    };
+
+    if (onUpdateStudentProfile) {
+      onUpdateStudentProfile(updatedStudent);
+    }
+
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setCredMsg({ type: 'success', text: 'Email / Username & Password berhasil diperbarui!' });
+    setTimeout(() => setCredMsg(null), 3500);
+  };
 
   const completedCount = currentStudent.completedMaterials?.length || 0;
   const totalMateri = materiList.length || 1;
@@ -198,8 +248,8 @@ export const SiswaProfile: React.FC<SiswaProfileProps> = ({
         </div>
 
         <div className="px-4 sm:px-6 pb-6 relative pt-0">
-          <div className="flex flex-col sm:flex-row items-center sm:items-end justify-between -mt-16 mb-4 gap-4">
-            <div className="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row items-center sm:items-end justify-between -mt-12 sm:-mt-14 mb-4 gap-4">
+            <div className="flex flex-col sm:flex-row items-center sm:items-end gap-4 text-center sm:text-left w-full sm:w-auto">
               <div className="relative group shrink-0">
                 <img
                   src={currentStudent.avatar}
@@ -207,8 +257,8 @@ export const SiswaProfile: React.FC<SiswaProfileProps> = ({
                   className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-cover border-4 border-white dark:border-slate-900 shadow-md bg-slate-100 dark:bg-slate-800"
                 />
               </div>
-              <div className="w-full sm:w-auto">
-                <h2 className="text-lg sm:text-2xl font-extrabold text-slate-900 dark:text-slate-100 flex flex-wrap items-center justify-center sm:justify-start gap-2">
+              <div className="w-full sm:w-auto sm:pb-1">
+                <h2 className="text-lg sm:text-2xl font-black text-slate-900 dark:text-slate-100 flex flex-wrap items-center justify-center sm:justify-start gap-2">
                   <span className="break-words">{currentStudent.name}</span>
                   {currentStudent.gender && (
                     <span className={`text-xs px-2 py-0.5 rounded-md font-bold whitespace-nowrap ${
@@ -302,7 +352,7 @@ export const SiswaProfile: React.FC<SiswaProfileProps> = ({
                 <input
                   type="text"
                   required
-                  value={name}
+                  value={name || ''}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full pl-9 pr-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700 rounded-xl focus:border-emerald-500 font-medium"
                   placeholder="Masukkan nama lengkap"
@@ -348,7 +398,7 @@ export const SiswaProfile: React.FC<SiswaProfileProps> = ({
               </label>
               <input
                 type="text"
-                value={schoolName}
+                value={schoolName || ''}
                 onChange={(e) => setSchoolName(e.target.value)}
                 className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700 rounded-xl focus:border-emerald-500 font-medium"
                 placeholder="Contoh: MA Negeri 1 Jakarta"
@@ -363,7 +413,7 @@ export const SiswaProfile: React.FC<SiswaProfileProps> = ({
                 </label>
                 <input
                   type="text"
-                  value={className}
+                  value={className || ''}
                   onChange={(e) => setClassName(e.target.value)}
                   className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700 rounded-xl focus:border-emerald-500 font-medium"
                   placeholder="Contoh: Kelas 10"
@@ -375,7 +425,7 @@ export const SiswaProfile: React.FC<SiswaProfileProps> = ({
                 </label>
                 <input
                   type="text"
-                  value={rombelName}
+                  value={rombelName || ''}
                   onChange={(e) => setRombelName(e.target.value)}
                   className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700 rounded-xl focus:border-emerald-500 font-medium"
                   placeholder="Contoh: 10 Bahasa"
@@ -506,6 +556,132 @@ export const SiswaProfile: React.FC<SiswaProfileProps> = ({
             <p className="text-[10px] text-slate-500 dark:text-slate-400">Aktif Rutin</p>
           </div>
         </div>
+      </div>
+
+      {/* Student Account Credentials Settings Card */}
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 rounded-xl">
+              <Key size={18} />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-slate-900 dark:text-slate-100 text-sm">
+                Pengaturan Username & Password Akun
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Atur ulang username/email dan kata sandi akses masuk portal siswa
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {credMsg && (
+          <div className={`p-3 rounded-xl border flex items-center gap-2 text-xs font-semibold ${
+            credMsg.type === 'success' 
+              ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300' 
+              : 'bg-rose-50 dark:bg-rose-950/60 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300'
+          }`}>
+            {credMsg.type === 'success' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+            <span>{credMsg.text}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSaveCredentials} className="space-y-4 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Email / Username Siswa
+              </label>
+              <input
+                type="email"
+                required
+                value={studentEmail}
+                onChange={(e) => setStudentEmail(e.target.value)}
+                placeholder="nama@siswa.sch.id"
+                className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-hidden focus:border-emerald-500 font-bold"
+              />
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
+                Digunakan sebagai identitas otentikasi login portal.
+              </p>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Password Saat Ini (Opsional)
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full pl-3 pr-10 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-hidden focus:border-emerald-500 font-medium"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Password Baru
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Password Baru (Min. 6 Karakter)"
+                  className="w-full pl-3 pr-10 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-hidden focus:border-emerald-500 font-medium"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Konfirmasi Password Baru
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Ulangi Password Baru"
+                  className="w-full pl-3 pr-10 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-hidden focus:border-emerald-500 font-medium"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+            <button
+              type="submit"
+              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center gap-2 shadow-sm transition-all cursor-pointer"
+            >
+              <Lock size={14} className="text-amber-300" /> Simpan Username & Password
+            </button>
+          </div>
+        </form>
       </div>
 
     </div>

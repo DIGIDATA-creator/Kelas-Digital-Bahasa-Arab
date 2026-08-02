@@ -12,13 +12,22 @@ export const playArabicAudio = (
   onEnd?: () => void,
   onError?: () => void
 ): (() => void) => {
-  // Stop any playing HTML5 audio
-  if (currentAudio) {
-    currentAudio.pause();
-    currentAudio = null;
+  if (!text || !text.trim()) {
+    if (onError) onError();
+    return () => {};
   }
 
-  // Stop any SpeechSynthesis
+  // Stop any playing HTML5 audio
+  if (currentAudio) {
+    try {
+      currentAudio.pause();
+      currentAudio = null;
+    } catch {
+      // ignore
+    }
+  }
+
+  // Stop any previous SpeechSynthesis
   if ('speechSynthesis' in window) {
     try {
       window.speechSynthesis.cancel();
@@ -27,27 +36,17 @@ export const playArabicAudio = (
     }
   }
 
-  const cleanText = text.replace(/[^\u0600-\u06FF\s]/g, '').trim() || text;
+  const cleanText = text.trim();
 
-  // Helper to trigger end/error handlers
-  const handleStart = () => {
-    if (onStart) onStart();
-  };
-  const handleEnd = () => {
-    if (onEnd) onEnd();
-  };
-  const handleError = () => {
-    if (onError) onError();
-  };
+  const handleStart = () => { if (onStart) onStart(); };
+  const handleEnd = () => { if (onEnd) onEnd(); };
+  const handleError = () => { if (onError) onError(); };
 
-  // Helper for Google Translate Audio stream fallback
-  const playGoogleFallback = () => {
+  // Multi-tier Audio Stream Fallback
+  const playAudioFallback = () => {
     try {
-      const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(
-        cleanText
-      )}&tl=ar&client=tw-ob`;
-      
-      const audio = new Audio(audioUrl);
+      const googleUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(cleanText)}&tl=ar&client=tw-ob`;
+      const audio = new Audio(googleUrl);
       currentAudio = audio;
 
       audio.onplay = handleStart;
@@ -55,102 +54,113 @@ export const playArabicAudio = (
         currentAudio = null;
         handleEnd();
       };
+
       audio.onerror = () => {
-        currentAudio = null;
-        handleError();
+        // Backup audio provider (Youdao Arabic Dictionary TTS)
+        const backupUrl = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(cleanText)}&le=ar`;
+        const backupAudio = new Audio(backupUrl);
+        currentAudio = backupAudio;
+
+        backupAudio.onplay = handleStart;
+        backupAudio.onended = () => {
+          currentAudio = null;
+          handleEnd();
+        };
+        backupAudio.onerror = () => {
+          currentAudio = null;
+          handleError();
+        };
+
+        backupAudio.play().catch(() => {
+          currentAudio = null;
+          handleError();
+        });
       };
 
       audio.play().catch(() => {
-        currentAudio = null;
-        handleError();
+        // Trigger error handler to switch to backup
+        if (audio.onerror) {
+          audio.onerror(new Event('error'));
+        } else {
+          handleError();
+        }
       });
     } catch {
       handleError();
     }
   };
 
-  // Check Web Speech API support
-  if (!('speechSynthesis' in window)) {
-    playGoogleFallback();
-    return () => {
-      if (currentAudio) {
-        currentAudio.pause();
-        currentAudio = null;
+  // Try Web Speech API
+  if ('speechSynthesis' in window) {
+    try {
+      window.speechSynthesis.resume();
+
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      utterance.lang = 'ar-SA';
+      utterance.rate = 0.85;
+      utterance.pitch = 1.0;
+
+      const voices = window.speechSynthesis.getVoices() || [];
+      const arabicVoice = voices.find(
+        (v) => v.lang.startsWith('ar') || v.name.toLowerCase().includes('arabic')
+      );
+      if (arabicVoice) {
+        utterance.voice = arabicVoice;
       }
-    };
-  }
 
-  try {
-    window.speechSynthesis.resume(); // Ensure Chrome desktop is unpaused
-    const voices = window.speechSynthesis.getVoices();
-    const arabicVoice = voices.find(
-      (v) => v.lang.startsWith('ar') || v.name.toLowerCase().includes('arabic')
-    );
+      let started = false;
 
-    // If no Arabic voice installed on laptop OS, fall back to Google Audio stream directly
-    if (!arabicVoice && voices.length > 0) {
-      playGoogleFallback();
-      return () => {
-        if (currentAudio) {
-          currentAudio.pause();
-          currentAudio = null;
+      utterance.onstart = () => {
+        started = true;
+        handleStart();
+      };
+
+      utterance.onend = () => {
+        handleEnd();
+      };
+
+      utterance.onerror = (e) => {
+        console.warn('SpeechSynthesis error:', e);
+        if (!started) {
+          playAudioFallback();
+        } else {
+          handleError();
         }
       };
+
+      window.speechSynthesis.speak(utterance);
+
+      // Safety timer for browsers that don't trigger onstart immediately
+      const timer = setTimeout(() => {
+        if (!started && !currentAudio) {
+          try {
+            window.speechSynthesis.cancel();
+          } catch {
+            // ignore
+          }
+          playAudioFallback();
+        }
+      }, 500);
+
+      return () => {
+        clearTimeout(timer);
+        if (currentAudio) {
+          try { currentAudio.pause(); currentAudio = null; } catch {}
+        }
+        if ('speechSynthesis' in window) {
+          try { window.speechSynthesis.cancel(); } catch {}
+        }
+      };
+    } catch {
+      playAudioFallback();
     }
-
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = 'ar-SA';
-    utterance.rate = 0.85;
-    utterance.pitch = 1.0;
-
-    if (arabicVoice) {
-      utterance.voice = arabicVoice;
-    }
-
-    let started = false;
-    utterance.onstart = () => {
-      started = true;
-      handleStart();
-    };
-
-    utterance.onend = () => {
-      handleEnd();
-    };
-
-    utterance.onerror = () => {
-      if (!started) {
-        // Fallback to Google audio stream on WebSpeech error
-        playGoogleFallback();
-      } else {
-        handleError();
-      }
-    };
-
-    window.speechSynthesis.speak(utterance);
-
-    // Safety timeout check for desktop Chrome stuck speech
-    setTimeout(() => {
-      if (!started && !currentAudio) {
-        window.speechSynthesis.cancel();
-        playGoogleFallback();
-      }
-    }, 400);
-
-  } catch {
-    playGoogleFallback();
+  } else {
+    playAudioFallback();
   }
 
   return () => {
     if (currentAudio) {
-      currentAudio.pause();
-      currentAudio = null;
-    }
-    if ('speechSynthesis' in window) {
-      try {
-        window.speechSynthesis.cancel();
-      } catch {
-        // ignore
-      }
+      try { currentAudio.pause(); currentAudio = null; } catch {}
     }
   };
 };

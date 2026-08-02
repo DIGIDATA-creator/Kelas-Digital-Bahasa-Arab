@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Mail, Phone, Edit3, Lock, Check, Key, UserCheck, Camera, Save, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Shield, Mail, Phone, Edit3, Lock, Check, Key, UserCheck, Camera, Save, CheckCircle2, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { db } from '../../firebase/config';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { uploadToSupabaseStorage } from '../../lib/supabase';
@@ -45,7 +45,24 @@ export const GuruProfile: React.FC = () => {
 
   // Modals / Edit mode states
   const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [profileFormData, setProfileFormData] = useState({ ...profile });
+  const [showPassword, setShowPassword] = useState(false);
+  const [profileFormData, setProfileFormData] = useState({
+    name: profile?.name || '',
+    title: profile?.title || '',
+    email: profile?.email || '',
+    phone: profile?.phone || '',
+    avatar: profile?.avatar || '',
+  });
+
+  useEffect(() => {
+    setProfileFormData({
+      name: profile?.name || '',
+      title: profile?.title || '',
+      email: profile?.email || '',
+      phone: profile?.phone || '',
+      avatar: profile?.avatar || '',
+    });
+  }, [profile]);
 
   const [credMsg, setCredMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [profileMsg, setProfileMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -203,18 +220,18 @@ export const GuruProfile: React.FC = () => {
         </div>
 
         <div className="px-6 pb-6 relative pt-0">
-          <div className="flex flex-col sm:flex-row items-center sm:items-end justify-between -mt-16 mb-4 gap-4">
-            <div className="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
-              <div className="relative group">
+          <div className="flex flex-col sm:flex-row items-center sm:items-end justify-between -mt-12 sm:-mt-14 mb-4 gap-4">
+            <div className="flex flex-col sm:flex-row items-center sm:items-end gap-4 text-center sm:text-left">
+              <div className="relative group shrink-0">
                 <img
                   src={profile.avatar}
                   alt={profile.name}
-                  className="w-24 h-24 rounded-2xl object-cover border-4 border-white shadow-md bg-slate-100"
+                  className="w-24 h-24 rounded-2xl object-cover border-4 border-white dark:border-slate-900 shadow-md bg-slate-100 dark:bg-slate-800"
                 />
               </div>
-              <div>
-                <h2 className="text-xl font-bold text-slate-900">{profile.name}</h2>
-                <p className="text-xs text-slate-500 font-medium">{profile.title}</p>
+              <div className="sm:pb-1">
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100">{profile.name}</h2>
+                <p className="text-xs text-slate-600 dark:text-slate-400 font-semibold">{profile.title}</p>
                 <div className="mt-2 flex items-center justify-center sm:justify-start">
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800 rounded-xl font-arabic font-bold text-sm sm:text-base leading-relaxed tracking-wide shadow-2xs">
                     ✨ مُدَرِّسُ اللُّغَةِ الْعَرَبِيَّةِ
@@ -269,7 +286,7 @@ export const GuruProfile: React.FC = () => {
               <input
                 type="text"
                 required
-                value={profileFormData.name}
+                value={profileFormData.name || ''}
                 onChange={(e) => setProfileFormData({ ...profileFormData, name: e.target.value })}
                 className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-hidden focus:border-emerald-500 font-medium"
               />
@@ -279,7 +296,7 @@ export const GuruProfile: React.FC = () => {
               <label className="block font-semibold text-slate-700 mb-1">Jabatan / Deskripsi Singkat</label>
               <input
                 type="text"
-                value={profileFormData.title}
+                value={profileFormData.title || ''}
                 onChange={(e) => setProfileFormData({ ...profileFormData, title: e.target.value })}
                 className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-hidden focus:border-emerald-500 font-medium"
               />
@@ -290,7 +307,7 @@ export const GuruProfile: React.FC = () => {
               <input
                 type="email"
                 required
-                value={profileFormData.email}
+                value={profileFormData.email || ''}
                 onChange={(e) => setProfileFormData({ ...profileFormData, email: e.target.value })}
                 className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-hidden focus:border-emerald-500 font-medium"
               />
@@ -301,7 +318,7 @@ export const GuruProfile: React.FC = () => {
               <input
                 type="text"
                 required
-                value={profileFormData.phone}
+                value={profileFormData.phone || ''}
                 onChange={(e) => setProfileFormData({ ...profileFormData, phone: e.target.value })}
                 className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-hidden focus:border-emerald-500 font-medium"
               />
@@ -312,7 +329,7 @@ export const GuruProfile: React.FC = () => {
               <div className="flex items-center gap-3">
                 <input
                   type="text"
-                  value={profileFormData.avatar}
+                  value={profileFormData.avatar || ''}
                   onChange={(e) => setProfileFormData({ ...profileFormData, avatar: e.target.value })}
                   placeholder="https://..."
                   className="flex-1 px-3 py-2 border border-slate-300 rounded-xl focus:outline-hidden focus:border-emerald-500 font-mono text-xs"
@@ -384,36 +401,63 @@ export const GuruProfile: React.FC = () => {
             </div>
 
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Password Saat Ini</label>
-              <input
-                type="password"
-                value={credentials.currentPassword}
-                onChange={(e) => setCredentials({ ...credentials, currentPassword: e.target.value })}
-                placeholder="••••••••"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-hidden focus:border-emerald-500"
-              />
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Password Saat Ini</label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={credentials.currentPassword || ''}
+                  onChange={(e) => setCredentials({ ...credentials, currentPassword: e.target.value })}
+                  placeholder="••••••••"
+                  className="w-full pl-3 pr-10 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-hidden focus:border-emerald-500 font-medium"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
 
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Password Baru</label>
-              <input
-                type="password"
-                value={credentials.newPassword}
-                onChange={(e) => setCredentials({ ...credentials, newPassword: e.target.value })}
-                placeholder="Password Baru (Min. 6 Karakter)"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-hidden focus:border-emerald-500"
-              />
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Password Baru</label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={credentials.newPassword || ''}
+                  onChange={(e) => setCredentials({ ...credentials, newPassword: e.target.value })}
+                  placeholder="Password Baru (Min. 6 Karakter)"
+                  className="w-full pl-3 pr-10 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-hidden focus:border-emerald-500 font-medium"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
 
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Konfirmasi Password Baru</label>
-              <input
-                type="password"
-                value={credentials.confirmPassword}
-                onChange={(e) => setCredentials({ ...credentials, confirmPassword: e.target.value })}
-                placeholder="Ulangi Password Baru"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-hidden focus:border-emerald-500"
-              />
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Konfirmasi Password Baru</label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={credentials.confirmPassword || ''}
+                  onChange={(e) => setCredentials({ ...credentials, confirmPassword: e.target.value })}
+                  placeholder="Ulangi Password Baru"
+                  className="w-full pl-3 pr-10 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-hidden focus:border-emerald-500 font-medium"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
           </div>
 

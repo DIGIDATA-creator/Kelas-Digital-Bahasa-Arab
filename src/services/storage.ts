@@ -3,6 +3,15 @@ import { INITIAL_MATERI, INITIAL_PENILAIAN, INITIAL_STUDENTS, INITIAL_LOGS, INIT
 import { db } from '../firebase/config';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 
+export interface UserSession {
+  role: Role;
+  studentId?: string;
+  userName: string;
+  userEmail: string;
+  avatar?: string;
+  loggedInAt: string;
+}
+
 const KEYS = {
   MATERI: 'lms_arabic_materi',
   PENILAIAN: 'lms_arabic_penilaian',
@@ -14,6 +23,7 @@ const KEYS = {
   CURRENT_STUDENT_ID: 'lms_arabic_current_student_id',
   GURU_PROFILE: 'lms_guru_profile',
   GURU_CREDENTIALS: 'lms_guru_credentials',
+  USER_SESSION: 'lms_user_session',
 };
 
 // Cache in memory for immediate sync reads
@@ -421,6 +431,22 @@ export const storageService = {
       }
     });
     return result;
+  },
+
+  getUserSession(): UserSession | null {
+    return getLocal<UserSession | null>(KEYS.USER_SESSION, null);
+  },
+
+  setUserSession(session: UserSession): void {
+    saveLocal(KEYS.USER_SESSION, session);
+    this.setRole(session.role);
+    if (session.studentId) {
+      this.setCurrentStudentId(session.studentId);
+    }
+  },
+
+  clearUserSession(): void {
+    localStorage.removeItem(KEYS.USER_SESSION);
   },
 
   getRole(): Role {

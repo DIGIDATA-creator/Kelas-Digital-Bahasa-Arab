@@ -782,7 +782,7 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
 
                                         <div className="flex items-center justify-between sm:justify-end gap-1 shrink-0 pt-1 sm:pt-0 border-t sm:border-t-0 border-slate-200/60">
                                           <select
-                                            value={std.status === 'aktif' ? 'disetujui' : std.status}
+                                            value={std.status === 'aktif' ? 'disetujui' : (std.status || 'pending')}
                                             onChange={(e) => handleSetStudentStatus(std.id, e.target.value as StudentStatus)}
                                             className={`px-2 py-1 text-[11px] font-bold rounded-lg border cursor-pointer focus:outline-hidden transition-all ${
                                               std.status === 'disetujui' || std.status === 'aktif'
@@ -966,7 +966,7 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                         </td>
                         <td className="py-3.5 px-3 sm:px-4 text-center">
                           <select
-                            value={std.status === 'aktif' ? 'disetujui' : std.status}
+                            value={std.status === 'aktif' ? 'disetujui' : (std.status || 'pending')}
                             onChange={(e) => handleSetStudentStatus(std.id, e.target.value as StudentStatus)}
                             className={`px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs font-bold rounded-xl border cursor-pointer focus:outline-hidden transition-all ${
                               std.status === 'disetujui' || std.status === 'aktif'

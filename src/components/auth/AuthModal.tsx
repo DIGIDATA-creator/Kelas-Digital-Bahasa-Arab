@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { signInWithGoogle, loginUser, registerUser, logoutUser, User } from '../../lib/firebase';
-import { LogIn, LogOut, UserPlus, Mail, Lock, Shield, CheckCircle2, AlertCircle, Sparkles, Copy, ExternalLink, Globe, Check, ShieldAlert, ArrowRight } from 'lucide-react';
+import { LogIn, LogOut, UserPlus, Mail, Lock, Shield, CheckCircle2, AlertCircle, Sparkles, Copy, ExternalLink, Globe, Check, ShieldAlert, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { PendaftaranSiswaForm } from './PendaftaranSiswaForm';
 import { Student, TingkatType, Role } from '../../types';
 import { storageService } from '../../services/storage';
@@ -28,6 +28,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
@@ -432,7 +433,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         <input
                           type="email"
                           required
-                          value={email}
+                          value={email || ''}
                           onChange={(e) => setEmail(e.target.value)}
                           placeholder="nama@sekolah.sch.id"
                           className="w-full pl-9 pr-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-hidden focus:border-emerald-500 font-medium"
@@ -445,14 +446,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       <div className="relative">
                         <Lock size={16} className="absolute left-3 top-2.5 text-slate-400" />
                         <input
-                          type="password"
+                          type={showPassword ? 'text' : 'password'}
                           required
                           minLength={6}
-                          value={password}
+                          value={password || ''}
                           onChange={(e) => setPassword(e.target.value)}
                           placeholder="Min. 6 Karakter"
-                          className="w-full pl-9 pr-3 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-hidden focus:border-emerald-500 font-medium"
+                          className="w-full pl-9 pr-10 py-2 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-hidden focus:border-emerald-500 font-medium"
                         />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                        >
+                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
                       </div>
                     </div>
 

@@ -481,7 +481,7 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
                 <input
                   type="text"
                   required
-                  value={formData.code}
+                  value={formData.code || ''}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                   placeholder="Kode unik (e.g. TMR-QOW-BAB1)"
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono uppercase"
@@ -493,7 +493,7 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
                 <input
                   type="text"
                   required
-                  value={formData.title}
+                  value={formData.title || ''}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   placeholder="Judul latihan (e.g. Tamrin Qowaid Bab 1)"
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl"
@@ -506,7 +506,7 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
                   type="number"
                   min={1}
                   max={180}
-                  value={formData.durationMinutes}
+                  value={formData.durationMinutes ?? 15}
                   onChange={(e) => setFormData({ ...formData, durationMinutes: parseInt(e.target.value) || 15 })}
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl"
                 />
@@ -518,7 +518,7 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
                   type="number"
                   min={1}
                   max={formData.questions.length || 100}
-                  value={formData.questionsToShow}
+                  value={formData.questionsToShow ?? 5}
                   onChange={(e) => setFormData({ ...formData, questionsToShow: parseInt(e.target.value) || 5 })}
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl text-purple-700 font-extrabold"
                 />
@@ -605,7 +605,7 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
                       <input
                         type="text"
                         required
-                        value={q.questionText}
+                        value={q.questionText || ''}
                         onChange={(e) => {
                           const val = e.target.value;
                           setFormData(prev => ({
