@@ -53,7 +53,7 @@ export const SiswaDashboard: React.FC<SiswaDashboardProps> = ({
   ).size;
 
   const memorizedMahfudzotCount = Object.values(mahfudzotState).filter(
-    c => c && c.hafalanArab && c.hafalanTerjemah && c.pengetahuanKosakata && c.pemahamanMateri
+    (c: any) => c && c.hafalanArab && c.hafalanTerjemah && c.pengetahuanKosakata && c.pemahamanMateri
   ).length;
 
   const hafalanXPData = calculateHafalanXP(mahfudzotState, kosakataState);

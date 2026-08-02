@@ -48,6 +48,7 @@ export interface Materi {
   arabicTitle?: string;
   category: CategoryType;
   qowaidCategory?: 'قواعد' | 'النحو' | 'الصرف' | string;
+  vocabCategory?: 'اسْم' | 'فِعل' | 'حَرْف' | string;
   mahfudzotCategory?: string; // e.g. 'Akhlak', 'Ilmu', 'Persahabatan', 'Kesungguhan', 'Waktu & Disiplin', 'Kebijaksanaan'
   babNumber?: number;
   learningTargets?: string[];
@@ -92,6 +93,7 @@ export interface Penilaian {
   displayQuestionCount?: number; // F.1.4 Jumlah soal yang muncul di akun siswa
   questionsToShow?: number; // F.1.4 Total questions shown to student
   randomizeQuestions?: boolean; // F.1.5 Acak urutan soal
+  randomizeOptions?: boolean; // Acak urutan pilihan jawaban (A, B, C, D)
   prioritizeUnseen?: boolean; // F.1.7 Prioritaskan soal belum pernah dikerjakan
   durationMinutes: number;
   passingGrade: number; // e.g. 75

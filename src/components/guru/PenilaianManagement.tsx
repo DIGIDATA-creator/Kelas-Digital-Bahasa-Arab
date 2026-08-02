@@ -34,6 +34,7 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
     passingGrade: 75,
     questionsToShow: 5,
     randomizeQuestions: true,
+    randomizeOptions: true,
     prioritizeUnseen: true,
     questions: [] as Question[],
   });
@@ -65,6 +66,7 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
       passingGrade: 75,
       questionsToShow: 5,
       randomizeQuestions: true,
+      randomizeOptions: true,
       prioritizeUnseen: true,
       questions: [
         {
@@ -96,6 +98,7 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
       passingGrade: p.passingGrade,
       questionsToShow: p.questionsToShow || p.questions.length,
       randomizeQuestions: p.randomizeQuestions ?? true,
+      randomizeOptions: p.randomizeOptions ?? true,
       prioritizeUnseen: p.prioritizeUnseen ?? true,
       questions: p.questions || [],
     });
@@ -212,6 +215,7 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
             passingGrade: formData.passingGrade,
             questionsToShow: formData.questionsToShow,
             randomizeQuestions: formData.randomizeQuestions,
+            randomizeOptions: formData.randomizeOptions,
             prioritizeUnseen: formData.prioritizeUnseen,
             questions: formData.questions,
             totalPoints: totalPts,
@@ -233,6 +237,7 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
         passingGrade: formData.passingGrade,
         questionsToShow: formData.questionsToShow,
         randomizeQuestions: formData.randomizeQuestions,
+        randomizeOptions: formData.randomizeOptions,
         prioritizeUnseen: formData.prioritizeUnseen,
         questions: formData.questions,
         totalPoints: totalPts,
@@ -276,7 +281,7 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
                 <button
                   key={t}
                   onClick={() => setActiveType(t)}
-                  className={`px-4 py-2 rounded-xl font-bold text-xs capitalize transition-all flex items-center gap-2 ${
+                  className={`px-4 py-2 rounded-xl font-bold text-xs capitalize transition-all flex items-center gap-2 cursor-pointer ${
                     isActive
                       ? 'bg-purple-700 text-white shadow-md'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -292,19 +297,7 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
           </div>
 
           <div className="flex items-center gap-2 text-xs">
-            <span className="font-semibold text-slate-500">Filter Target:</span>
-            <select
-              value={activeCategoryFilter}
-              onChange={(e) => setActiveCategoryFilter(e.target.value)}
-              className="px-3 py-1.5 border border-slate-300 rounded-xl bg-slate-50 font-bold text-slate-700"
-            >
-              <option value="all">Semua Materi (Qowaid, Hiwar, dll)</option>
-              <option value="qowaid">Tata Bahasa (Qowaid)</option>
-              <option value="hiwar">Percakapan (Hiwar)</option>
-              <option value="kosakata">Kosakata (Mufradat)</option>
-              <option value="mahfudzot">Mahfudzot</option>
-            </select>
-
+            <span className="font-semibold text-slate-500">Filter Bab:</span>
             <select
               value={selectedBabFilter}
               onChange={(e) => setSelectedBabFilter(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
@@ -316,6 +309,33 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
               ))}
             </select>
           </div>
+        </div>
+
+        {/* 4 Sub-Menu Categories Bar (Qowaid, Hiwar, Kosakata, Mahfudzot) */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar pt-1">
+          <span className="text-xs font-bold text-slate-500 whitespace-nowrap mr-1">Sub Menu Kuis:</span>
+          {[
+            { id: 'all', label: 'Semua Sub Menu' },
+            { id: 'qowaid', label: 'Qowaid (Tata Bahasa)' },
+            { id: 'hiwar', label: 'Hiwar (Percakapan)' },
+            { id: 'kosakata', label: 'Kosakata (Mufradat)' },
+            { id: 'mahfudzot', label: 'Mahfudzot' },
+          ].map((cat) => {
+            const isActive = activeCategoryFilter === cat.id;
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setActiveCategoryFilter(cat.id)}
+                className={`px-3 py-1.5 rounded-xl font-bold text-xs whitespace-nowrap transition-all cursor-pointer ${
+                  isActive
+                    ? 'bg-purple-600 text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {cat.label}
+              </button>
+            );
+          })}
         </div>
 
         {/* Quick Bab Action Cards */}
@@ -525,7 +545,7 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
                 <span className="text-[10px] text-slate-400 mt-0.5 block">Diambil secara acak dari total bank soal</span>
               </div>
 
-              <div className="sm:col-span-2 flex items-center gap-4 pt-4">
+              <div className="sm:col-span-2 flex flex-wrap items-center gap-4 pt-4 border-t border-slate-100">
                 <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
                   <input
                     type="checkbox"
@@ -533,7 +553,17 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
                     onChange={(e) => setFormData({ ...formData, randomizeQuestions: e.target.checked })}
                     className="w-4 h-4 text-purple-600 rounded-md"
                   />
-                  <span>Acak Urutan Soal Untuk Tiap Siswa</span>
+                  <span>Acak Urutan Soal</span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={formData.randomizeOptions}
+                    onChange={(e) => setFormData({ ...formData, randomizeOptions: e.target.checked })}
+                    className="w-4 h-4 text-purple-600 rounded-md"
+                  />
+                  <span>Acak Urutan Pilihan Jawaban (A, B, C, D)</span>
                 </label>
 
                 <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
@@ -543,7 +573,7 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
                     onChange={(e) => setFormData({ ...formData, prioritizeUnseen: e.target.checked })}
                     className="w-4 h-4 text-purple-600 rounded-md"
                   />
-                  <span>Prioritaskan Soal Yang Belum Pernah Dikerjakan</span>
+                  <span>Prioritaskan Soal Belum Pernah Dikerjakan</span>
                 </label>
               </div>
             </div>

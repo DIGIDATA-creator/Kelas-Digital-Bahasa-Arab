@@ -365,6 +365,7 @@ export default function App() {
                   {activeTab === 'penilaian' && (
                     <PenilaianSiswaView
                       penilaianList={penilaianList}
+                      materiList={materiList}
                       currentStudent={currentStudent}
                       onFinishQuiz={handleFinishQuiz}
                     />

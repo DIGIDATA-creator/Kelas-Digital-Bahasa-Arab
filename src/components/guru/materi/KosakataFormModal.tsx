@@ -23,6 +23,9 @@ export const KosakataFormModal: React.FC<KosakataFormModalProps> = ({
   const [babNumber, setBabNumber] = useState<number>(editingMateri?.babNumber || 1);
   const [title, setTitle] = useState(editingMateri?.title || '');
   const [arabicTitle, setArabicTitle] = useState(editingMateri?.arabicTitle || '');
+  const [vocabCategory, setVocabCategory] = useState<'اسْم' | 'فِعل' | 'حَرْف' | string>(
+    editingMateri?.vocabCategory || 'اسْم'
+  );
 
   const [vocabularies, setVocabularies] = useState<VocabularyItem[]>(
     editingMateri?.vocabularies && editingMateri.vocabularies.length > 0
@@ -79,14 +82,20 @@ export const KosakataFormModal: React.FC<KosakataFormModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    const updatedVocabs = vocabularies.map(v => ({
+      ...v,
+      category: vocabCategory,
+    }));
+
     onSave({
       category: 'kosakata',
       babNumber,
+      vocabCategory,
       title: title || `Kosakata Bab ${babNumber}`,
       arabicTitle,
-      vocabularies,
+      vocabularies: updatedVocabs,
       content: `Kumpulan Kosakata Bab ${babNumber}: ${title}`,
-      description: `Materi Kosakata Bahasa Arab Bab ${babNumber} berisi ${vocabularies.length} kata.`,
+      description: `Materi Kosakata Bahasa Arab Bab ${babNumber} (${vocabCategory}) berisi ${vocabularies.length} kata.`,
       authorName: 'Ust. Ahmad Dahlan, M.Pd.',
     });
 
@@ -128,8 +137,8 @@ export const KosakataFormModal: React.FC<KosakataFormModalProps> = ({
             <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden text-xs">
               <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
           
-          {/* Bab Number & Judul */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* Bab Number, Judul, & Kategori Kosakata */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <div>
               <label className="block font-bold text-slate-700 mb-1">
                 Nomor Bab
@@ -141,8 +150,24 @@ export const KosakataFormModal: React.FC<KosakataFormModalProps> = ({
                 required
                 value={babNumber}
                 onChange={(e) => setBabNumber(Number(e.target.value))}
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:border-teal-500 font-extrabold text-teal-800"
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:border-teal-500 font-extrabold text-teal-800 bg-white"
               />
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">
+                Kategori Kosakata Bab
+              </label>
+              <select
+                value={vocabCategory}
+                onChange={(e) => setVocabCategory(e.target.value)}
+                className="w-full px-3 py-2 border border-teal-300 bg-teal-50/50 rounded-xl focus:border-teal-500 font-extrabold text-teal-900 font-arabic text-sm cursor-pointer"
+                title="Pilihan kategori jenis kosakata dalam 1 bab (digunakan untuk integrasi kuis)"
+              >
+                <option value="اسْم">اسْم (Isim / Kata Benda)</option>
+                <option value="فِعل">فِعل (Fi'il / Kata Kerja)</option>
+                <option value="حَرْف">حَرْف (Harf / Kata Tugas)</option>
+              </select>
             </div>
 
             <div>
@@ -155,7 +180,7 @@ export const KosakataFormModal: React.FC<KosakataFormModalProps> = ({
                 placeholder="Contoh: Peralatan Sekolah"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:border-teal-500 font-medium"
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:border-teal-500 font-medium bg-white"
               />
             </div>
 
@@ -168,7 +193,7 @@ export const KosakataFormModal: React.FC<KosakataFormModalProps> = ({
                 placeholder="الأَدَوَاتُ المَدْرَسِيَّةُ"
                 value={arabicTitle}
                 onChange={(e) => setArabicTitle(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:border-teal-500 font-arabic text-base"
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:border-teal-500 font-arabic text-base bg-white"
               />
             </div>
           </div>

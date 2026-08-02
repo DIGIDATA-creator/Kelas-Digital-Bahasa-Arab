@@ -740,7 +740,7 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                 const isSelected = selectedStudentIds.includes(std.id);
                 const vocabCount = Object.values(std.hafalanProgress?.kosakataIds || {}).filter(Boolean).length;
                 const mahfudzotCount = Object.values(std.hafalanProgress?.mahfudzotChecklist || {}).filter(
-                  c => c && c.hafalanArab && c.hafalanTerjemah && c.pengetahuanKosakata && c.pemahamanMateri
+                  (c: any) => c && c.hafalanArab && c.hafalanTerjemah && c.pengetahuanKosakata && c.pemahamanMateri
                 ).length;
 
                 const theme = getTingkatColorTheme(std.tingkat, std.className);
@@ -778,7 +778,7 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                         {/* Top Right: Status Badge Selector */}
                         <select
                           value={std.status}
-                          onChange={e => handleUpdateStatus(std.id, e.target.value as StudentStatus)}
+                          onChange={e => handleSetStudentStatus(std.id, e.target.value as StudentStatus)}
                           className={`text-[11px] font-extrabold py-1 px-2.5 rounded-xl border cursor-pointer focus:outline-hidden transition-all shadow-md z-10 ${
                             std.status === 'aktif' || std.status === 'disetujui'
                               ? 'bg-emerald-500 text-white border-emerald-400'
@@ -881,7 +881,7 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                       <div className="flex items-center gap-1">
                         <button
                           type="button"
-                          onClick={() => onSimulateStudentLogin?.(std)}
+                          onClick={() => onSwitchToStudentSession?.(std)}
                           className="p-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded-xl text-xs font-bold transition-all cursor-pointer"
                           title="Uji Log In sebagai Siswa ini"
                         >
@@ -905,7 +905,7 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleDeleteStudent(std.id, std.name)}
+                          onClick={() => requestDeleteStudent(std)}
                           className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-all cursor-pointer"
                           title="Hapus Siswa"
                         >

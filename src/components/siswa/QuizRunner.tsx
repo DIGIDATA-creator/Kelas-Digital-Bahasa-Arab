@@ -26,7 +26,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
   // F.1.6 Accessed At Timestamp
   const [accessedAt] = useState<string>(new Date().toISOString());
 
-  // F.1.4, F.1.5, F.1.7 Prepare Active Question Set from Bank
+  // F.1.4, F.1.5, F.1.7 Prepare Active Question Set from Bank with Question & Option Randomization
   const questions: Question[] = useMemo(() => {
     let pool = [...(penilaian.questions || [])];
 
@@ -38,14 +38,56 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
       pool = [...unseen, ...seen];
     }
 
-    // Randomize if enabled
-    if (penilaian.randomizeQuestions) {
+    // Randomize questions (enabled by default or if randomizeQuestions !== false)
+    const shouldRandomizeQuestions = penilaian.randomizeQuestions !== false;
+    if (shouldRandomizeQuestions) {
       pool.sort(() => Math.random() - 0.5);
     }
 
     // Slice to questionsToShow limit
     const limit = penilaian.questionsToShow || pool.length;
-    return pool.slice(0, limit);
+    const selectedPool = pool.slice(0, limit);
+
+    // Randomize answer options order per question (enabled by default or if randomizeOptions !== false)
+    const shouldRandomizeOptions = penilaian.randomizeOptions !== false;
+
+    return selectedPool.map((q) => {
+      if (!q.options || q.options.length <= 1 || !shouldRandomizeOptions) {
+        return q;
+      }
+
+      // Determine original correct answer text
+      let correctText = '';
+      if (typeof q.correctAnswer === 'number' && q.options[q.correctAnswer] !== undefined) {
+        correctText = q.options[q.correctAnswer];
+      } else if (typeof q.correctAnswer === 'string') {
+        const numIdx = parseInt(q.correctAnswer, 10);
+        if (!isNaN(numIdx) && q.options[numIdx] !== undefined && !q.options.includes(q.correctAnswer)) {
+          correctText = q.options[numIdx];
+        } else {
+          correctText = q.correctAnswer;
+        }
+      }
+
+      // Create shuffled copy of options using Fisher-Yates
+      const shuffledOptions = [...q.options];
+      for (let i = shuffledOptions.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffledOptions[i], shuffledOptions[j]] = [shuffledOptions[j], shuffledOptions[i]];
+      }
+
+      // Find new index of the correct text in shuffled options
+      let newCorrectIndex = shuffledOptions.indexOf(correctText);
+      if (newCorrectIndex === -1) {
+        newCorrectIndex = typeof q.correctAnswer === 'number' ? q.correctAnswer : 0;
+      }
+
+      return {
+        ...q,
+        options: shuffledOptions,
+        correctAnswer: newCorrectIndex,
+      };
+    });
   }, [penilaian, student]);
 
   // Timer Countdown Effect
@@ -169,13 +211,18 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
         {!isSubmitted ? (
           <div className="p-6 sm:p-8 space-y-6">
             
-            {/* Progress & Question Navigation Pills */}
-            <div className="flex items-center justify-between border-b pb-3">
+            {/* Anti-Cheat & Progress Navigation Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
               <div className="space-y-0.5">
-                <span className="text-xs font-bold text-slate-500 block">
-                  Soal <span className="text-slate-900 font-extrabold">{currentQuestionIdx + 1}</span> dari {questions.length}
-                </span>
-                <span className="text-[10px] text-slate-400 font-mono">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-500">
+                    Soal <span className="text-slate-900 font-extrabold">{currentQuestionIdx + 1}</span> dari {questions.length}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1">
+                    🎲 Soal & Opsi Diacak
+                  </span>
+                </div>
+                <span className="text-[10px] text-slate-400 font-mono block">
                   Kode Soal: {currentQ?.code || `Q-${currentQuestionIdx + 1}`}
                 </span>
               </div>
@@ -189,7 +236,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
                     <button
                       key={q.id || idx}
                       onClick={() => setCurrentQuestionIdx(idx)}
-                      className={`w-7 h-7 rounded-lg text-xs font-bold transition-all ${
+                      className={`w-7 h-7 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                         isCurrent
                           ? 'bg-purple-600 text-white ring-2 ring-purple-300'
                           : isAnswered
@@ -223,19 +270,27 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
                   <div className="space-y-2.5 pt-2">
                     {currentQ.options.map((opt, optIdx) => {
                       const isSelected = userAnswers[currentQ.id] === optIdx;
+                      const optionLetter = String.fromCharCode(65 + optIdx); // A, B, C, D
 
                       return (
                         <button
                           key={optIdx}
                           onClick={() => handleSelectAnswer(optIdx)}
-                          className={`w-full text-left p-4 rounded-xl border-2 transition-all text-xs sm:text-sm font-medium flex items-center justify-between ${
+                          className={`w-full text-left p-3.5 sm:p-4 rounded-xl border-2 transition-all text-xs sm:text-sm font-medium flex items-center justify-between cursor-pointer ${
                             isSelected
                               ? 'bg-purple-50 border-purple-600 text-purple-900 font-bold shadow-xs'
                               : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-800'
                           }`}
                         >
-                          <span>{opt}</span>
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center text-xs font-bold ${
+                          <div className="flex items-center gap-3">
+                            <span className={`w-6 h-6 rounded-lg text-xs font-black flex items-center justify-center shrink-0 ${
+                              isSelected ? 'bg-purple-600 text-white' : 'bg-slate-100 text-slate-600 border border-slate-200'
+                            }`}>
+                              {optionLetter}
+                            </span>
+                            <span>{opt}</span>
+                          </div>
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center text-xs font-bold shrink-0 ${
                             isSelected ? 'border-purple-600 bg-purple-600 text-white' : 'border-slate-300'
                           }`}>
                             {isSelected && '✓'}
