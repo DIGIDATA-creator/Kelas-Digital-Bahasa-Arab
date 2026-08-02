@@ -268,6 +268,92 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
                 </div>
               )}
 
+              {/* 4.1 Requirement: Visual Indicator for Hafalan Checked by Teacher */}
+              {currentMateri.category === 'kosakata' && (() => {
+                const totalInBab = currentMateri.vocabularies?.length || 0;
+                const checkedInBab = (currentMateri.vocabularies || []).filter(
+                  v => currentStudent.hafalanProgress?.kosakataIds?.[v.id]
+                ).length;
+                const isAllChecked = totalInBab > 0 && checkedInBab === totalInBab;
+
+                return (
+                  <div className={`p-4 rounded-2xl border flex flex-wrap items-center justify-between gap-3 shadow-2xs ${
+                    checkedInBab > 0
+                      ? 'bg-emerald-50 border-emerald-300 text-emerald-950'
+                      : 'bg-slate-50 border-slate-200 text-slate-700'
+                  }`}>
+                    <div className="flex items-center gap-2.5">
+                      <div className={`p-2 rounded-xl ${checkedInBab > 0 ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500'}`}>
+                        <CheckCircle2 size={18} />
+                      </div>
+                      <div>
+                        <h4 className="font-extrabold text-xs sm:text-sm">
+                          {isAllChecked
+                            ? '✅ Seluruh Kosakata Bab Ini Telah Disetorkan & Diceklis Guru'
+                            : checkedInBab > 0
+                            ? `✓ ${checkedInBab} dari ${totalInBab} Kosakata Telah Disetorkan ke Guru`
+                            : 'Belum Ada Kosakata Bab Ini yang Disetorkan ke Guru'}
+                        </h4>
+                        <p className="text-[11px] opacity-80">
+                          {checkedInBab > 0 ? `Anda memperoleh +${checkedInBab * 5} XP dari setoran kosakata bab ini.` : 'Setorkan hafalan kosakata ini ke Ust./Ustz. untuk mendapatkan +5 XP per mufrodat.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <span className="px-3 py-1 bg-emerald-600 text-white font-extrabold text-xs rounded-xl shadow-2xs">
+                      {checkedInBab}/{totalInBab} Hafal
+                    </span>
+                  </div>
+                );
+              })()}
+
+              {currentMateri.category === 'mahfudzot' && (() => {
+                const chk = currentStudent.hafalanProgress?.mahfudzotChecklist?.[currentMateri.id];
+                const checkedCount = chk ? [chk.hafalanArab, chk.hafalanTerjemah, chk.pengetahuanKosakata, chk.pemahamanMateri].filter(Boolean).length : 0;
+                const isFull = checkedCount === 4;
+
+                return (
+                  <div className={`p-4 rounded-2xl border flex flex-wrap items-center justify-between gap-3 shadow-2xs ${
+                    checkedCount > 0
+                      ? 'bg-purple-50 border-purple-300 text-purple-950'
+                      : 'bg-slate-50 border-slate-200 text-slate-700'
+                  }`}>
+                    <div className="flex items-center gap-2.5">
+                      <div className={`p-2 rounded-xl ${checkedCount > 0 ? 'bg-purple-700 text-white' : 'bg-slate-200 text-slate-500'}`}>
+                        <CheckCircle2 size={18} />
+                      </div>
+                      <div>
+                        <h4 className="font-extrabold text-xs sm:text-sm">
+                          {isFull
+                            ? '✅ Mahfudzot Tuntas Disetorkan & Diceklis Guru'
+                            : checkedCount > 0
+                            ? `✓ Setoran Mahfudzot Terverifikasi Guru (${checkedCount}/4 Kriteria)`
+                            : 'Belum Disetorkan ke Guru'}
+                        </h4>
+                        <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px]">
+                          <span className={`px-2 py-0.5 rounded-md font-bold ${chk?.hafalanArab ? 'bg-emerald-200 text-emerald-900' : 'bg-slate-200 text-slate-500'}`}>
+                            {chk?.hafalanArab ? '✓ Teks Arab (+5 XP)' : '✕ Teks Arab'}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-md font-bold ${chk?.hafalanTerjemah ? 'bg-emerald-200 text-emerald-900' : 'bg-slate-200 text-slate-500'}`}>
+                            {chk?.hafalanTerjemah ? '✓ Terjemah (+5 XP)' : '✕ Terjemah'}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-md font-bold ${chk?.pengetahuanKosakata ? 'bg-amber-200 text-amber-900' : 'bg-slate-200 text-slate-500'}`}>
+                            {chk?.pengetahuanKosakata ? '✓ Kosakata (+10 XP)' : '✕ Kosakata'}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-md font-bold ${chk?.pemahamanMateri ? 'bg-amber-200 text-amber-900' : 'bg-slate-200 text-slate-500'}`}>
+                            {chk?.pemahamanMateri ? '✓ Hikmah (+10 XP)' : '✕ Hikmah'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <span className="px-3 py-1 bg-purple-700 text-white font-extrabold text-xs rounded-xl shadow-2xs">
+                      {checkedCount}/4 Diceklis
+                    </span>
+                  </div>
+                );
+              })()}
+
               {/* CATEGORY 1: QOWAID / THEORETICAL EXPLANATION */}
               {currentMateri.category === 'qowaid' && (
                 <div className="space-y-4">

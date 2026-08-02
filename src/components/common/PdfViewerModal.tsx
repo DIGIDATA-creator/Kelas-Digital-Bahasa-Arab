@@ -203,6 +203,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
   const [zoom, setZoom] = useState(100);
   const [totalPages, setTotalPages] = useState(initialPageCount);
   const [viewMode, setViewMode] = useState<'embed' | 'document'>(pdfUrl ? 'embed' : 'document');
+  const [isLazyPdfLoaded, setIsLazyPdfLoaded] = useState(false);
 
   // Convert dataUrl to safe Blob URL for browser open/download
   const objectBlobUrl = useMemo(() => {
@@ -398,14 +399,42 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
         {/* PDF Content Area */}
         <div className="flex-1 bg-slate-200 p-2 sm:p-6 overflow-auto flex flex-col justify-start items-center">
           {viewMode === 'embed' && pdfUrl ? (
-            <PdfCanvasViewer
-              pdfUrl={pdfUrl}
-              currentPage={currentPage}
-              zoom={zoom}
-              onPageCountChange={(cnt) => setTotalPages(cnt)}
-              onOpenNewTab={handleOpenNewTab}
-              onSwitchToTextMode={() => setViewMode('document')}
-            />
+            !isLazyPdfLoaded && pdfUrl.length > 50000 ? (
+              <div className="flex flex-col items-center justify-center p-8 space-y-4 bg-white rounded-2xl shadow-lg border border-slate-300 max-w-md my-auto text-center">
+                <div className="p-3 bg-emerald-100 text-emerald-800 rounded-full">
+                  <FileText size={36} />
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-slate-900 text-base">Modul PDF Siap Dimuat</h4>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Mode Hemat Kuota: Pratinjau PDF belum diunduh otomatis untuk menghemat data internet Anda.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                  <button
+                    onClick={() => setIsLazyPdfLoaded(true)}
+                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Eye size={16} /> Tampilkan Visual PDF (Lazy Load)
+                  </button>
+                  <button
+                    onClick={() => setViewMode('document')}
+                    className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold border border-slate-300 transition-all cursor-pointer"
+                  >
+                    Baca Teks Ringkas (Super Cepat)
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <PdfCanvasViewer
+                pdfUrl={pdfUrl}
+                currentPage={currentPage}
+                zoom={zoom}
+                onPageCountChange={(cnt) => setTotalPages(cnt)}
+                onOpenNewTab={handleOpenNewTab}
+                onSwitchToTextMode={() => setViewMode('document')}
+              />
+            )
           ) : (
             <div
               style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top center' }}

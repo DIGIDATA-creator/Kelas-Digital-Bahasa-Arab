@@ -14,6 +14,7 @@ import { GuruProfile } from './components/guru/GuruProfile';
 
 // Siswa Components
 import { SiswaDashboard } from './components/siswa/SiswaDashboard';
+import { ToastItem } from './components/common/ToastNotification';
 import { MateriSiswaView } from './components/siswa/MateriSiswaView';
 import { PenilaianSiswaView } from './components/siswa/PenilaianSiswaView';
 import { ProgresBelajarView } from './components/siswa/ProgresBelajarView';
@@ -67,6 +68,39 @@ export default function App() {
 
   const [selectedMateriIdForSiswa, setSelectedMateriIdForSiswa] = useState<string | undefined>(undefined);
   const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
+
+  // Toast Notification System
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+
+  const addToast = (toast: Omit<ToastItem, 'id' | 'timestamp'>) => {
+    const newToast: ToastItem = {
+      ...toast,
+      id: `toast-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+    };
+    setToasts(prev => [newToast, ...prev].slice(0, 5));
+  };
+
+  const handleDismissToast = (id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
+
+  const handleSimulateExpGain = (amount: number, reason: string) => {
+    if (!currentStudentId) return;
+    const allStudents = JSON.parse(JSON.stringify(storageService.getStudents())) as Student[];
+    const student = allStudents.find(s => s.id === currentStudentId);
+    if (student) {
+      student.totalXP += amount;
+      storageService.saveStudents(allStudents);
+      setStudents(storageService.getStudents());
+      addToast({
+        type: 'exp',
+        title: '✨ Penambahan EXP Berhasil!',
+        message: `${reason} (+${amount} EXP)`,
+        expGained: amount,
+      });
+    }
+  };
 
   // Real-time synchronization with Firebase Firestore across all devices
   useEffect(() => {
@@ -163,12 +197,27 @@ export default function App() {
     storageService.markMaterialComplete(currentStudentId, materiId);
     setStudents(storageService.getStudents());
     setLogs(storageService.getLogs());
+
+    const completedMateri = materiList.find(m => m.id === materiId);
+    addToast({
+      type: 'materi',
+      title: '🎉 Modul Selesai!',
+      message: `Selamat! Anda berhasil menyelesaikan "${completedMateri?.title || 'Materi Bahasa Arab'}". (+50 EXP)`,
+      expGained: 50,
+    });
   };
 
   const handleFinishQuiz = (attempt: Omit<QuizAttempt, 'id' | 'completedAt'>) => {
     storageService.saveQuizAttempt(attempt);
     setStudents(storageService.getStudents());
     setLogs(storageService.getLogs());
+
+    addToast({
+      type: 'quiz',
+      title: attempt.passed ? '🏆 Selamat! Kuis Lulus' : '📝 Kuis Diselesaikan',
+      message: `Nilai: ${attempt.score}/100 pada "${attempt.penilaianTitle}". ${attempt.passed ? 'Poin EXP ditambahkan ke akun!' : 'Tetap semangat!'}` ,
+      expGained: attempt.passed ? attempt.score : 0,
+    });
   };
 
   const handleResetData = () => {
@@ -291,6 +340,9 @@ export default function App() {
                       penilaianList={penilaianList}
                       onNavigate={setActiveTab}
                       isLoading={isLoadingData}
+                      toasts={toasts}
+                      onDismissToast={handleDismissToast}
+                      onSimulateExpGain={handleSimulateExpGain}
                       onSelectMateri={(id) => {
                         setSelectedMateriIdForSiswa(id);
                         setActiveTab('materi');

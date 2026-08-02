@@ -1,8 +1,10 @@
 import React from 'react';
 import { Student, Materi, Penilaian } from '../../types';
-import { BookOpen, Award, CheckCircle2, Play, Flame, ArrowRight, Sparkles, FileCheck, Trophy } from 'lucide-react';
+import { BookOpen, Award, CheckCircle2, Play, Flame, ArrowRight, Sparkles, FileCheck, Trophy, Quote, CheckSquare, Bell, Zap, BellRing } from 'lucide-react';
+import { calculateHafalanXP } from '../guru/CeklisHafalanModal';
 import { SiswaDashboardSkeleton } from '../common/Skeleton';
 import { MahfudzotOfTheDayCard } from '../common/MahfudzotOfTheDayCard';
+import { ToastNotificationContainer, ToastItem } from '../common/ToastNotification';
 
 interface SiswaDashboardProps {
   currentStudent: Student;
@@ -12,6 +14,9 @@ interface SiswaDashboardProps {
   onSelectMateri: (materiId: string) => void;
   onStartPenilaian: (penilaianId: string) => void;
   isLoading?: boolean;
+  toasts?: ToastItem[];
+  onDismissToast?: (id: string) => void;
+  onSimulateExpGain?: (amount: number, reason: string) => void;
 }
 
 export const SiswaDashboard: React.FC<SiswaDashboardProps> = ({
@@ -22,6 +27,9 @@ export const SiswaDashboard: React.FC<SiswaDashboardProps> = ({
   onSelectMateri,
   onStartPenilaian,
   isLoading = false,
+  toasts = [],
+  onDismissToast,
+  onSimulateExpGain,
 }) => {
   if (isLoading) {
     return <SiswaDashboardSkeleton />;
@@ -30,6 +38,25 @@ export const SiswaDashboard: React.FC<SiswaDashboardProps> = ({
   const completedCount = currentStudent.completedMaterials?.length || 0;
   const totalMateri = materiList.length || 1;
   const overallProgressPct = Math.round((completedCount / totalMateri) * 100);
+
+  // 4.3 Hafalan Statistics Calculations
+  const mahfudzotState = currentStudent.hafalanProgress?.mahfudzotChecklist || {};
+  const kosakataState = currentStudent.hafalanProgress?.kosakataIds || {};
+
+  const memorizedVocabCount = Object.values(kosakataState).filter(Boolean).length;
+  
+  // Calculate unique Bab Kosakata with at least 1 memorized word
+  const memorizedBabCount = new Set(
+    materiList
+      .filter(m => m.category === 'kosakata' && m.vocabularies?.some(v => kosakataState[v.id]))
+      .map(m => m.babNumber || m.id)
+  ).size;
+
+  const memorizedMahfudzotCount = Object.values(mahfudzotState).filter(
+    c => c && c.hafalanArab && c.hafalanTerjemah && c.pengetahuanKosakata && c.pemahamanMateri
+  ).length;
+
+  const hafalanXPData = calculateHafalanXP(mahfudzotState, kosakataState);
 
   // Find next uncompleted material
   const nextMaterial = materiList.find(m => !currentStudent.completedMaterials.includes(m.id)) || materiList[0];
@@ -67,6 +94,72 @@ export const SiswaDashboard: React.FC<SiswaDashboardProps> = ({
 
         <div className="absolute -right-6 -bottom-6 opacity-10 font-arabic text-[160px] pointer-events-none select-none text-white">
           {currentStudent.gender === 'Perempuan' ? 'طَالِبَةٌ' : 'طَالِبٌ'}
+        </div>
+      </div>
+
+      {/* 4.3 Data Hafalan Setoran Siswa (Kosakata & Mahfudzot) */}
+      <div className="bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 rounded-2xl p-5 text-white shadow-lg border border-purple-700/60 space-y-4">
+        <div className="flex items-center justify-between border-b border-purple-700/50 pb-3">
+          <div className="flex items-center gap-2">
+            <div className="p-2 bg-purple-500/20 rounded-xl text-purple-300 border border-purple-400/30">
+              <CheckSquare size={18} />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-sm sm:text-base text-white">
+                Capaian Setoran & Hafalan Siswa
+              </h3>
+              <p className="text-xs text-purple-200">
+                Data real-time hafalan Mufrodat Kosakata dan Kata Mutiara Mahfudzot yang telah disetorkan ke Guru
+              </p>
+            </div>
+          </div>
+
+          <span className="px-3 py-1 bg-amber-400/20 text-amber-300 text-xs font-black rounded-xl border border-amber-400/30 hidden sm:flex items-center gap-1">
+            <Award size={14} /> +{hafalanXPData.totalHafalanXP} XP Hafalan
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Card 1: Kosakata & Bab Dihafal */}
+          <div className="bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/10 space-y-1">
+            <div className="flex items-center justify-between text-purple-200 text-xs font-semibold">
+              <span className="flex items-center gap-1"><BookOpen size={14} /> Kosakata Dihafal</span>
+              <span className="text-amber-300 font-bold">+{hafalanXPData.kosakataXP} XP</span>
+            </div>
+            <p className="text-2xl font-black text-white">
+              {memorizedVocabCount} <span className="text-xs font-normal text-purple-200">Mufrodat</span>
+            </p>
+            <p className="text-[11px] text-purple-200 font-medium">
+              Tersebar di <strong>{memorizedBabCount} Bab Kosakata</strong>
+            </p>
+          </div>
+
+          {/* Card 2: Mahfudzot Dihafal */}
+          <div className="bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/10 space-y-1">
+            <div className="flex items-center justify-between text-purple-200 text-xs font-semibold">
+              <span className="flex items-center gap-1"><Quote size={14} /> Mahfudzot Tuntas</span>
+              <span className="text-amber-300 font-bold">+{hafalanXPData.mahfudzotXP} XP</span>
+            </div>
+            <p className="text-2xl font-black text-white">
+              {memorizedMahfudzotCount} <span className="text-xs font-normal text-purple-200">Kata Mutiara</span>
+            </p>
+            <p className="text-[11px] text-purple-200 font-medium">
+              Selesai 4 Kriteria (Arab, Terjemah, Vocab, Hikmah)
+            </p>
+          </div>
+
+          {/* Card 3: Total Point XP Hafalan */}
+          <div className="bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/10 space-y-1">
+            <div className="text-purple-200 text-xs font-semibold">
+              Total Point Bonus XP Hafalan
+            </div>
+            <p className="text-2xl font-black text-amber-300 flex items-center gap-1.5">
+              <Award size={22} /> {hafalanXPData.totalHafalanXP} <span className="text-xs text-purple-200 font-normal">XP</span>
+            </p>
+            <p className="text-[11px] text-purple-200 font-medium">
+              Otomatis menambah peringkat klasemen kelas
+            </p>
+          </div>
         </div>
       </div>
 
@@ -109,6 +202,93 @@ export const SiswaDashboard: React.FC<SiswaDashboardProps> = ({
           <p className="text-xs text-slate-400">Kelas X Bahasa</p>
         </div>
 
+      </div>
+
+      {/* Floating Toast Notification Container */}
+      {onDismissToast && (
+        <ToastNotificationContainer toasts={toasts} onDismiss={onDismissToast} />
+      )}
+
+      {/* Real-time Notification & EXP Activity Banner */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-6 space-y-4 relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-amber-100 rounded-xl text-amber-700 border border-amber-200 shrink-0">
+              <BellRing size={20} className="animate-bounce" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-slate-900 text-sm sm:text-base flex items-center gap-2">
+                Sistem Notifikasi Capaian & Penambahan EXP
+                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-wider">
+                  Live
+                </span>
+              </h3>
+              <p className="text-xs text-slate-500">
+                Pemberitahuan otomatis (toast notification) setiap kali menyelesaikan materi baru atau memperoleh poin EXP.
+              </p>
+            </div>
+          </div>
+
+          {/* Quick Demo Trigger Buttons */}
+          {onSimulateExpGain && (
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => onSimulateExpGain(25, 'Uji Poin Bonus Membaca')}
+                className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
+                title="Uji coba penambahan EXP +25"
+              >
+                <Zap size={13} className="text-amber-600" /> +25 EXP
+              </button>
+              <button
+                onClick={() => onSimulateExpGain(50, 'Menyelesaikan Modul Baru')}
+                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
+                title="Uji coba penambahan EXP +50"
+              >
+                <Sparkles size={13} /> +50 EXP
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Live Active Toast Feed Items */}
+        {toasts && toasts.length > 0 ? (
+          <div className="space-y-2">
+            <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider block">
+              Notifikasi Capaian Terkini Sesi Ini ({toasts.length})
+            </span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {toasts.map((t) => (
+                <div
+                  key={t.id}
+                  className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-start gap-2.5 text-xs relative group"
+                >
+                  <div className="p-1.5 bg-emerald-100 text-emerald-800 rounded-lg shrink-0">
+                    <Sparkles size={14} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="font-extrabold text-slate-900 truncate">{t.title}</span>
+                      {t.expGained !== undefined && t.expGained > 0 && (
+                        <span className="px-2 py-0.5 bg-amber-100 text-amber-900 text-[10px] font-black rounded-md shrink-0 border border-amber-200">
+                          +{t.expGained} EXP
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-600 line-clamp-2 mt-0.5">{t.message}</p>
+                    <span className="text-[10px] text-slate-400 mt-1 block font-mono">{t.timestamp}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="p-3 bg-emerald-50/70 rounded-xl border border-emerald-200 text-xs text-emerald-900 flex items-center justify-between gap-2">
+            <span className="font-semibold">
+              ✨ Buka menu <strong>Materi Siswa</strong> & klik <strong>"Tandai Selesai (+50 EXP)"</strong>, atau kerjakan <strong>Kuis</strong> untuk memicu notifikasi toast secara langsung!
+            </span>
+            <span className="text-emerald-800 font-extrabold hidden md:inline shrink-0">Sistem Aktif</span>
+          </div>
+        )}
       </div>
 
       {/* Mahfudzot Hari Ini Card (Rotasi 24 Jam) */}

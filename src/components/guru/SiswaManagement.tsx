@@ -25,10 +25,69 @@ import {
   AlertTriangle,
   UserCheck,
   ChevronRight,
-  CheckSquare
+  CheckSquare,
+  LayoutGrid,
+  Quote
 } from 'lucide-react';
 import { PendaftaranSiswaForm } from '../auth/PendaftaranSiswaForm';
 import { CeklisHafalanModal } from './CeklisHafalanModal';
+
+export const getTingkatColorTheme = (tingkat?: TingkatType | string, className?: string) => {
+  const t = (tingkat || '').toLowerCase();
+  const c = (className || '').toLowerCase();
+
+  if (t.includes('dasar') || c.includes('sd') || c.includes('mi') || c.includes('dasar')) {
+    return {
+      key: 'dasar',
+      label: '🎒 SD / MI / Dasar',
+      headerBg: 'bg-gradient-to-r from-amber-500 via-orange-500 to-amber-700',
+      badgeBg: 'bg-amber-100 text-amber-900 border-amber-300',
+      cardBorder: 'border-amber-200 hover:border-amber-400',
+      avatarRing: 'ring-4 ring-amber-400/50 border-white shadow-lg',
+      xpBadge: 'bg-amber-50 text-amber-900 border-amber-200',
+      accentText: 'text-amber-700',
+      bgAccent: 'bg-amber-50/70',
+    };
+  }
+  if (t.includes('menengah pertama') || c.includes('smp') || c.includes('mts') || c.includes('7') || c.includes('8') || c.includes('9')) {
+    return {
+      key: 'smp',
+      label: '🏫 SMP / MTs',
+      headerBg: 'bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-700',
+      badgeBg: 'bg-blue-100 text-blue-900 border-blue-300',
+      cardBorder: 'border-blue-200 hover:border-blue-400',
+      avatarRing: 'ring-4 ring-blue-400/50 border-white shadow-lg',
+      xpBadge: 'bg-blue-50 text-blue-900 border-blue-200',
+      accentText: 'text-blue-700',
+      bgAccent: 'bg-blue-50/70',
+    };
+  }
+  if (t.includes('menengah akhir') || c.includes('sma') || c.includes('ma') || c.includes('smk') || c.includes('10') || c.includes('11') || c.includes('12')) {
+    return {
+      key: 'sma',
+      label: '🎓 SMA / MA / SMK',
+      headerBg: 'bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-700',
+      badgeBg: 'bg-purple-100 text-purple-900 border-purple-300',
+      cardBorder: 'border-purple-200 hover:border-purple-400',
+      avatarRing: 'ring-4 ring-purple-400/50 border-white shadow-lg',
+      xpBadge: 'bg-purple-50 text-purple-900 border-purple-200',
+      accentText: 'text-purple-700',
+      bgAccent: 'bg-purple-50/70',
+    };
+  }
+
+  return {
+    key: 'umum',
+    label: '🌟 Tingkat Umum',
+    headerBg: 'bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-800',
+    badgeBg: 'bg-emerald-100 text-emerald-900 border-emerald-300',
+    cardBorder: 'border-emerald-200 hover:border-emerald-400',
+    avatarRing: 'ring-4 ring-emerald-400/50 border-white shadow-lg',
+    xpBadge: 'bg-emerald-50 text-emerald-900 border-emerald-200',
+    accentText: 'text-emerald-700',
+    bgAccent: 'bg-emerald-50/70',
+  };
+};
 
 interface SiswaManagementProps {
   students: Student[];
@@ -48,7 +107,7 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
   const [selectedSchoolFilter, setSelectedSchoolFilter] = useState('semua');
   const [activeMainSection, setActiveMainSection] = useState<'acc' | 'aktif' | 'semua'>('acc');
   const [statusTab, setStatusTab] = useState<'semua' | 'pending' | 'disetujui' | 'ditolak'>('pending');
-  const [viewMode, setViewMode] = useState<'grouped' | 'flat'>('grouped');
+  const [viewMode, setViewMode] = useState<'cards' | 'grouped' | 'flat'>('cards');
 
   const [selectedStudentForDetail, setSelectedStudentForDetail] = useState<Student | null>(null);
   const [studentForHafalanChecklist, setStudentForHafalanChecklist] = useState<Student | null>(null);
@@ -527,10 +586,20 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
           </div>
 
           {/* View Mode Switcher */}
-          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl">
+          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl overflow-x-auto">
+            <button
+              onClick={() => setViewMode('cards')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                viewMode === 'cards'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <LayoutGrid size={14} /> Kartu Siswa (Dekstop Grid)
+            </button>
             <button
               onClick={() => setViewMode('grouped')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
                 viewMode === 'grouped'
                   ? 'bg-emerald-600 text-white shadow-xs'
                   : 'text-slate-500 hover:text-slate-800'
@@ -540,7 +609,7 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
             </button>
             <button
               onClick={() => setViewMode('flat')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
                 viewMode === 'flat'
                   ? 'bg-emerald-600 text-white shadow-xs'
                   : 'text-slate-500 hover:text-slate-800'
@@ -655,6 +724,200 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
       {statusTab === 'pending' && pendingStudents.length === 0 && (
         <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 text-slate-400 text-xs font-semibold">
           Tidak ada pendaftaran siswa yang sedang menunggu ACC.
+        </div>
+      )}
+
+      {/* VIEW MODE 0: DEKSTOP CARDS GRID (Kartu Siswa Portrait Mode) */}
+      {viewMode === 'cards' && (
+        <div className="space-y-4">
+          {filteredStudents.length === 0 ? (
+            <div className="p-12 text-center bg-white rounded-3xl border border-slate-200 text-slate-400 text-xs font-semibold">
+              Tidak ada data siswa ditemukan.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {filteredStudents.map((std) => {
+                const isSelected = selectedStudentIds.includes(std.id);
+                const vocabCount = Object.values(std.hafalanProgress?.kosakataIds || {}).filter(Boolean).length;
+                const mahfudzotCount = Object.values(std.hafalanProgress?.mahfudzotChecklist || {}).filter(
+                  c => c && c.hafalanArab && c.hafalanTerjemah && c.pengetahuanKosakata && c.pemahamanMateri
+                ).length;
+
+                const theme = getTingkatColorTheme(std.tingkat, std.className);
+
+                return (
+                  <div
+                    key={std.id}
+                    className={`bg-white rounded-3xl border transition-all duration-300 shadow-xs hover:shadow-xl flex flex-col justify-between relative overflow-hidden group ${
+                      isSelected
+                        ? 'border-emerald-500 ring-2 ring-emerald-500/30 bg-emerald-50/20'
+                        : theme.cardBorder
+                    }`}
+                  >
+                    {/* Portrait Card Header Banner */}
+                    <div>
+                      <div className={`h-22 ${theme.headerBg} p-3.5 flex items-start justify-between relative overflow-hidden`}>
+                        {/* Subtle background pattern */}
+                        <div className="absolute right-0 top-0 opacity-15 font-arabic text-6xl select-none pointer-events-none text-white pr-2 pt-1">
+                          طَالِب
+                        </div>
+
+                        {/* Top Left: Selection Checkbox */}
+                        <div className="flex items-center gap-2 bg-black/20 backdrop-blur-md px-2.5 py-1 rounded-xl border border-white/20 z-10">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleToggleSelectStudent(std.id)}
+                            className="w-4 h-4 text-emerald-600 rounded-md border-slate-300 focus:ring-emerald-500 cursor-pointer accent-emerald-600 shrink-0"
+                          />
+                          <span className="text-[10px] font-extrabold text-white">
+                            {isSelected ? 'Terpilih' : 'Pilih'}
+                          </span>
+                        </div>
+
+                        {/* Top Right: Status Badge Selector */}
+                        <select
+                          value={std.status}
+                          onChange={e => handleUpdateStatus(std.id, e.target.value as StudentStatus)}
+                          className={`text-[11px] font-extrabold py-1 px-2.5 rounded-xl border cursor-pointer focus:outline-hidden transition-all shadow-md z-10 ${
+                            std.status === 'aktif' || std.status === 'disetujui'
+                              ? 'bg-emerald-500 text-white border-emerald-400'
+                              : std.status === 'pending'
+                              ? 'bg-amber-500 text-white border-amber-400'
+                              : std.status === 'ditolak'
+                              ? 'bg-rose-500 text-white border-rose-400'
+                              : 'bg-slate-700 text-slate-200 border-slate-600'
+                          }`}
+                        >
+                          <option value="pending">⏳ Pending</option>
+                          <option value="disetujui">✅ ACC (Aktif)</option>
+                          <option value="ditolak">❌ Tolak</option>
+                          <option value="nonaktif">🚫 Nonaktif</option>
+                        </select>
+                      </div>
+
+                      {/* Enlarged Centered Profile Picture (Portrait Card Feature) */}
+                      <div className="relative -mt-11 mx-auto z-10 flex flex-col items-center">
+                        <div className="relative group-hover:scale-105 transition-transform duration-300">
+                          <img
+                            src={std.avatar}
+                            alt={std.name}
+                            className={`w-22 h-22 sm:w-24 sm:h-24 rounded-2xl object-cover bg-white shadow-md ${theme.avatarRing}`}
+                          />
+                          {/* Gender Overlay Badge */}
+                          {std.gender && (
+                            <span className={`absolute -bottom-1 -right-1 px-2 py-0.5 rounded-lg text-[10px] font-black shadow-xs border bg-white ${
+                              std.gender === 'Perempuan' ? 'text-pink-600 border-pink-200' : 'text-blue-600 border-blue-200'
+                            }`}>
+                              {std.gender === 'Perempuan' ? '👩 Per' : '👨 Lak'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Student Main Info Stack */}
+                      <div className="p-5 pt-3 text-center space-y-3">
+                        <div>
+                          <h4 className="font-black text-slate-900 text-base sm:text-lg leading-snug line-clamp-1 group-hover:text-emerald-700 transition-colors">
+                            {std.name}
+                          </h4>
+                          <p className="text-xs text-slate-500 font-medium mt-0.5">
+                            NISN: <span className="font-mono text-slate-800 font-bold">{std.nisn}</span>
+                          </p>
+                        </div>
+
+                        {/* Tingkat & Class Badges */}
+                        <div className="flex flex-wrap items-center justify-center gap-1.5 text-xs">
+                          <span className={`px-2.5 py-1 text-[11px] font-black rounded-xl border shadow-2xs ${theme.badgeBg}`}>
+                            {theme.label}
+                          </span>
+                          <span className="px-2.5 py-1 text-[11px] font-bold rounded-xl bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1">
+                            <GraduationCap size={13} className="text-slate-500" />
+                            {std.className} ({std.rombelName || 'Rombel A'})
+                          </span>
+                        </div>
+
+                        {/* School Name */}
+                        <div className="flex items-center justify-center gap-1.5 text-xs text-slate-600 font-semibold px-3 py-1.5 bg-slate-50 rounded-xl border border-slate-100 truncate">
+                          <Building2 size={14} className="text-emerald-600 shrink-0" />
+                          <span className="truncate">{std.schoolName || 'Tanpa Sekolah'}</span>
+                        </div>
+
+                        {/* Stats Summary Box: EXP & Hafalan */}
+                        <div className="space-y-2 pt-1">
+                          <div className={`p-2.5 rounded-2xl border flex items-center justify-between text-xs font-bold ${theme.xpBadge}`}>
+                            <span className="flex items-center gap-1.5">
+                              <Award size={15} className="text-amber-500" /> Total Poin EXP
+                            </span>
+                            <span className="text-amber-900 font-black text-sm">
+                              +{std.totalXP} XP
+                            </span>
+                          </div>
+
+                          <div className={`p-2.5 rounded-2xl border text-[11px] flex items-center justify-between font-semibold ${theme.bgAccent} border-slate-200/60`}>
+                            <span className="flex items-center gap-1 text-slate-700">
+                              <Quote size={13} className="text-purple-600" /> Setoran Hafalan
+                            </span>
+                            <span className="text-purple-900 font-black">
+                              {vocabCount} Vocab • {mahfudzotCount} Mfz
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action Toolbar */}
+                    <div className="p-4 pt-2 border-t border-slate-100 bg-slate-50/50 flex flex-wrap items-center justify-between gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setStudentForHafalanChecklist(std)}
+                        className="px-3 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                        title="Buka Ceklis Hafalan Kosakata & Mahfudzot"
+                      >
+                        <CheckSquare size={14} />
+                        <span>Ceklis Hafalan</span>
+                      </button>
+
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => onSimulateStudentLogin?.(std)}
+                          className="p-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                          title="Uji Log In sebagai Siswa ini"
+                        >
+                          <UserCheck size={15} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedStudentForDetail(std)}
+                          className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all cursor-pointer"
+                          title="Lihat Detail Siswa"
+                        >
+                          <Eye size={15} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditModal(std)}
+                          className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all cursor-pointer"
+                          title="Edit Data Siswa"
+                        >
+                          <Edit3 size={15} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteStudent(std.id, std.name)}
+                          className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-all cursor-pointer"
+                          title="Hapus Siswa"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
