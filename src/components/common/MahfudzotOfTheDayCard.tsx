@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Materi } from '../../types';
 import { Sparkles, Volume2, Shuffle, ArrowRight, Quote, Clock } from 'lucide-react';
+import { playArabicAudio } from '../../utils/audioSpeech';
 
 interface MahfudzotOfTheDayCardProps {
   materiList: Materi[];
@@ -51,12 +52,8 @@ export const MahfudzotOfTheDayCard: React.FC<MahfudzotOfTheDayCardProps> = ({
   };
 
   const handleSpeak = () => {
-    if ('speechSynthesis' in window && arabicText) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(arabicText);
-      utterance.lang = 'ar-SA';
-      utterance.rate = 0.8;
-      window.speechSynthesis.speak(utterance);
+    if (arabicText) {
+      playArabicAudio(arabicText);
     }
   };
 

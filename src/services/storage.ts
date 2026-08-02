@@ -51,6 +51,14 @@ const docStudents = doc(db, 'app_collections', 'students');
 const docLogs = doc(db, 'app_collections', 'logs');
 const docForum = doc(db, 'app_collections', 'forum');
 
+// Helper to strip undefined values before sending to Firestore
+function sanitizeForFirestore<T>(data: T): T {
+  if (data === undefined) return null as unknown as T;
+  return JSON.parse(
+    JSON.stringify(data, (_key, value) => (value === undefined ? null : value))
+  );
+}
+
 // Helpers for LocalStorage fallback/cache
 function saveLocal(key: string, data: any) {
   try {
@@ -98,7 +106,7 @@ export const storageService = {
         saveLocal(KEYS.MATERI, cachedMateri);
         notifyListeners();
       } else {
-        setDoc(docMateri, { items: cachedMateri }).catch(console.error);
+        setDoc(docMateri, sanitizeForFirestore({ items: cachedMateri })).catch(console.error);
       }
     }, (err) => console.warn('Materi snapshot warning:', err));
 
@@ -109,7 +117,7 @@ export const storageService = {
         saveLocal(KEYS.PENILAIAN, cachedPenilaian);
         notifyListeners();
       } else {
-        setDoc(docPenilaian, { items: cachedPenilaian }).catch(console.error);
+        setDoc(docPenilaian, sanitizeForFirestore({ items: cachedPenilaian })).catch(console.error);
       }
     }, (err) => console.warn('Penilaian snapshot warning:', err));
 
@@ -120,7 +128,7 @@ export const storageService = {
         saveLocal(KEYS.STUDENTS, cachedStudents);
         notifyListeners();
       } else {
-        setDoc(docStudents, { items: cachedStudents }).catch(console.error);
+        setDoc(docStudents, sanitizeForFirestore({ items: cachedStudents })).catch(console.error);
       }
     }, (err) => console.warn('Students snapshot warning:', err));
 
@@ -131,7 +139,7 @@ export const storageService = {
         saveLocal(KEYS.LOGS, cachedLogs);
         notifyListeners();
       } else {
-        setDoc(docLogs, { items: cachedLogs }).catch(console.error);
+        setDoc(docLogs, sanitizeForFirestore({ items: cachedLogs })).catch(console.error);
       }
     }, (err) => console.warn('Logs snapshot warning:', err));
 
@@ -142,7 +150,7 @@ export const storageService = {
         saveLocal(KEYS.FORUM, cachedForum);
         notifyListeners();
       } else {
-        setDoc(docForum, { items: cachedForum }).catch(console.error);
+        setDoc(docForum, sanitizeForFirestore({ items: cachedForum })).catch(console.error);
       }
     }, (err) => console.warn('Forum snapshot warning:', err));
 
@@ -163,7 +171,7 @@ export const storageService = {
   saveMateri(list: Materi[]): void {
     cachedMateri = list;
     saveLocal(KEYS.MATERI, list);
-    setDoc(docMateri, { items: list }).catch(err => console.error('Error syncing Materi to Firestore:', err));
+    setDoc(docMateri, sanitizeForFirestore({ items: list })).catch(err => console.error('Error syncing Materi to Firestore:', err));
     notifyListeners();
   },
 
@@ -174,7 +182,7 @@ export const storageService = {
   savePenilaian(list: Penilaian[]): void {
     cachedPenilaian = list;
     saveLocal(KEYS.PENILAIAN, list);
-    setDoc(docPenilaian, { items: list }).catch(err => console.error('Error syncing Penilaian to Firestore:', err));
+    setDoc(docPenilaian, sanitizeForFirestore({ items: list })).catch(err => console.error('Error syncing Penilaian to Firestore:', err));
     notifyListeners();
   },
 
@@ -185,7 +193,7 @@ export const storageService = {
   saveStudents(list: Student[]): void {
     cachedStudents = list;
     saveLocal(KEYS.STUDENTS, list);
-    setDoc(docStudents, { items: list }).catch(err => console.error('Error syncing Students to Firestore:', err));
+    setDoc(docStudents, sanitizeForFirestore({ items: list })).catch(err => console.error('Error syncing Students to Firestore:', err));
 
     // Also update cached forum posts authorAvatar and authorName if any student profile changed
     let forumUpdated = false;
@@ -243,7 +251,7 @@ export const storageService = {
     if (forumUpdated) {
       cachedForum = updatedForum;
       saveLocal(KEYS.FORUM, updatedForum);
-      setDoc(docForum, { items: updatedForum }).catch(err => console.error('Error syncing updated Forum avatars to Firestore:', err));
+      setDoc(docForum, sanitizeForFirestore({ items: updatedForum })).catch(err => console.error('Error syncing updated Forum avatars to Firestore:', err));
     }
 
     notifyListeners();
@@ -262,7 +270,7 @@ export const storageService = {
     const updated = [newLog, ...cachedLogs].slice(0, 50);
     cachedLogs = updated;
     saveLocal(KEYS.LOGS, updated);
-    setDoc(docLogs, { items: updated }).catch(err => console.error('Error syncing Logs to Firestore:', err));
+    setDoc(docLogs, sanitizeForFirestore({ items: updated })).catch(err => console.error('Error syncing Logs to Firestore:', err));
     notifyListeners();
   },
 
@@ -274,7 +282,7 @@ export const storageService = {
   saveForumPosts(list: ForumPost[]): void {
     cachedForum = list;
     saveLocal(KEYS.FORUM, list);
-    setDoc(docForum, { items: list }).catch(err => console.error('Error syncing Forum to Firestore:', err));
+    setDoc(docForum, sanitizeForFirestore({ items: list })).catch(err => console.error('Error syncing Forum to Firestore:', err));
     notifyListeners();
   },
 
@@ -500,11 +508,11 @@ export const storageService = {
     saveLocal(KEYS.LOGS, INITIAL_LOGS);
     saveLocal(KEYS.FORUM, INITIAL_FORUM_POSTS);
 
-    setDoc(docMateri, { items: INITIAL_MATERI }).catch(console.error);
-    setDoc(docPenilaian, { items: INITIAL_PENILAIAN }).catch(console.error);
-    setDoc(docStudents, { items: INITIAL_STUDENTS }).catch(console.error);
-    setDoc(docLogs, { items: INITIAL_LOGS }).catch(console.error);
-    setDoc(docForum, { items: INITIAL_FORUM_POSTS }).catch(console.error);
+    setDoc(docMateri, sanitizeForFirestore({ items: INITIAL_MATERI })).catch(console.error);
+    setDoc(docPenilaian, sanitizeForFirestore({ items: INITIAL_PENILAIAN })).catch(console.error);
+    setDoc(docStudents, sanitizeForFirestore({ items: INITIAL_STUDENTS })).catch(console.error);
+    setDoc(docLogs, sanitizeForFirestore({ items: INITIAL_LOGS })).catch(console.error);
+    setDoc(docForum, sanitizeForFirestore({ items: INITIAL_FORUM_POSTS })).catch(console.error);
 
     notifyListeners();
   }

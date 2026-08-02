@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Volume2, VolumeX, Loader2 } from 'lucide-react';
+import { playArabicAudio } from '../../utils/audioSpeech';
 
 interface AudioPlayerButtonProps {
   arabicText: string;
@@ -18,24 +19,19 @@ export const AudioPlayerButton: React.FC<AudioPlayerButtonProps> = ({
 
   const speak = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!('speechSynthesis' in window)) {
-      alert('Browser Anda tidak mendukung Web Speech API.');
+    if (!arabicText) return;
+
+    if (isPlaying) {
+      setIsPlaying(false);
       return;
     }
 
-    window.speechSynthesis.cancel(); // Stop any ongoing speech
-
-    const cleanText = arabicText.replace(/[^\u0600-\u06FF\s]/g, ''); // Extract Arabic characters
-    const utterance = new SpeechSynthesisUtterance(cleanText || arabicText);
-    utterance.lang = 'ar-SA';
-    utterance.rate = 0.85; // Slightly slower for clear educational pronunciation
-    utterance.pitch = 1.0;
-
-    utterance.onstart = () => setIsPlaying(true);
-    utterance.onend = () => setIsPlaying(false);
-    utterance.onerror = () => setIsPlaying(false);
-
-    window.speechSynthesis.speak(utterance);
+    playArabicAudio(
+      arabicText,
+      () => setIsPlaying(true),
+      () => setIsPlaying(false),
+      () => setIsPlaying(false)
+    );
   };
 
   const sizeClasses = {

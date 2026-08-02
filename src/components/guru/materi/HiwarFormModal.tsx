@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Materi, DialogueTurnPair } from '../../../types';
 import { toArabicNumber } from '../../common/ArabicUtils';
-import { X, Plus, Trash2, FileSpreadsheet, Save, MessageSquare, Layers, HelpCircle } from 'lucide-react';
+import { AudioPlayerButton } from '../../common/AudioPlayerButton';
+import { X, Plus, Trash2, FileSpreadsheet, Save, MessageSquare, Layers, HelpCircle, Video } from 'lucide-react';
 
 interface HiwarFormModalProps {
   isOpen: boolean;
@@ -24,6 +25,7 @@ export const HiwarFormModal: React.FC<HiwarFormModalProps> = ({
   const [babNumber, setBabNumber] = useState<number>(editingMateri?.babNumber || 1);
   const [title, setTitle] = useState<string>(editingMateri?.title || '');
   const [arabicTitle, setArabicTitle] = useState<string>(editingMateri?.arabicTitle || '');
+  const [videoUrl, setVideoUrl] = useState<string>(editingMateri?.videoUrl || '');
   const [hiwarLevelNumber, setHiwarLevelNumber] = useState<number>(editingMateri?.hiwarLevelNumber || 1);
 
   // Convert existing dialogues into dialoguePairs if needed
@@ -77,6 +79,68 @@ export const HiwarFormModal: React.FC<HiwarFormModalProps> = ({
   // Sheet Modal State
   const [isSheetModalOpen, setIsSheetModalOpen] = useState(false);
   const [sheetText, setSheetText] = useState('');
+
+  // Synchronize modal fields whenever isOpen or editingMateri changes
+  useEffect(() => {
+    if (isOpen) {
+      if (editingMateri) {
+        setBabNumber(editingMateri.babNumber || 1);
+        setTitle(editingMateri.title || '');
+        setArabicTitle(editingMateri.arabicTitle || '');
+        setVideoUrl(editingMateri.videoUrl || '');
+        setHiwarLevelNumber(editingMateri.hiwarLevelNumber || 1);
+
+        if (editingMateri.dialoguePairs && editingMateri.dialoguePairs.length > 0) {
+          setDialoguePairs(editingMateri.dialoguePairs);
+        } else if (editingMateri.dialogues && editingMateri.dialogues.length > 0) {
+          const pairs: DialogueTurnPair[] = [];
+          for (let i = 0; i < editingMateri.dialogues.length; i += 2) {
+            const d1 = editingMateri.dialogues[i];
+            const d2 = editingMateri.dialogues[i + 1];
+            pairs.push({
+              id: `pair-${Date.now()}-${i}`,
+              turnNumber: pairs.length + 1,
+              speaker1: d1 ? d1.speaker : 'سُؤَالٌ',
+              arabic1: d1 ? d1.arabic : '',
+              translation1: d1 ? d1.translation : '',
+              speaker2: d2 ? d2.speaker : 'جَوَابٌ',
+              arabic2: d2 ? d2.arabic : '',
+              translation2: d2 ? d2.translation : '',
+            });
+          }
+          setDialoguePairs(pairs);
+        } else {
+          setDialoguePairs([]);
+        }
+      } else {
+        // New materi mode: calculate default next Bab
+        const hiwarList = existingMateriList.filter(m => m.category === 'hiwar');
+        const maxBab = hiwarList.length > 0 ? Math.max(...hiwarList.map(m => m.babNumber || 1)) : 0;
+        setBabNumber(maxBab + 1 || 1);
+        setTitle('');
+        setArabicTitle('');
+        setVideoUrl('');
+        setHiwarLevelNumber(1);
+        setDialoguePairs([
+          {
+            id: 'p1',
+            turnNumber: 1,
+            speaker1: 'أَحْمَدُ',
+            arabic1: 'السَّلاَمُ عَلَيْكُمْ وَرَحْمَةُ اللهِ وَبَرَكَاتُهُ',
+            translation1: 'Semoga keselamatan dan rahmat Allah tercurah kepadamu.',
+            speaker2: 'عَلِيٌّ',
+            arabic2: 'وَعَلَيْكُمُ السَّلاَمُ وَرَحْمَةُ اللهِ وَبَرَكَاتُهُ',
+            translation2: 'Dan semoga keselamatan dan rahmat Allah tercurah kepadamu juga.',
+          },
+        ]);
+      }
+      setArabic1('');
+      setTranslation1('');
+      setArabic2('');
+      setTranslation2('');
+      setSheetText('');
+    }
+  }, [isOpen, editingMateri]);
 
   const handleAddPair = () => {
     if (!arabic1.trim() && !arabic2.trim()) {
@@ -189,6 +253,7 @@ export const HiwarFormModal: React.FC<HiwarFormModalProps> = ({
       level: `Level ${hiwarLevelNumber}` as any,
       title: title.trim() || `Hiwar Bab ${babNumber}: Level ${hiwarLevelNumber}`,
       arabicTitle: arabicTitle.trim(),
+      videoUrl: videoUrl.trim(),
       dialoguePairs,
       dialogues: flatDialogues,
       content: `Materi Hiwar Percakapan Bab ${babNumber} - Level ${hiwarLevelNumber}: ${title}`,
@@ -234,73 +299,110 @@ export const HiwarFormModal: React.FC<HiwarFormModalProps> = ({
 
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           
-          {/* Grid Bab, Judul, and Level */}
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">
-                Nomor Bab
-              </label>
-              <input
-                type="number"
-                min={1}
-                max={50}
-                required
-                value={babNumber}
-                onChange={(e) => setBabNumber(Number(e.target.value))}
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:border-sky-500 font-extrabold text-sky-800 bg-slate-50"
-              />
+          {/* Langkah 1: Input Materi & Video */}
+          <div className="p-4 bg-gradient-to-r from-sky-50 via-sky-50/80 to-blue-50 border-2 border-sky-400 rounded-2xl space-y-3 shadow-2xs">
+            <div className="font-extrabold text-slate-900 text-xs flex items-center justify-between border-b border-sky-200 pb-2">
+              <span className="flex items-center gap-2 text-sky-900">
+                <span className="w-6 h-6 rounded-full bg-sky-700 text-white text-xs font-black flex items-center justify-center shadow-xs">1</span>
+                <span className="text-sm">Langkah 1: Input Data Bab, Judul Utama & Link Video Panduan</span>
+              </span>
+              <span className="text-[11px] font-bold text-sky-700 bg-sky-100/80 px-2.5 py-0.5 rounded-md">Wajib Diisi</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              <div>
+                <label className="block font-bold text-slate-800 mb-1">
+                  Nomor Bab <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={50}
+                  required
+                  value={babNumber}
+                  onChange={(e) => setBabNumber(Number(e.target.value))}
+                  className="w-full px-3 py-2 border border-sky-300 rounded-xl focus:border-sky-500 font-extrabold text-sky-900 bg-white"
+                />
+              </div>
+
+              <div className="sm:col-span-3">
+                <label className="block font-bold text-slate-800 mb-1">
+                  Judul Materi Hiwar (Indonesia) <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Contoh: Perkenalan Diri di Sekolah"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full px-3 py-2 border border-sky-300 rounded-xl focus:border-sky-500 font-bold text-slate-900 bg-white"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block font-bold text-slate-800 mb-1">
+                  Judul Materi Bahasa Arab (Opsional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="التَّعَارُفُ فِي المَدْرَسَةِ"
+                  value={arabicTitle}
+                  onChange={(e) => setArabicTitle(e.target.value)}
+                  className="w-full px-3 py-2 border border-sky-200 rounded-xl focus:border-sky-500 font-arabic text-base text-right bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-800 mb-1 flex items-center gap-1.5">
+                  <Video size={15} className="text-rose-600" /> Link Video Panduan / Pembelajaran (Opsional)
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://www.youtube.com/watch?v=... atau Drive"
+                  value={videoUrl}
+                  onChange={(e) => setVideoUrl(e.target.value)}
+                  className="w-full px-3 py-2 border border-rose-200 rounded-xl focus:border-rose-500 text-xs bg-white font-medium"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Langkah 2: Input / Pilih Level */}
+          <div className="p-3.5 bg-sky-50/60 border border-sky-200 rounded-2xl space-y-2">
+            <div className="font-extrabold text-sky-900 text-xs flex items-center justify-between border-b border-sky-200/80 pb-1.5">
+              <span className="flex items-center gap-1.5 text-sky-900">
+                <span className="w-5 h-5 rounded-full bg-sky-700 text-white text-[11px] font-black flex items-center justify-center">2</span>
+                <span>Langkah 2: Pilih Level Pada Materi Ini</span>
+              </span>
+              <span className="text-[11px] font-semibold text-sky-700">Percakapan Diinput Per Level</span>
             </div>
 
             <div>
               <label className="block font-bold text-slate-700 mb-1">
-                Level Percakapan
+                Tentukan Level Hiwar:
               </label>
               <select
                 value={hiwarLevelNumber}
                 onChange={(e) => setHiwarLevelNumber(Number(e.target.value))}
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:border-sky-500 font-extrabold text-sky-900 bg-sky-50/50"
+                className="w-full px-3 py-2 border border-sky-300 rounded-xl focus:border-sky-500 font-extrabold text-sky-900 bg-white shadow-2xs"
               >
                 {Array.from({ length: 10 }, (_, i) => i + 1).map((lvl) => (
                   <option key={lvl} value={lvl}>
-                    Level {lvl}
+                    Level {lvl} (Materi Bab {babNumber})
                   </option>
                 ))}
               </select>
             </div>
-
-            <div className="sm:col-span-2">
-              <label className="block font-bold text-slate-700 mb-1">
-                Judul Materi Hiwar (Indonesia)
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="Contoh: Perkenalan Diri di Sekolah"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:border-sky-500 font-bold text-slate-900"
-              />
-            </div>
           </div>
 
-          <div>
-            <label className="block font-bold text-slate-700 mb-1">
-              Judul Materi Bahasa Arab (Opsional)
-            </label>
-            <input
-              type="text"
-              placeholder="التَّعَارُفُ فِي المَدْرَسَةِ"
-              value={arabicTitle}
-              onChange={(e) => setArabicTitle(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:border-sky-500 font-arabic text-base text-right"
-            />
-          </div>
-
-          {/* Dialogue Input Section */}
+          {/* Langkah 3: Input Dialogue Pairs per Level */}
           <div className="space-y-3 pt-2">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b pb-2">
-              <span className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                <MessageSquare size={16} className="text-sky-600" /> Input Percakapan / Hiwar (Otomatis Penomoran)
+              <span className="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
+                <span className="w-5 h-5 rounded-full bg-sky-700 text-white text-[11px] font-black flex items-center justify-center">3</span>
+                <span>Langkah 3: Input Percakapan Hiwar di Level {hiwarLevelNumber}</span>
               </span>
 
               <button
@@ -438,9 +540,12 @@ export const HiwarFormModal: React.FC<HiwarFormModalProps> = ({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                       {/* Turn 1 */}
                       <div className="p-2.5 bg-slate-50 border border-slate-100 rounded-xl space-y-1">
-                        <span className="font-arabic font-extrabold text-sky-800 text-xs block">
-                          {pair.speaker1}
-                        </span>
+                        <div className="flex items-center justify-between">
+                          <span className="font-arabic font-extrabold text-sky-800 text-xs block">
+                            {pair.speaker1}
+                          </span>
+                          {pair.arabic1 && <AudioPlayerButton arabicText={pair.arabic1} size="sm" />}
+                        </div>
                         <p className="font-arabic font-bold text-base text-slate-900 text-right">
                           {pair.arabic1}
                         </p>
@@ -451,9 +556,12 @@ export const HiwarFormModal: React.FC<HiwarFormModalProps> = ({
 
                       {/* Turn 2 */}
                       <div className="p-2.5 bg-emerald-50/60 border border-emerald-100 rounded-xl space-y-1">
-                        <span className="font-arabic font-extrabold text-emerald-800 text-xs block">
-                          {pair.speaker2}
-                        </span>
+                        <div className="flex items-center justify-between">
+                          <span className="font-arabic font-extrabold text-emerald-800 text-xs block">
+                            {pair.speaker2}
+                          </span>
+                          {pair.arabic2 && <AudioPlayerButton arabicText={pair.arabic2} size="sm" />}
+                        </div>
                         <p className="font-arabic font-bold text-base text-slate-900 text-right">
                           {pair.arabic2}
                         </p>

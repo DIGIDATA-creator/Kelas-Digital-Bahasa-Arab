@@ -27,10 +27,7 @@ export const KosakataFormModal: React.FC<KosakataFormModalProps> = ({
   const [vocabularies, setVocabularies] = useState<VocabularyItem[]>(
     editingMateri?.vocabularies && editingMateri.vocabularies.length > 0
       ? editingMateri.vocabularies
-      : [
-          { id: 'v1', word: 'كِتَابٌ', meaning: 'Buku', latin: 'Kitaabun', category: 'Umum' },
-          { id: 'v2', word: 'قَلَمٌ', meaning: 'Pena / Pulpen', latin: 'Qalamun', category: 'Umum' },
-        ]
+      : []
   );
 
   const [newWord, setNewWord] = useState('');

@@ -129,15 +129,6 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
     });
   };
 
-  const requestClearAllDummy = () => {
-    setDeleteConfirmation({
-      isOpen: true,
-      type: 'clear_all',
-      title: 'Hapus Seluruh Data Dummy Materi',
-      message: 'Apakah Anda yakin ingin MENGHAPUS SELURUH data dummy materi? Langkah ini akan mengosongkan seluruh materi (Qowaid, Hiwar, Kosakata, Mahfudzot) secara permanen.',
-    });
-  };
-
   const handleConfirmDelete = () => {
     if (deleteConfirmation.type === 'clear_all') {
       onSaveMateri([]);
@@ -303,15 +294,6 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
                 className="px-3.5 py-2.5 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
               >
                 <FileSpreadsheet size={16} className="text-purple-700" /> Upload Sheet Massal
-              </button>
-            )}
-            {materiList.length > 0 && (
-              <button
-                onClick={requestClearAllDummy}
-                className="px-3 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
-                title="Hapus / Kosongkan Seluruh Data Dummy Materi"
-              >
-                <Trash2 size={16} /> Hapus Data Dummy Materi
               </button>
             )}
             <button

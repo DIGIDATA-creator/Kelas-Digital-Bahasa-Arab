@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, ChevronLeft, ChevronRight, RotateCw, Volume2, Sparkles, Layers, Eye } from 'lucide-react';
+import { playArabicAudio } from '../../utils/audioSpeech';
 
 export interface FlashcardItem {
   id: string;
@@ -8,6 +9,10 @@ export interface FlashcardItem {
   latin?: string;
   detail?: string;
   number?: number;
+  speaker1Name?: string;
+  speaker2Name?: string;
+  frontSubtext?: string;
+  backArabic?: string;
 }
 
 interface FlashcardModalProps {
@@ -96,6 +101,15 @@ export const FlashcardModal: React.FC<FlashcardModalProps> = ({
     setCurrentIndex((prev) => (prev - 1 + cardList.length) % cardList.length);
   };
 
+  const handleDirectShuffleAll = () => {
+    setIsFlipped(false);
+    const shuffled = [...items].sort(() => Math.random() - 0.5);
+    setCardList(shuffled);
+    setCurrentIndex(0);
+    setIsCompleted(false);
+    setActiveShuffleLabel('Mengacak Semua Kartu');
+  };
+
   const handleExecuteShuffle = () => {
     setIsFlipped(false);
     if (shuffleType === 'all') {
@@ -150,12 +164,8 @@ export const FlashcardModal: React.FC<FlashcardModalProps> = ({
   };
 
   const handleSpeak = (text: string) => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'ar-SA';
-      utterance.rate = 0.8;
-      window.speechSynthesis.speak(utterance);
+    if (text) {
+      playArabicAudio(text);
     }
   };
 
@@ -250,16 +260,22 @@ export const FlashcardModal: React.FC<FlashcardModalProps> = ({
                   }`}
                 >
                   <div className="absolute top-4 left-4 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-slate-800/80 text-emerald-400 border border-slate-700">
-                    {isFlipped ? 'Terjemahan / Arti' : 'Bahasa Arab'}
+                    {isFlipped
+                      ? currentCard.speaker2Name
+                        ? `Jawaban (${currentCard.speaker2Name})`
+                        : 'Jawaban / Terjemahan'
+                      : currentCard.speaker1Name
+                      ? `Soal (${currentCard.speaker1Name})`
+                      : 'Soal / Bahasa Arab'}
                   </div>
 
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleSpeak(currentCard.frontArabic);
+                      handleSpeak(isFlipped ? currentCard.backArabic || currentCard.frontArabic : currentCard.frontArabic);
                     }}
-                    className="absolute top-4 right-4 p-2 bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-300 rounded-full transition-all"
+                    className="absolute top-4 right-4 p-2 bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-300 rounded-full transition-all cursor-pointer"
                     title="Dengarkan Pelafalan"
                   >
                     <Volume2 size={18} />
@@ -267,34 +283,60 @@ export const FlashcardModal: React.FC<FlashcardModalProps> = ({
 
                   {/* Card Face Content */}
                   {!isFlipped ? (
-                    <div className="space-y-4 my-auto">
-                      <p className="font-arabic text-4xl sm:text-5xl font-extrabold text-emerald-200 leading-relaxed drop-shadow-md">
+                    <div className="space-y-3.5 my-auto w-full px-2">
+                      <p className="font-arabic text-3xl sm:text-4xl font-extrabold text-emerald-200 leading-relaxed drop-shadow-md">
                         {currentCard.frontArabic}
                       </p>
+
                       {currentCard.latin && (
                         <p className="text-xs text-slate-400 italic font-medium">
                           "{currentCard.latin}"
                         </p>
                       )}
-                      <p className="text-[11px] text-slate-500 font-semibold flex items-center justify-center gap-1">
-                        <Eye size={12} /> Klik kartu untuk melihat terjemahan
+
+                      {/* Terjemah Jawaban di Bawah Soal */}
+                      {currentCard.frontSubtext && (
+                        <div className="p-2.5 bg-sky-950/80 rounded-xl border border-sky-500/40 text-xs text-sky-200 shadow-inner">
+                          <span className="text-[10px] text-sky-400 font-extrabold block uppercase tracking-wider">
+                            Terjemah Jawaban:
+                          </span>
+                          <p className="font-semibold text-sky-100 text-xs sm:text-sm mt-0.5">
+                            "{currentCard.frontSubtext}"
+                          </p>
+                        </div>
+                      )}
+
+                      <p className="text-[11px] text-slate-500 font-semibold flex items-center justify-center gap-1 pt-1">
+                        <Eye size={12} /> Klik kartu untuk melihat jawaban lengkap
                       </p>
                     </div>
                   ) : (
-                    <div className="space-y-3 my-auto animate-fadeIn">
-                      <span className="text-xs uppercase font-extrabold tracking-widest text-emerald-400 block mb-1">
-                        Terjemahan / Arti:
+                    <div className="space-y-3 my-auto animate-fadeIn w-full px-2">
+                      <span className="text-xs uppercase font-extrabold tracking-widest text-emerald-400 block">
+                        {currentCard.backArabic ? 'Jawaban (Bahasa Arab):' : 'Terjemahan / Arti:'}
                       </span>
-                      <p className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                        {currentCard.backTranslation}
-                      </p>
+
+                      {currentCard.backArabic && (
+                        <p className="font-arabic text-3xl sm:text-4xl font-extrabold text-emerald-300 leading-relaxed drop-shadow-md my-1">
+                          {currentCard.backArabic}
+                        </p>
+                      )}
+
+                      <div className="p-2.5 bg-slate-800/80 rounded-xl border border-slate-700">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block">Terjemahan Jawaban:</span>
+                        <p className="text-base sm:text-lg font-black text-white tracking-tight mt-0.5">
+                          "{currentCard.backTranslation}"
+                        </p>
+                      </div>
+
                       {currentCard.detail && (
-                        <p className="text-xs text-slate-300 max-w-xs mx-auto mt-2">
+                        <p className="text-xs text-slate-300 max-w-xs mx-auto mt-1">
                           {currentCard.detail}
                         </p>
                       )}
-                      <p className="text-[11px] text-slate-400 font-semibold flex items-center justify-center gap-1 pt-2">
-                        <RotateCw size={12} /> Klik kartu untuk kembali
+
+                      <p className="text-[11px] text-slate-400 font-semibold flex items-center justify-center gap-1 pt-1">
+                        <RotateCw size={12} /> Klik kartu untuk kembali ke Soal
                       </p>
                     </div>
                   )}
@@ -322,13 +364,23 @@ export const FlashcardModal: React.FC<FlashcardModalProps> = ({
 
             {/* Footer Actions */}
             <div className="p-4 bg-slate-900 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleDirectShuffleAll}
+                  className="px-3.5 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
+                  title="Klik untuk langsung mengacak seluruh kartu"
+                >
+                  <RotateCw size={14} /> Acak Kartu
+                </button>
+
                 <button
                   type="button"
                   onClick={() => setShowShuffleModal(true)}
-                  className="px-3.5 py-2 bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
+                  className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-purple-300 border border-slate-700 hover:border-purple-500/50 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                  title="Buka pengaturan rentang nomor spesifik"
                 >
-                  <RotateCw size={14} /> Acak Kartu...
+                  <Sparkles size={14} className="text-purple-400" /> Rentang Nomor
                 </button>
 
                 {activeShuffleLabel && (
@@ -337,7 +389,7 @@ export const FlashcardModal: React.FC<FlashcardModalProps> = ({
                     <button
                       type="button"
                       onClick={handleRestartAll}
-                      className="text-purple-300 hover:text-white p-0.5"
+                      className="text-purple-300 hover:text-white p-0.5 cursor-pointer"
                       title="Reset Ke Semua Kartu Urut"
                     >
                       <X size={12} />

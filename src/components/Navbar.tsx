@@ -66,38 +66,63 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header className="bg-slate-900 text-white shadow-lg sticky top-0 z-40 border-b border-slate-800">
       {/* Top Banner & Role Toggle Bar */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-wrap items-center justify-between py-3 border-b border-slate-800/80 gap-3">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between py-1.5 sm:py-3 border-b border-slate-800/80 gap-2 sm:gap-3">
           
           {/* Logo & App Title */}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-md shadow-emerald-900/30 font-arabic text-2xl">
-              ع
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-lg font-bold tracking-tight text-white leading-none">
-                  KELAS DIGITAL BAHASA ARAB
-                </h1>
-                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                  LMS v2.0
-                </span>
+          <div className="flex items-center justify-between sm:justify-start gap-2">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-md shadow-emerald-900/30 font-arabic text-xl sm:text-2xl shrink-0">
+                ع
               </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <h1 className="text-xs sm:text-base font-extrabold tracking-tight text-white leading-tight">
+                    KELAS DIGITAL BAHASA ARAB
+                  </h1>
+                  <span className="text-[9px] sm:text-[10px] uppercase font-black tracking-wider px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shrink-0">
+                    LMS v2.0
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Mobile inline quick controls (Dark Mode & Reset) */}
+            <div className="flex items-center gap-1 sm:hidden">
+              {onToggleDarkMode && (
+                <button
+                  onClick={onToggleDarkMode}
+                  title={isDarkMode ? 'Mode Terang' : 'Mode Gelap'}
+                  className="p-1.5 bg-slate-800 text-slate-300 rounded-lg border border-slate-700 flex items-center justify-center cursor-pointer"
+                >
+                  {isDarkMode ? <Sun size={14} className="text-amber-400" /> : <Moon size={14} className="text-slate-300" />}
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  if (confirm('Apakah Anda yakin ingin mereset data LMS ke data awal?')) {
+                    onResetData();
+                  }
+                }}
+                title="Reset Data"
+                className="p-1.5 text-slate-400 hover:text-rose-400 bg-slate-800 rounded-lg border border-slate-700"
+              >
+                <RotateCcw size={14} />
+              </button>
             </div>
           </div>
 
-          {/* Right Side Controls: Role Switcher & Student Selector */}
-          <div className="flex items-center flex-wrap gap-3">
+          {/* Controls: Role Switcher, Student Dropdown & Auth */}
+          <div className="flex items-center justify-between sm:justify-end gap-1.5 sm:gap-3 flex-wrap">
             
             {/* Student Switcher when in Siswa Role */}
             {currentRole === 'siswa' && (
-              <div className="flex items-center gap-2 bg-slate-800/90 border border-slate-700/80 rounded-xl px-3 py-1.5 text-xs text-slate-300">
-                <GraduationCap size={16} className="text-emerald-400" />
-                <span className="hidden sm:inline text-slate-400">Pilih Siswa:</span>
+              <div className="flex items-center gap-1 bg-slate-800/90 border border-slate-700/80 rounded-lg px-2 py-1 text-[11px] sm:text-xs text-slate-300">
+                <GraduationCap size={14} className="text-emerald-400 shrink-0" />
                 <select
                   value={currentStudentId}
                   onChange={(e) => onStudentChange(e.target.value)}
-                  className="bg-transparent text-emerald-300 font-semibold focus:outline-hidden cursor-pointer"
+                  className="bg-transparent text-emerald-300 font-semibold focus:outline-hidden cursor-pointer max-w-[110px] sm:max-w-none truncate"
                 >
                   {students.map(s => (
                     <option key={s.id} value={s.id} className="bg-slate-900 text-white">
@@ -109,33 +134,33 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
 
             {/* Role Switcher Pills */}
-            <div className="flex items-center bg-slate-800 p-1 rounded-xl border border-slate-700">
+            <div className="flex items-center bg-slate-800 p-0.5 sm:p-1 rounded-xl border border-slate-700">
               <button
                 onClick={() => {
                   onRoleChange('guru');
                   onTabChange('dashboard');
                 }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                className={`flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all ${
                   currentRole === 'guru'
-                    ? 'bg-emerald-600 text-white shadow-sm'
+                    ? 'bg-emerald-600 text-white shadow-xs'
                     : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
                 }`}
               >
-                <Shield size={14} />
-                <span>Guru / Admin</span>
+                <Shield size={12} className="sm:w-3.5 sm:h-3.5" />
+                <span>Guru</span>
               </button>
               <button
                 onClick={() => {
                   onRoleChange('siswa');
                   onTabChange('dashboard');
                 }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                className={`flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all ${
                   currentRole === 'siswa'
-                    ? 'bg-emerald-600 text-white shadow-sm'
+                    ? 'bg-emerald-600 text-white shadow-xs'
                     : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
                 }`}
               >
-                <GraduationCap size={14} />
+                <GraduationCap size={12} className="sm:w-3.5 sm:h-3.5" />
                 <span>Siswa</span>
               </button>
             </div>
@@ -143,66 +168,67 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Firebase Auth Account Button */}
             <button
               onClick={() => setIsAuthModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition-all shadow-xs"
+              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-[11px] sm:text-xs font-semibold transition-all shadow-2xs"
               title="Firebase Authentication"
             >
               {firebaseUser ? (
                 <>
                   {firebaseUser.photoURL ? (
-                    <img src={firebaseUser.photoURL} alt="User" className="w-5 h-5 rounded-full border border-emerald-400" />
+                    <img src={firebaseUser.photoURL} alt="User" className="w-4 h-4 sm:w-5 sm:h-5 rounded-full border border-emerald-400" />
                   ) : (
-                    <div className="w-5 h-5 rounded-full bg-emerald-600 text-white font-bold text-[10px] flex items-center justify-center">
+                    <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-emerald-600 text-white font-bold text-[9px] sm:text-[10px] flex items-center justify-center">
                       {(firebaseUser.displayName || firebaseUser.email || 'U')[0].toUpperCase()}
                     </div>
                   )}
-                  <span className="max-w-[100px] truncate text-emerald-300">
+                  <span className="max-w-[70px] sm:max-w-[100px] truncate text-emerald-300">
                     {firebaseUser.displayName || firebaseUser.email?.split('@')[0]}
                   </span>
                 </>
               ) : (
                 <>
-                  <LogIn size={14} className="text-emerald-400" />
-                  <span className="hidden sm:inline">Firebase Auth</span>
+                  <LogIn size={13} className="text-emerald-400" />
+                  <span>Auth</span>
                 </>
               )}
             </button>
 
-            {/* Dark Mode Toggle Button */}
-            {onToggleDarkMode && (
-              <button
-                onClick={onToggleDarkMode}
-                title={isDarkMode ? 'Beralih ke Mode Terang' : 'Beralih ke Mode Gelap'}
-                className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-amber-300 rounded-xl transition-all border border-slate-700 flex items-center justify-center cursor-pointer shadow-xs"
-              >
-                {isDarkMode ? <Sun size={16} className="text-amber-400" /> : <Moon size={16} className="text-slate-300" />}
-              </button>
-            )}
+            {/* Desktop Dark Mode & Reset Buttons */}
+            <div className="hidden sm:flex items-center gap-2">
+              {onToggleDarkMode && (
+                <button
+                  onClick={onToggleDarkMode}
+                  title={isDarkMode ? 'Beralih ke Mode Terang' : 'Beralih ke Mode Gelap'}
+                  className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-amber-300 rounded-xl transition-all border border-slate-700 flex items-center justify-center cursor-pointer shadow-2xs"
+                >
+                  {isDarkMode ? <Sun size={16} className="text-amber-400" /> : <Moon size={16} className="text-slate-300" />}
+                </button>
+              )}
 
-            {/* Reset Data Button */}
-            <button
-              onClick={() => {
-                if (confirm('Apakah Anda yakin ingin mereset data LMS ke data awal?')) {
-                  onResetData();
-                }
-              }}
-              title="Reset Data Demo"
-              className="p-2 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-xl transition-colors border border-transparent hover:border-slate-700"
-            >
-              <RotateCcw size={16} />
-            </button>
+              <button
+                onClick={() => {
+                  if (confirm('Apakah Anda yakin ingin mereset data LMS ke data awal?')) {
+                    onResetData();
+                  }
+                }}
+                title="Reset Data Demo"
+                className="p-2 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-xl transition-colors border border-transparent hover:border-slate-700"
+              >
+                <RotateCcw size={16} />
+              </button>
+            </div>
           </div>
 
         </div>
 
         {/* Navigation Tabs Bar */}
-        <nav className="flex items-center gap-1 overflow-x-auto py-2 no-scrollbar">
+        <nav className="flex items-center gap-1 overflow-x-auto py-1 sm:py-2 no-scrollbar">
           {activeNavTabs.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
                 onClick={() => onTabChange(tab.id)}
-                className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-all ${
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-all ${
                   isActive
                     ? 'bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/30'
                     : 'text-slate-300 hover:text-white hover:bg-slate-800/60'

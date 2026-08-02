@@ -14,10 +14,14 @@ import {
   Download,
   Filter,
   Tag,
-  X
+  X,
+  ChevronDown,
+  ChevronUp,
+  Layers
 } from 'lucide-react';
 import { exportMahfudzotToPdf } from '../../../utils/mahfudzotPdfExport';
 import { resolveMahfudzotCategory } from '../../../data/mahfudzotData';
+import { playArabicAudio } from '../../../utils/audioSpeech';
 
 interface MahfudzotViewProps {
   materiList: Materi[];
@@ -52,6 +56,16 @@ export const MahfudzotView: React.FC<MahfudzotViewProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Semua');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<number>>(new Set());
+
+  const toggleGroupCollapse = (groupIndex: number) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(groupIndex)) next.delete(groupIndex);
+      else next.add(groupIndex);
+      return next;
+    });
+  };
 
   const mahfudzotMateri = materiList.filter(m => m.category === 'mahfudzot');
 
@@ -107,6 +121,19 @@ export const MahfudzotView: React.FC<MahfudzotViewProps> = ({
     );
   });
 
+  const totalGroups = Math.ceil(filteredMahfudzot.length / 10);
+  const isAllCollapsed = totalGroups > 0 && Array.from({ length: totalGroups }, (_, i) => i).every(i => collapsedGroups.has(i));
+
+  const toggleCollapseAllPer10 = () => {
+    if (isAllCollapsed) {
+      setCollapsedGroups(new Set());
+    } else {
+      const all = new Set<number>();
+      for (let i = 0; i < totalGroups; i++) all.add(i);
+      setCollapsedGroups(all);
+    }
+  };
+
   const isAllSelected =
     filteredMahfudzot.length > 0 &&
     filteredMahfudzot.every(m => selectedIds.includes(m.id));
@@ -144,13 +171,7 @@ export const MahfudzotView: React.FC<MahfudzotViewProps> = ({
   };
 
   const handleSpeak = (text: string) => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'ar-SA';
-      utterance.rate = 0.8;
-      window.speechSynthesis.speak(utterance);
-    }
+    playArabicAudio(text);
   };
 
   return (
@@ -177,6 +198,18 @@ export const MahfudzotView: React.FC<MahfudzotViewProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            {/* Minimize Per 10 Button */}
+            {filteredMahfudzot.length > 0 && (
+              <button
+                onClick={toggleCollapseAllPer10}
+                className="px-3.5 py-2.5 bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-300 font-bold text-xs sm:text-sm rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                title="Minimize atau Buka Seluruh Mahfudzot per 10 Item"
+              >
+                <Layers size={16} className="text-purple-700" />
+                <span>{isAllCollapsed ? 'Buka Semua (per 10)' : 'Minimize Semua (per 10)'}</span>
+              </button>
+            )}
+
             {/* Download PDF Button */}
             <button
               onClick={handleExportPdf}
@@ -334,106 +367,146 @@ export const MahfudzotView: React.FC<MahfudzotViewProps> = ({
         </div>
       )}
 
-      {/* Mahfudzot Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {filteredMahfudzot.map((materi, index) => {
-          const number = materi.mahfudzot?.number || materi.babNumber || (index + 1);
-          const arabicText = materi.mahfudzot?.arabic || materi.content;
-          const translationText = materi.mahfudzot?.translation || materi.description;
-          const categoryTag = getItemCategory(materi);
-          const badgeClass = getCategoryBadgeClass(categoryTag);
-          const isSelected = selectedIds.includes(materi.id);
+      {/* Mahfudzot Cards Grouped per 10 Items */}
+      {filteredMahfudzot.length > 0 && (
+        <div className="space-y-6">
+          {Array.from({ length: totalGroups }).map((_, groupIdx) => {
+            const startIdx = groupIdx * 10;
+            const groupItems = filteredMahfudzot.slice(startIdx, startIdx + 10);
+            const isGroupCollapsed = collapsedGroups.has(groupIdx);
+            const startNum = startIdx + 1;
+            const endNum = startIdx + groupItems.length;
 
-          return (
-            <div
-              key={materi.id}
-              className={`rounded-2xl border transition-all p-5 flex flex-col justify-between relative space-y-4 ${
-                isSelected
-                  ? 'bg-purple-50/50 border-purple-500 ring-2 ring-purple-500/30 shadow-md'
-                  : 'bg-white border-slate-200 shadow-xs hover:border-purple-300 hover:shadow-md'
-              }`}
-            >
-              {/* Card Header */}
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-2">
-                  {isEditable && (
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => toggleSelectItem(materi.id)}
-                      className="w-4 h-4 text-purple-700 bg-slate-100 border-slate-300 rounded focus:ring-purple-500 cursor-pointer"
-                      title="Pilih Mahfudzot untuk hapus massal"
-                    />
-                  )}
-                  <span className="px-2.5 py-0.5 bg-purple-100 text-purple-800 border border-purple-200 text-xs font-black rounded-full">
-                    No. {number}
-                  </span>
-                  <span className={`px-2.5 py-0.5 text-[11px] font-bold rounded-lg border ${badgeClass}`}>
-                    {categoryTag}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => handleSpeak(arabicText)}
-                    className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors cursor-pointer"
-                    title="Dengarkan Pengucapan Arab"
-                  >
-                    <Volume2 size={16} />
-                  </button>
-
-                  {isEditable && (
-                    <>
-                      <button
-                        onClick={() => onEditMateri(materi)}
-                        className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer"
-                        title="Edit Mahfudzot"
-                      >
-                        <Edit3 size={16} />
-                      </button>
-                      <button
-                        onClick={() => onDeleteMateri(materi.id)}
-                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer"
-                        title="Hapus Mahfudzot"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Body Content */}
-              <div className="space-y-3.5 my-auto py-1">
-                {/* Arabic Text */}
-                {displayMode !== 'translation_only' ? (
-                  <p className="font-arabic text-2xl sm:text-3xl font-extrabold text-slate-900 leading-relaxed text-right dir-rtl">
-                    {arabicText}
-                  </p>
-                ) : (
-                  <div className="p-2.5 bg-slate-50 rounded-xl text-center text-slate-400 italic text-xs">
-                    (Teks Arab Disembunyikan)
-                  </div>
-                )}
-
-                {/* Translation Text */}
-                {displayMode !== 'arabic_only' ? (
-                  <div className="p-3 bg-purple-50/70 rounded-xl border border-purple-100/80 text-xs font-medium text-slate-800 leading-relaxed space-y-1">
-                    <span className="font-bold text-purple-800 text-[11px] block uppercase tracking-wide">
-                      Terjemahan:
+            return (
+              <div key={groupIdx} className="space-y-3">
+                {/* Group Header Banner */}
+                <div className="p-3.5 bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 text-white rounded-2xl border border-purple-700/60 shadow-xs flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <span className="px-2.5 py-1 bg-purple-500/20 text-purple-300 border border-purple-400/30 text-xs font-black rounded-xl">
+                      Kelompok #{groupIdx + 1}
                     </span>
-                    <p className="font-semibold text-slate-900 text-xs sm:text-sm">"{translationText}"</p>
+                    <h4 className="font-extrabold text-xs sm:text-sm text-white">
+                      Mahfudzot No. {startNum} - {endNum} ({groupItems.length} Kata Mutiara)
+                    </h4>
                   </div>
-                ) : (
-                  <div className="p-2 text-center text-slate-300 italic text-xs">
-                    (Terjemahan Disembunyikan)
+
+                  <button
+                    onClick={() => toggleGroupCollapse(groupIdx)}
+                    className="px-3 py-1.5 bg-purple-950/80 hover:bg-purple-800/80 text-purple-200 border border-purple-500/40 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                  >
+                    {isGroupCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+                    <span>{isGroupCollapsed ? 'Buka Kelompok' : 'Minimize (10 Item)'}</span>
+                  </button>
+                </div>
+
+                {/* Collapsible Grid of Cards */}
+                {!isGroupCollapsed && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fadeIn">
+                    {groupItems.map((materi, index) => {
+                      const absoluteIndex = startIdx + index;
+                      const number = materi.mahfudzot?.number || materi.babNumber || (absoluteIndex + 1);
+                      const arabicText = materi.mahfudzot?.arabic || materi.content;
+                      const translationText = materi.mahfudzot?.translation || materi.description;
+                      const categoryTag = getItemCategory(materi);
+                      const badgeClass = getCategoryBadgeClass(categoryTag);
+                      const isSelected = selectedIds.includes(materi.id);
+
+                      return (
+                        <div
+                          key={materi.id}
+                          className={`rounded-2xl border transition-all p-5 flex flex-col justify-between relative space-y-4 ${
+                            isSelected
+                              ? 'bg-purple-50/50 border-purple-500 ring-2 ring-purple-500/30 shadow-md'
+                              : 'bg-white border-slate-200 shadow-xs hover:border-purple-300 hover:shadow-md'
+                          }`}
+                        >
+                          {/* Card Header */}
+                          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <div className="flex items-center gap-2">
+                              {isEditable && (
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => toggleSelectItem(materi.id)}
+                                  className="w-4 h-4 text-purple-700 bg-slate-100 border-slate-300 rounded focus:ring-purple-500 cursor-pointer"
+                                  title="Pilih Mahfudzot untuk hapus massal"
+                                />
+                              )}
+                              <span className="px-2.5 py-0.5 bg-purple-100 text-purple-800 border border-purple-200 text-xs font-black rounded-full">
+                                No. {number}
+                              </span>
+                              <span className={`px-2.5 py-0.5 text-[11px] font-bold rounded-lg border ${badgeClass}`}>
+                                {categoryTag}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => handleSpeak(arabicText)}
+                                className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors cursor-pointer"
+                                title="Dengarkan Pengucapan Arab"
+                              >
+                                <Volume2 size={16} />
+                              </button>
+
+                              {isEditable && (
+                                <>
+                                  <button
+                                    onClick={() => onEditMateri(materi)}
+                                    className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer"
+                                    title="Edit Mahfudzot"
+                                  >
+                                    <Edit3 size={16} />
+                                  </button>
+                                  <button
+                                    onClick={() => onDeleteMateri(materi.id)}
+                                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer"
+                                    title="Hapus Mahfudzot"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Body Content */}
+                          <div className="space-y-3.5 my-auto py-1">
+                            {/* Arabic Text */}
+                            {displayMode !== 'translation_only' ? (
+                              <p className="font-arabic text-2xl sm:text-3xl font-extrabold text-slate-900 leading-relaxed text-right dir-rtl">
+                                {arabicText}
+                              </p>
+                            ) : (
+                              <div className="p-2.5 bg-slate-50 rounded-xl text-center text-slate-400 italic text-xs">
+                                (Teks Arab Disembunyikan)
+                              </div>
+                            )}
+
+                            {/* Translation Text */}
+                            {displayMode !== 'arabic_only' ? (
+                              <div className="p-3 bg-purple-50/70 rounded-xl border border-purple-100/80 text-xs font-medium text-slate-800 leading-relaxed space-y-1">
+                                <span className="font-bold text-purple-800 text-[11px] block uppercase tracking-wide">
+                                  Terjemahan:
+                                </span>
+                                <p className="font-semibold text-slate-900 text-xs sm:text-sm">"{translationText}"</p>
+                              </div>
+                            ) : (
+                              <div className="p-2 text-center text-slate-300 italic text-xs">
+                                (Terjemahan Disembunyikan)
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };

@@ -58,6 +58,7 @@ export interface Materi {
   pdfFileName?: string;
   pdfPageCount?: number;
   audioUrl?: string;
+  videoUrl?: string; // Link Video Panduan / Pembelajaran (YouTube / MP4 / Drive)
   dialogues?: DialogueItem[];
   dialoguePairs?: DialogueTurnPair[];
   hiwarLevelNumber?: number;

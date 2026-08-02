@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Materi, CategoryType, Student } from '../../types';
-import { BookOpen, MessageSquare, List, Quote, FileText, CheckCircle2, Play, Volume2, Search, Sparkles, RefreshCw, ChevronRight, HardDriveDownload, WifiOff, Check, Maximize2, Minimize2, Eye, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { BookOpen, MessageSquare, List, Quote, FileText, CheckCircle2, Play, Volume2, Search, Sparkles, RefreshCw, ChevronRight, HardDriveDownload, WifiOff, Check, Maximize2, Minimize2, Eye, X, ZoomIn, ZoomOut, Video } from 'lucide-react';
 import { AudioPlayerButton } from '../common/AudioPlayerButton';
 import { PdfViewerModal } from '../common/PdfViewerModal';
 import { HiwarView } from '../guru/materi/HiwarView';
@@ -219,6 +219,18 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
                       <span>{isCached ? 'Tersimpan Offline' : 'Simpan Offline'}</span>
                     </button>
 
+                    {currentMateri.videoUrl && (
+                      <a
+                        href={currentMateri.videoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs"
+                        title="Buka Video Panduan Pembelajaran"
+                      >
+                        <Video size={14} /> Video Panduan
+                      </a>
+                    )}
+
                     {currentMateri.pdfUrl && (
                       <button
                         onClick={() => setPreviewPdfMateri(currentMateri)}
@@ -257,9 +269,30 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
 
               {/* CATEGORY 1: QOWAID / THEORETICAL EXPLANATION */}
               {currentMateri.category === 'qowaid' && (
-                <div className="prose prose-emerald max-w-none space-y-4 text-slate-700 leading-relaxed text-sm">
-                  <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 whitespace-pre-line text-slate-800 font-sans leading-relaxed">
-                    {currentMateri.content}
+                <div className="space-y-4">
+                  {currentMateri.videoUrl && (
+                    <div className="p-4 bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-200 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-2xs">
+                      <div className="flex items-center gap-2.5">
+                        <Video size={20} className="text-rose-600 shrink-0" />
+                        <div>
+                          <h4 className="font-bold text-xs text-rose-950">Video Panduan Pembelajaran Qowaid</h4>
+                          <p className="text-[11px] text-rose-700">Tonton penjelasan video interaktif untuk materi bab ini.</p>
+                        </div>
+                      </div>
+                      <a
+                        href={currentMateri.videoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all shadow-2xs shrink-0 flex items-center gap-1.5"
+                      >
+                        <Video size={14} /> Tonton Video Panduan ➔
+                      </a>
+                    </div>
+                  )}
+                  <div className="prose prose-emerald max-w-none text-slate-700 leading-relaxed text-sm">
+                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 whitespace-pre-line text-slate-800 font-sans leading-relaxed">
+                      {currentMateri.content}
+                    </div>
                   </div>
                 </div>
               )}

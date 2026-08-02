@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Materi } from '../../../types';
-import { X, Plus, Trash2, UploadCloud, Loader2, Save } from 'lucide-react';
+import { X, Plus, Trash2, UploadCloud, Loader2, Save, Video } from 'lucide-react';
 import { uploadToSupabaseStorage } from '../../../lib/supabase';
 
 interface QowaidFormModalProps {
@@ -41,6 +41,7 @@ export const QowaidFormModal: React.FC<QowaidFormModalProps> = ({
   );
   const [newTargetInput, setNewTargetInput] = useState('');
   const [content, setContent] = useState(editingMateri?.content || '');
+  const [videoUrl, setVideoUrl] = useState(editingMateri?.videoUrl || '');
   const [pdfFileName, setPdfFileName] = useState(editingMateri?.pdfFileName || '');
   const [pdfUrl, setPdfUrl] = useState(editingMateri?.pdfUrl || '');
   const [isUploadingPdf, setIsUploadingPdf] = useState(false);
@@ -94,6 +95,7 @@ export const QowaidFormModal: React.FC<QowaidFormModalProps> = ({
       qowaidCategory,
       learningTargets,
       content: content || `Penjelasan materi Qowaid Bab ${babNumber}`,
+      videoUrl: videoUrl.trim(),
       pdfFileName,
       pdfUrl,
       authorName: 'Ust. Ahmad Dahlan, M.Pd.',
@@ -248,6 +250,21 @@ export const QowaidFormModal: React.FC<QowaidFormModalProps> = ({
               placeholder="Tuliskan penjelasan kaidah qowaid, contoh kata/kalimat, serta ketentuannya..."
               className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:border-emerald-500 font-medium"
             />
+          </div>
+
+          {/* Link Video Panduan / Pembelajaran */}
+          <div className="p-3.5 bg-rose-50/60 border border-rose-200 rounded-2xl space-y-1.5">
+            <label className="block font-bold text-slate-800 text-xs flex items-center gap-1.5">
+              <Video size={16} className="text-rose-600" /> Link Video Panduan Pembelajaran (YouTube / Drive / MP4)
+            </label>
+            <input
+              type="url"
+              value={videoUrl}
+              onChange={(e) => setVideoUrl(e.target.value)}
+              placeholder="Contoh: https://www.youtube.com/watch?v=xyz123 atau link Google Drive video"
+              className="w-full px-3 py-2 border border-rose-200 rounded-xl focus:border-rose-500 text-xs bg-white font-medium"
+            />
+            <p className="text-[10px] text-slate-500">Siswa dapat langsung menekan tombol "Tonton Video Panduan" pada halaman materi.</p>
           </div>
 
           {/* Upload File PDF Modular */}

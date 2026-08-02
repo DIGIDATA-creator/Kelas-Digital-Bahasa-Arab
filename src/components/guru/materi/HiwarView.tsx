@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Materi, DialogueTurnPair } from '../../../types';
 import { toArabicNumber } from '../../common/ArabicUtils';
 import { AudioPlayerButton } from '../../common/AudioPlayerButton';
-import { MessageSquare, Edit3, Trash2, Plus, Volume2, Sparkles, Layers, ChevronDown, ChevronUp, Download, Eye, EyeOff, FileText, Printer, Focus, HelpCircle } from 'lucide-react';
+import { FlashcardModal, FlashcardItem } from '../../common/FlashcardModal';
+import { MessageSquare, Edit3, Trash2, Plus, Volume2, Sparkles, Layers, ChevronDown, ChevronUp, Download, Eye, EyeOff, FileText, Printer, Focus, HelpCircle, Play, Video } from 'lucide-react';
 
 interface HiwarViewProps {
   materiList: Materi[];
@@ -30,6 +31,29 @@ export const HiwarView: React.FC<HiwarViewProps> = ({
   // Mode Fokus: Sembunyikan terjemahan sementara untuk latihan mandiri
   const [isFocusMode, setIsFocusMode] = useState<boolean>(false);
   const [revealedTurnIds, setRevealedTurnIds] = useState<Set<string>>(new Set());
+
+  // Flashcard state
+  const [flashcardOpen, setFlashcardOpen] = useState(false);
+  const [flashcardTitle, setFlashcardTitle] = useState('');
+  const [flashcardItems, setFlashcardItems] = useState<FlashcardItem[]>([]);
+
+  const handleLaunchFlashcard = (materi: Materi, pairs: DialogueTurnPair[]) => {
+    const items: FlashcardItem[] = pairs.map((p, idx) => ({
+      id: p.id || `pair-${idx}`,
+      frontArabic: p.arabic1,
+      backTranslation: p.translation2 || p.translation1,
+      latin: p.arabic2,
+      number: idx + 1,
+      speaker1Name: p.speaker1,
+      speaker2Name: p.speaker2,
+      frontSubtext: p.translation2 || p.translation1,
+      backArabic: p.arabic2,
+    }));
+
+    setFlashcardTitle(`Flashcard Hiwar: ${materi.title} (Bab ${materi.babNumber || 1} Level ${materi.hiwarLevelNumber || 1})`);
+    setFlashcardItems(items);
+    setFlashcardOpen(true);
+  };
 
   const togglePeekTurn = (id: string) => {
     setRevealedTurnIds(prev => {
@@ -274,11 +298,33 @@ export const HiwarView: React.FC<HiwarViewProps> = ({
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Video Panduan Hiwar */}
+                {materi.videoUrl && (
+                  <a
+                    href={materi.videoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md transition-all"
+                    title="Buka Video Panduan Pembelajaran"
+                  >
+                    <Video size={14} /> Video Panduan
+                  </a>
+                )}
+
+                {/* Flashcard Hiwar */}
+                <button
+                  onClick={() => handleLaunchFlashcard(materi, pairs)}
+                  className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+                  title="Mulai Mode Latihan Flashcard Hiwar"
+                >
+                  <Play size={14} className="fill-slate-950" /> Flashcard Hiwar
+                </button>
+
                 {/* B.3 Unduh PDF Hiwar */}
                 <button
                   onClick={() => handlePrintPdfHiwar(materi, pairs)}
-                  className="px-3 py-1.5 bg-sky-800 hover:bg-sky-700 text-sky-200 rounded-xl text-xs font-bold transition-all border border-sky-700 flex items-center gap-1.5"
+                  className="px-3 py-1.5 bg-sky-800 hover:bg-sky-700 text-sky-200 rounded-xl text-xs font-bold transition-all border border-sky-700 flex items-center gap-1.5 cursor-pointer"
                   title="Unduh / Cetak PDF Hiwar"
                 >
                   <Printer size={15} /> Unduh PDF
@@ -438,6 +484,14 @@ export const HiwarView: React.FC<HiwarViewProps> = ({
           </div>
         );
       })}
+
+      {/* Modal Flashcard Hiwar */}
+      <FlashcardModal
+        isOpen={flashcardOpen}
+        onClose={() => setFlashcardOpen(false)}
+        title={flashcardTitle}
+        items={flashcardItems}
+      />
     </div>
   );
 };

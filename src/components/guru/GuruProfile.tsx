@@ -6,6 +6,13 @@ import { uploadToSupabaseStorage } from '../../lib/supabase';
 
 const docGuruProfile = doc(db, 'app_collections', 'guru_profile');
 
+function sanitizeForFirestore<T>(data: T): T {
+  if (data === undefined) return null as unknown as T;
+  return JSON.parse(
+    JSON.stringify(data, (_key, value) => (value === undefined ? null : value))
+  );
+}
+
 export const GuruProfile: React.FC = () => {
   // Profile State with LocalStorage & Firestore Sync
   const [profile, setProfile] = useState(() => {
@@ -57,7 +64,7 @@ export const GuruProfile: React.FC = () => {
           localStorage.setItem('lms_guru_credentials', JSON.stringify({ username: data.credentials.username }));
         }
       } else {
-        setDoc(docGuruProfile, { profile, credentials: { username: credentials.username } }).catch(console.error);
+        setDoc(docGuruProfile, sanitizeForFirestore({ profile, credentials: { username: credentials.username } })).catch(console.error);
       }
     }, (err) => console.warn('Guru profile snapshot error:', err));
 
@@ -73,7 +80,7 @@ export const GuruProfile: React.FC = () => {
     }
     setProfile(profileFormData);
     localStorage.setItem('lms_guru_profile', JSON.stringify(profileFormData));
-    setDoc(docGuruProfile, { profile: profileFormData, credentials: { username: credentials.username } }).catch(console.error);
+    setDoc(docGuruProfile, sanitizeForFirestore({ profile: profileFormData, credentials: { username: credentials.username } })).catch(console.error);
     setIsEditingProfile(false);
     setProfileMsg({ type: 'success', text: 'Data profil berhasil diperbarui!' });
     setTimeout(() => setProfileMsg(null), 3000);
@@ -167,7 +174,7 @@ export const GuruProfile: React.FC = () => {
 
     setCredentials(updatedCreds);
     localStorage.setItem('lms_guru_credentials', JSON.stringify({ username: credentials.username }));
-    setDoc(docGuruProfile, { profile, credentials: { username: credentials.username } }).catch(console.error);
+    setDoc(docGuruProfile, sanitizeForFirestore({ profile, credentials: { username: credentials.username } })).catch(console.error);
     setCredMsg({ type: 'success', text: 'Username dan Password berhasil diperbarui!' });
     setTimeout(() => setCredMsg(null), 3000);
   };

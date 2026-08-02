@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { VocabularyItem } from '../../../types';
 import { toArabicNumber } from '../../common/ArabicUtils';
+import { AudioPlayerButton } from '../../common/AudioPlayerButton';
 import { Eye, EyeOff, Layers, ChevronDown, ChevronUp, Edit3, Trash2, Plus, FileSpreadsheet, Play } from 'lucide-react';
 
 interface KosakataTableViewProps {
@@ -156,7 +157,7 @@ export const KosakataTableView: React.FC<KosakataTableViewProps> = ({
               Belum ada data kosakata untuk bab ini.
             </div>
           ) : (
-            <div className={`grid grid-cols-1 ${numCols === 2 ? 'md:grid-cols-2' : 'lg:grid-cols-3'} gap-4`}>
+            <div className={`grid grid-cols-1 ${numCols === 2 ? 'md:grid-cols-2' : 'lg:grid-cols-3'} gap-4`} dir="rtl">
               {columnChunks.map((chunk, colIndex) => {
                 const globalOffset = colIndex * itemsPerCol;
 
@@ -194,7 +195,10 @@ export const KosakataTableView: React.FC<KosakataTableViewProps> = ({
                                 {displayMode === 'translation_only' ? (
                                   <span className="text-slate-300 tracking-widest text-xs select-none">••••••</span>
                                 ) : (
-                                  item.word
+                                  <div className="flex items-center gap-1.5 justify-start dir-rtl">
+                                    <span>{item.word}</span>
+                                    <AudioPlayerButton arabicText={item.word} size="sm" />
+                                  </div>
                                 )}
                               </td>
 
