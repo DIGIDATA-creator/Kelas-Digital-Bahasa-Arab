@@ -13,6 +13,14 @@ export const INITIAL_MATERI: Materi[] = [
     category: 'qowaid',
     level: 'Dasar',
     description: 'Memahami 3 pembagian kata dasar dalam Bahasa Arab beserta ciri-ciri khas masing-masing.',
+    qowaidCategory: 'قواعد Dasar',
+    babNumber: 1,
+    learningTargets: [
+      'Mampu membedakan antara Isim, Fi\'il, dan Harf dalam kalimat Bahasa Arab',
+      'Mengenali ciri-ciri khas Isim (Tanwin, Alif Lam, Huruf Jar)',
+      'Mengetahui ciri-ciri khas Fi\'il dan pembagian berdasarkan waktu',
+      'Dapat mengidentifikasi Harf dan menggunakannya dalam frasa sederhana'
+    ],
     content: `### Pembagian Kata (أَقْسَامُ الْكَلِمَةِ)
 
 Dalam tata bahasa Arab (Qowaid/Nahwu), setiap kata dalam kalimat terbagi menjadi tiga jenis utama:
@@ -41,6 +49,14 @@ Dalam tata bahasa Arab (Qowaid/Nahwu), setiap kata dalam kalimat terbagi menjadi
     category: 'qowaid',
     level: 'Menengah',
     description: 'Struktur kalimat nominal dalam Bahasa Arab yang terdiri dari subjek (mubtada\') dan predikat (khabar).',
+    qowaidCategory: 'قواعد Menengah',
+    babNumber: 2,
+    learningTargets: [
+      'Memahami definisi dan struktur Jumlah Ismiyyah (Mubtada\' dan Khabar)',
+      'Mampu menyelaraskan gender (Mudzakkar/Muannats) antara Mubtada\' dan Khabar',
+      'Mengenali hukum I\'rab Marfu\' (Dhammah) pada Mubtada\' dan Khabar',
+      'Mampu membuat kalimat nominal sederhana dengan tepat'
+    ],
     content: `### Struktur Kalimat Nominal (الْجُمْلَةُ الإِسْمِيَّةُ)
 
 Jumlah Ismiyyah adalah kalimat yang diawali oleh Isim. Dua rukun utamanya adalah:

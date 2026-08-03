@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Materi, CategoryType, Student } from '../../types';
-import { BookOpen, MessageSquare, List, Quote, FileText, CheckCircle2, Play, Volume2, Search, Sparkles, RefreshCw, ChevronRight, HardDriveDownload, WifiOff, Check, Maximize2, Minimize2, Eye, X, ZoomIn, ZoomOut, Video, Award, Crown } from 'lucide-react';
+import { BookOpen, MessageSquare, List, Quote, FileText, CheckCircle2, Play, Volume2, Search, Sparkles, RefreshCw, ChevronRight, HardDriveDownload, WifiOff, Check, Maximize2, Minimize2, Eye, X, ZoomIn, ZoomOut, Video, Award, Crown, Target } from 'lucide-react';
 import { AudioPlayerButton } from '../common/AudioPlayerButton';
 import { PdfViewerModal } from '../common/PdfViewerModal';
 import { HiwarView } from '../guru/materi/HiwarView';
@@ -520,6 +520,26 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
               {/* CATEGORY 1: QOWAID / THEORETICAL EXPLANATION */}
               {currentMateri.category === 'qowaid' && (
                 <div className="space-y-4">
+                  {/* Target Pembelajaran / Capaian Qowaid */}
+                  {currentMateri.learningTargets && currentMateri.learningTargets.length > 0 && (
+                    <div className="p-4 sm:p-5 bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 rounded-2xl border border-emerald-200/80 space-y-3 shadow-2xs">
+                      <div className="flex items-center gap-2 text-emerald-900 font-extrabold text-xs sm:text-sm">
+                        <div className="p-1.5 bg-emerald-600 text-white rounded-lg shadow-2xs">
+                          <Target size={16} />
+                        </div>
+                        <span>Target Pembelajaran & Capaian Materi Qowaid</span>
+                      </div>
+                      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-emerald-950 font-medium">
+                        {currentMateri.learningTargets.map((target, idx) => (
+                          <li key={idx} className="flex items-start gap-2 bg-white/90 p-3 rounded-xl border border-emerald-100/90 shadow-2xs">
+                            <CheckCircle2 size={16} className="text-emerald-600 shrink-0 mt-0.5" />
+                            <span className="leading-snug">{target}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
                   {currentMateri.videoUrl && (
                     <div className="p-4 bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-200 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-2xs">
                       <div className="flex items-center gap-2.5">
@@ -753,8 +773,28 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
             }`}>
               {/* Category 1: QOWAID */}
               {currentMateri.category === 'qowaid' && (
-                <div className="bg-slate-950/80 p-6 sm:p-8 rounded-2xl border border-slate-800 text-slate-200 whitespace-pre-line font-sans tracking-wide">
-                  {currentMateri.content}
+                <div className="space-y-4">
+                  {currentMateri.learningTargets && currentMateri.learningTargets.length > 0 && (
+                    <div className="p-5 bg-emerald-950/60 rounded-2xl border border-emerald-800/80 space-y-3">
+                      <div className="flex items-center gap-2 text-emerald-300 font-extrabold text-xs sm:text-sm">
+                        <div className="p-1.5 bg-emerald-600 text-white rounded-lg">
+                          <Target size={16} />
+                        </div>
+                        <span>Target Pembelajaran (Capaian Qowaid):</span>
+                      </div>
+                      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-emerald-100 font-medium">
+                        {currentMateri.learningTargets.map((target, idx) => (
+                          <li key={idx} className="flex items-start gap-2 bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                            <CheckCircle2 size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+                            <span className="leading-snug">{target}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  <div className="bg-slate-950/80 p-6 sm:p-8 rounded-2xl border border-slate-800 text-slate-200 whitespace-pre-line font-sans tracking-wide">
+                    {currentMateri.content}
+                  </div>
                 </div>
               )}
 

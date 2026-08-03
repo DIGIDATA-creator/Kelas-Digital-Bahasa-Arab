@@ -411,6 +411,23 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
                       </div>
                     </div>
 
+                    {/* Judul & Deskripsi Materi Qowaid */}
+                    <div className="space-y-1">
+                      <h3 className="font-extrabold text-slate-900 text-base leading-snug">
+                        {materi.title}
+                      </h3>
+                      {materi.arabicTitle && (
+                        <p className="text-sm font-arabic text-emerald-800 font-bold dir-rtl">
+                          {materi.arabicTitle}
+                        </p>
+                      )}
+                      {materi.description && (
+                        <p className="text-xs text-slate-500 font-medium">
+                          {materi.description}
+                        </p>
+                      )}
+                    </div>
+
                     {/* Target Pembelajaran */}
                     {materi.learningTargets && materi.learningTargets.length > 0 && (
                       <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1 text-xs">
