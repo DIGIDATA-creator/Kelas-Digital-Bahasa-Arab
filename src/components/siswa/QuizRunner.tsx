@@ -204,6 +204,8 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
     // Calculate score for digital questions
     let totalScorePoints = 0;
     let maxPoints = 0;
+    let correctCount = 0;
+    let wrongCount = 0;
 
     questions.forEach(q => {
       const qPoints = q.points || (100 / (questions.length || 1));
@@ -213,12 +215,45 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
 
       if (isCorrect) {
         totalScorePoints += qPoints;
+        correctCount++;
+      } else {
+        wrongCount++;
       }
     });
 
     const calculatedScore = maxPoints > 0 ? Math.round((totalScorePoints / maxPoints) * 100) : 0;
     const passed = calculatedScore >= penilaian.passingGrade;
     const isManualGrading = penilaian.gradingMethod === 'manual';
+
+    // Helper to calculate percentage wrong deduction
+    const getPercentagePenalty = (wrong: number, total: number) => {
+      if (total === 0 || wrong === 0) return 0;
+      const pct = (wrong / total) * 100;
+      if (pct <= 10) return 10;
+      if (pct <= 20) return 20;
+      if (pct <= 30) return 30;
+      if (pct <= 40) return 40;
+      if (pct <= 50) return 50;
+      if (pct <= 60) return 60;
+      if (pct <= 70) return 70;
+      if (pct <= 80) return 80;
+      if (pct <= 90) return 90;
+      return 100;
+    };
+
+    // EXP Calculation Logic (Requirements)
+    // 1. Base EXP = calculatedScore
+    // 2. Penalty for wrong answers = -20 EXP per wrong answer
+    // 3. Percentage wrong penalty (1-10% -> 10, 11-20% -> 20, etc.)
+    // 4. Question count bonus = penilaian.bonusExpForQuestions || 0
+    // 5. Bab count accumulation bonus = penilaian.bonusExpForBabs || 0
+    const baseExp = calculatedScore;
+    const penaltyWrong = wrongCount * 20;
+    const pctPenalty = getPercentagePenalty(wrongCount, questions.length);
+    const bonusQ = penilaian.bonusExpForQuestions || 0;
+    const bonusB = penilaian.bonusExpForBabs || 0;
+
+    const netEarnedExp = isManualGrading ? 0 : (baseExp - penaltyWrong - pctPenalty + bonusQ + bonusB);
 
     setFinalScore(calculatedScore);
     setIsPassed(passed);
@@ -234,6 +269,9 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
       studentName: student.name,
       score: isManualGrading ? 0 : calculatedScore,
       passed: isManualGrading ? false : passed,
+      earnedExp: netEarnedExp,
+      correctCount,
+      wrongCount,
       answers: userAnswers,
       timeSpentSeconds: Math.max(10, timeSpent),
       accessedAt,
@@ -447,11 +485,89 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
 
             {penilaian.gradingMethod !== 'manual' && (
               <div className="space-y-3">
-                <div className="inline-block px-8 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Nilai Akhir Anda</span>
-                  <p className={`text-5xl font-black ${isPassed ? 'text-emerald-600' : 'text-rose-600'}`}>
-                    {finalScore}
-                  </p>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <div className="px-8 py-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 min-w-40">
+                    <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Nilai Akhir Anda</span>
+                    <p className={`text-4xl font-black ${isPassed ? 'text-emerald-600' : 'text-rose-600'}`}>
+                      {finalScore}
+                    </p>
+                  </div>
+
+                  {/* Net EXP Breakdown Card */}
+                  {(() => {
+                    let cCount = 0;
+                    let wCount = 0;
+                    questions.forEach(q => {
+                      const uAns = userAnswers[q.id];
+                      const { isCorrect } = getAnswerAnalysis(q, uAns);
+                      if (isCorrect) cCount++; else wCount++;
+                    });
+
+                    const penaltyW = wCount * 20;
+
+                    const getPercentagePenalty = (wrong: number, total: number) => {
+                      if (total === 0 || wrong === 0) return 0;
+                      const pct = (wrong / total) * 100;
+                      if (pct <= 10) return 10;
+                      if (pct <= 20) return 20;
+                      if (pct <= 30) return 30;
+                      if (pct <= 40) return 40;
+                      if (pct <= 50) return 50;
+                      if (pct <= 60) return 60;
+                      if (pct <= 70) return 70;
+                      if (pct <= 80) return 80;
+                      if (pct <= 90) return 90;
+                      return 100;
+                    };
+
+                    const pctPenalty = getPercentagePenalty(wCount, questions.length);
+                    const wrongPctNum = questions.length > 0 ? Math.round((wCount / questions.length) * 100) : 0;
+                    const bonusQ = penilaian.bonusExpForQuestions || 0;
+                    const bonusB = penilaian.bonusExpForBabs || 0;
+                    const netExpGained = finalScore - penaltyW - pctPenalty + bonusQ + bonusB;
+
+                    return (
+                      <div className="px-5 py-3.5 bg-purple-900 text-white rounded-2xl border border-purple-700 shadow-sm text-left min-w-60 space-y-1">
+                        <span className="text-[10px] font-extrabold text-amber-300 uppercase tracking-wider block">Rincian Perolehan EXP:</span>
+                        <div className="text-[11px] space-y-0.5 text-purple-100">
+                          <div className="flex justify-between gap-2">
+                            <span>Base Score:</span>
+                            <span className="font-bold">+{finalScore} XP</span>
+                          </div>
+                          {wCount > 0 && (
+                            <>
+                              <div className="flex justify-between gap-2 text-rose-300 font-semibold">
+                                <span>Pengurangan ({wCount} Salah x20):</span>
+                                <span>-{penaltyW} XP</span>
+                              </div>
+                              <div className="flex justify-between gap-2 text-rose-300 font-semibold">
+                                <span>Pengurangan Rate Salah ({wrongPctNum}%):</span>
+                                <span>-{pctPenalty} XP</span>
+                              </div>
+                            </>
+                          )}
+                          {bonusQ > 0 && (
+                            <div className="flex justify-between gap-2 text-amber-300 font-semibold">
+                              <span>Bonus {questions.length} Soal:</span>
+                              <span>+{bonusQ} XP</span>
+                            </div>
+                          )}
+                          {bonusB > 0 && (
+                            <div className="flex justify-between gap-2 text-amber-300 font-semibold">
+                              <span>Bonus Akumulasi Bab:</span>
+                              <span>+{bonusB} XP</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between gap-2 pt-1 border-t border-purple-700 font-extrabold text-white text-xs">
+                            <span>Total Net EXP:</span>
+                            <span className={netExpGained >= 0 ? 'text-amber-300' : 'text-rose-400'}>
+                              {netExpGained >= 0 ? `+${netExpGained}` : netExpGained} XP
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Framer-Motion Celebration Banner for Score > 80 */}

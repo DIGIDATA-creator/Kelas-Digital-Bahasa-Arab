@@ -88,9 +88,11 @@ function getLocal<T>(key: string, fallback: T): T {
   }
 }
 
+const SYSTEM_SAMPLE_QUIZ_IDS = ['pen-1', 'pen-2', 'pen-3'];
+
 // Initialize cached data from LocalStorage first
 cachedMateri = getLocal(KEYS.MATERI, INITIAL_MATERI);
-cachedPenilaian = getLocal(KEYS.PENILAIAN, INITIAL_PENILAIAN);
+cachedPenilaian = getLocal(KEYS.PENILAIAN, INITIAL_PENILAIAN).filter(p => !SYSTEM_SAMPLE_QUIZ_IDS.includes(p.id));
 cachedStudents = getLocal(KEYS.STUDENTS, INITIAL_STUDENTS);
 cachedLogs = getLocal(KEYS.LOGS, INITIAL_LOGS);
 cachedForum = getLocal(KEYS.FORUM, INITIAL_FORUM_POSTS);
@@ -123,9 +125,16 @@ export const storageService = {
     // 2. Listen to Penilaian
     const unsubPenilaian = onSnapshot(docPenilaian, (docSnap) => {
       if (docSnap.exists() && docSnap.data().items) {
-        cachedPenilaian = docSnap.data().items;
+        const rawItems = docSnap.data().items as Penilaian[];
+        const filtered = rawItems.filter(p => !SYSTEM_SAMPLE_QUIZ_IDS.includes(p.id));
+        cachedPenilaian = filtered;
         saveLocal(KEYS.PENILAIAN, cachedPenilaian);
         notifyListeners();
+
+        // If database contained system sample quizzes, update database to remove them permanently
+        if (rawItems.length !== filtered.length) {
+          setDoc(docPenilaian, sanitizeForFirestore({ items: filtered })).catch(console.error);
+        }
       } else {
         setDoc(docPenilaian, sanitizeForFirestore({ items: cachedPenilaian })).catch(console.error);
       }
@@ -504,9 +513,10 @@ export const storageService = {
     if (student) {
       student.attempts = student.attempts || [];
       student.attempts.push(newAttempt);
-      if (attempt.passed) {
-        student.totalXP += attempt.score;
-      }
+
+      const expChange = attempt.earnedExp !== undefined ? attempt.earnedExp : (attempt.passed ? attempt.score : 0);
+      student.totalXP = Math.max(0, student.totalXP + expChange);
+
       student.lastActive = new Date().toISOString();
       this.saveStudents(students);
 
@@ -514,7 +524,7 @@ export const storageService = {
         userName: student.name,
         userRole: 'siswa',
         action: `Menyelesaikan ${attempt.penilaianType}`,
-        details: `Meraih nilai ${attempt.score}/100 pada ${attempt.penilaianTitle} (${attempt.passed ? 'Lulus' : 'Belum Lulus'})`,
+        details: `Meraih nilai ${attempt.score}/100 (${expChange >= 0 ? '+' : ''}${expChange} XP) pada ${attempt.penilaianTitle} (${attempt.passed ? 'Lulus' : 'Belum Lulus'})`,
       });
     }
 

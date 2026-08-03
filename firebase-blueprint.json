@@ -89,6 +89,25 @@
         "replies": { "type": "array" }
       },
       "required": ["id", "title", "content", "authorName", "createdAt", "replies"]
+    },
+    "DuelRoom": {
+      "title": "DuelRoom",
+      "description": "Room pertandingan kuis kosakata real-time antar siswa",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "roomCode": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "hostPlayer": { "type": "object" },
+        "challengerPlayer": { "type": "object" },
+        "questions": { "type": "array" },
+        "currentRound": { "type": "number" },
+        "totalRounds": { "type": "number" },
+        "winnerId": { "type": "string" },
+        "isPublic": { "type": "boolean" }
+      },
+      "required": ["id", "roomCode", "status", "createdAt", "hostPlayer", "questions"]
     }
   },
   "firestore": {
@@ -111,6 +130,10 @@
     "/app_collections/forum": {
       "schema": { "$ref": "#/entities/ForumPost" },
       "description": "Dokumen tunggal penampung postingan forum diskusi"
+    },
+    "/duels/{roomId}": {
+      "schema": { "$ref": "#/entities/DuelRoom" },
+      "description": "Room duel kuis kosakata real-time antar siswa"
     }
   }
 }

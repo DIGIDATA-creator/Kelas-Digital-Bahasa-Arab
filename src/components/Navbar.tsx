@@ -4,7 +4,6 @@ import { UserSession } from '../services/storage';
 import {
   GraduationCap,
   Shield,
-  RotateCcw,
   Sun,
   Moon,
   LogOut,
@@ -20,7 +19,6 @@ interface NavbarProps {
   students: Student[];
   currentStudentId: string;
   onStudentChange: (studentId: string) => void;
-  onResetData: () => void;
   isDarkMode?: boolean;
   onToggleDarkMode?: () => void;
   userSession: UserSession | null;
@@ -34,7 +32,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   onTabChange,
   students,
   currentStudentId,
-  onResetData,
   isDarkMode = false,
   onToggleDarkMode,
   userSession,
@@ -57,6 +54,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'dashboard', label: 'Beranda' },
     { id: 'materi', label: 'Materi Belajar' },
     { id: 'penilaian', label: 'Latihan & Kuis' },
+    { id: 'duel', label: '⚔️ Mode Duel' },
     { id: 'forum', label: 'Forum Diskusi' },
     { id: 'progres', label: 'Progres Saya' },
     { id: 'leaderboard', label: 'Leaderboard' },
@@ -189,7 +187,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             )}
 
-            {/* Desktop Dark Mode & Reset Buttons */}
+            {/* Desktop Dark Mode Button */}
             <div className="hidden sm:flex items-center gap-2">
               {onToggleDarkMode && (
                 <button
@@ -200,18 +198,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                   {isDarkMode ? <Sun size={16} className="text-amber-400" /> : <Moon size={16} className="text-slate-300" />}
                 </button>
               )}
-
-              <button
-                onClick={() => {
-                  if (confirm('Apakah Anda yakin ingin mereset data LMS ke data awal?')) {
-                    onResetData();
-                  }
-                }}
-                title="Reset Data Demo"
-                className="p-2 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-xl transition-colors border border-transparent hover:border-slate-700 cursor-pointer"
-              >
-                <RotateCcw size={16} />
-              </button>
             </div>
 
           </div>

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Student, StudentStatus, Materi, TingkatType } from '../../types';
+import { Student, StudentStatus, Materi, TingkatType, ActivityLog } from '../../types';
 import {
   UserPlus,
   Search,
@@ -27,10 +27,13 @@ import {
   ChevronRight,
   CheckSquare,
   LayoutGrid,
-  Quote
+  Quote,
+  Activity
 } from 'lucide-react';
 import { PendaftaranSiswaForm } from '../auth/PendaftaranSiswaForm';
 import { CeklisHafalanModal } from './CeklisHafalanModal';
+import { SiswaActivityVisitsView } from './SiswaActivityVisitsView';
+import { storageService } from '../../services/storage';
 
 export const getTingkatColorTheme = (tingkat?: TingkatType | string, className?: string) => {
   const t = (tingkat || '').toLowerCase();
@@ -92,15 +95,21 @@ export const getTingkatColorTheme = (tingkat?: TingkatType | string, className?:
 interface SiswaManagementProps {
   students: Student[];
   materiList: Materi[];
+  logs?: ActivityLog[];
   onSaveStudents: (updated: Student[]) => void;
   onSwitchToStudentSession?: (student: Student) => void;
+  initialSelectedStudentId?: string;
+  onClearInitialSelectedStudentId?: () => void;
 }
 
 export const SiswaManagement: React.FC<SiswaManagementProps> = ({
   students,
   materiList,
+  logs,
   onSaveStudents,
   onSwitchToStudentSession,
+  initialSelectedStudentId,
+  onClearInitialSelectedStudentId,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showPredictions, setShowPredictions] = useState(false);
@@ -109,8 +118,21 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
   const [activeMainSection, setActiveMainSection] = useState<'acc' | 'aktif' | 'semua'>('acc');
   const [statusTab, setStatusTab] = useState<'semua' | 'pending' | 'disetujui' | 'ditolak'>('pending');
   const [viewMode, setViewMode] = useState<'cards' | 'grouped' | 'flat'>('cards');
+  const [showLogsVisitsModal, setShowLogsVisitsModal] = useState(false);
+
+  const activeLogs = logs || storageService.getLogs();
 
   const [selectedStudentForDetail, setSelectedStudentForDetail] = useState<Student | null>(null);
+
+  // Automatically open student detail modal when navigated with initialSelectedStudentId
+  React.useEffect(() => {
+    if (initialSelectedStudentId) {
+      const target = students.find(s => s.id === initialSelectedStudentId);
+      if (target) {
+        setSelectedStudentForDetail(target);
+      }
+    }
+  }, [initialSelectedStudentId, students]);
   const [studentForHafalanChecklist, setStudentForHafalanChecklist] = useState<Student | null>(null);
 
   // Predictive search calculation
@@ -374,7 +396,14 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setShowLogsVisitsModal(true)}
+            className="px-3.5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer"
+          >
+            <Activity size={16} className="text-amber-400" /> Tinjau Log & Kunjungan
+          </button>
+
           {pendingStudents.length > 0 && (
             <button
               onClick={handleApproveAllPending}
@@ -1601,6 +1630,19 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
             }
           }}
         />
+
+        {/* Modal Overlay Siswa Activity Logs & Visit Analytics */}
+        {showLogsVisitsModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-xs p-3 sm:p-6 overflow-y-auto">
+            <div className="w-full my-auto">
+              <SiswaActivityVisitsView
+                students={students}
+                logs={activeLogs}
+                onClose={() => setShowLogsVisitsModal(false)}
+              />
+            </div>
+          </div>
+        )}
       </AnimatePresence>
     </div>
   );

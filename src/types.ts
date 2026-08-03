@@ -100,6 +100,8 @@ export interface Penilaian {
   questions: Question[]; // F.1.3 Bank soal sebanyak-banyaknya
   totalPoints: number;
   gradingMethod?: 'digital' | 'manual'; // F.1.8 / F.1.9 Manual vs Digital
+  bonusExpForQuestions?: number;
+  bonusExpForBabs?: number;
   createdAt: string;
 }
 
@@ -112,6 +114,9 @@ export interface QuizAttempt {
   studentName: string;
   score: number;
   passed: boolean;
+  earnedExp?: number;
+  correctCount?: number;
+  wrongCount?: number;
   answers: Record<string, string | number>;
   timeSpentSeconds: number;
   completedAt: string;
@@ -159,6 +164,8 @@ export interface Student {
   lastActive: string;
   registeredAt?: string;
   hafalanProgress?: StudentHafalanProgress;
+  visitHistory?: string[]; // ISO string timestamps of app logins/visits
+  visitCount?: number; // Total visit counter
 }
 
 export interface ActivityLog {

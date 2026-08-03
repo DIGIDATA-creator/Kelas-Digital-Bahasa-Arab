@@ -1,6 +1,6 @@
 import React from 'react';
 import { Student, Materi, Penilaian } from '../../types';
-import { BookOpen, Award, CheckCircle2, Play, Flame, ArrowRight, Sparkles, FileCheck, Trophy, Quote, CheckSquare, Bell, Zap, BellRing } from 'lucide-react';
+import { BookOpen, Award, CheckCircle2, Play, Flame, ArrowRight, Sparkles, FileCheck, Trophy, Quote, CheckSquare, Bell, Zap, BellRing, Swords } from 'lucide-react';
 import { calculateHafalanXP } from '../guru/CeklisHafalanModal';
 import { SiswaDashboardSkeleton } from '../common/Skeleton';
 import { MahfudzotOfTheDayCard } from '../common/MahfudzotOfTheDayCard';
@@ -89,6 +89,12 @@ export const SiswaDashboard: React.FC<SiswaDashboardProps> = ({
               <Flame size={16} className="text-rose-400" />
               <span>Streak Belajar: 5 Hari</span>
             </div>
+            <button
+              onClick={() => onNavigate('duel')}
+              className="flex items-center gap-2 px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl font-black text-xs transition-all cursor-pointer shadow-md"
+            >
+              <Swords size={16} /> Mode Duel Real-Time ⚔️
+            </button>
           </div>
         </div>
 

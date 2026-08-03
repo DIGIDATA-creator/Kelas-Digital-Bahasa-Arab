@@ -254,6 +254,15 @@ export function generateDynamicMahfudzotQuiz(
       ? `No. ${config.rangeStartNum} - ${config.rangeEndNum}`
       : 'Semua Nomor (1 - 87)';
 
+  const questionCountExpMap: Record<number, number> = {
+    10: 15,
+    20: 25,
+    30: 40,
+    40: 60,
+    50: 80,
+  };
+  const bonusExpForQuestions = questionCountExpMap[config.questionCount] || 15;
+
   return {
     id: `kuis-mahfudzot-dyn-${Date.now()}`,
     code: `KIZ-MFZ-${config.questionCount}Q`,
@@ -265,6 +274,8 @@ export function generateDynamicMahfudzotQuiz(
     passingGrade: 75,
     questions,
     totalPoints: 100,
+    bonusExpForQuestions,
+    bonusExpForBabs: 0,
     createdAt: new Date().toISOString(),
   };
 }

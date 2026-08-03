@@ -182,6 +182,25 @@ export function generateDynamicKosakataQuiz(
 
   const dirLabel = config.direction === 'arab_indo' ? 'Arab ➔ Indonesia' : 'Indonesia ➔ Arab';
 
+  // Bonus EXP calculations (Requirements 4 & 5)
+  const questionCountExpMap: Record<number, number> = {
+    10: 15,
+    20: 25,
+    30: 40,
+    40: 60,
+    50: 80,
+  };
+  const bonusExpForQuestions = questionCountExpMap[config.questionCount] || 15;
+
+  let extraBabCount = 0;
+  if (config.scopeType === 'range') {
+    extraBabCount = Math.max(0, config.rangeEndBab - config.rangeStartBab);
+  } else if (config.scopeType === 'all') {
+    const uniqueBabsInList = new Set(kosakataMateri.map(m => m.babNumber || 1)).size;
+    extraBabCount = Math.max(0, uniqueBabsInList - 1);
+  }
+  const bonusExpForBabs = extraBabCount * 15;
+
   return {
     id: `kuis-kosakata-dyn-${Date.now()}`,
     code: `KIZ-KOS-${config.questionCount}Q`,
@@ -193,6 +212,8 @@ export function generateDynamicKosakataQuiz(
     passingGrade: 75,
     questions,
     totalPoints: 100,
+    bonusExpForQuestions,
+    bonusExpForBabs,
     createdAt: new Date().toISOString(),
   };
 }

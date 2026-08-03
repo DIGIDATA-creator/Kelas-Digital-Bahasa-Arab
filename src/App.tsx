@@ -20,6 +20,7 @@ import { PenilaianSiswaView } from './components/siswa/PenilaianSiswaView';
 import { ProgresBelajarView } from './components/siswa/ProgresBelajarView';
 import { LeaderboardView } from './components/siswa/LeaderboardView';
 import { SiswaProfile } from './components/siswa/SiswaProfile';
+import { DuelView } from './components/duel/DuelView';
 
 // Forum Component
 import { ForumDiskusi } from './components/forum/ForumDiskusi';
@@ -67,6 +68,7 @@ export default function App() {
   });
 
   const [selectedMateriIdForSiswa, setSelectedMateriIdForSiswa] = useState<string | undefined>(undefined);
+  const [selectedStudentForDetailId, setSelectedStudentForDetailId] = useState<string | null>(null);
   const [isLoadingData, setIsLoadingData] = useState<boolean>(true);
 
   // Toast Notification System
@@ -220,15 +222,6 @@ export default function App() {
     });
   };
 
-  const handleResetData = () => {
-    storageService.resetData();
-    setMateriList(storageService.getMateri());
-    setPenilaianList(storageService.getPenilaian());
-    setStudents(storageService.getStudents());
-    setLogs(storageService.getLogs());
-    setCurrentStudentId(storageService.getCurrentStudentId());
-  };
-
   const currentStudent = students.find(s => s.id === currentStudentId) || students[0];
 
   return (
@@ -243,7 +236,6 @@ export default function App() {
         students={students}
         currentStudentId={currentStudentId}
         onStudentChange={handleStudentChange}
-        onResetData={handleResetData}
         isDarkMode={isDarkMode}
         onToggleDarkMode={handleToggleDarkMode}
         userSession={userSession}
@@ -282,6 +274,10 @@ export default function App() {
                       onNavigate={setActiveTab}
                       isLoading={isLoadingData}
                       onSwitchToStudentSession={handleSwitchToStudentSession}
+                      onSelectStudentForDetail={(stdId) => {
+                        setSelectedStudentForDetailId(stdId);
+                        setActiveTab('siswa');
+                      }}
                     />
                   )}
 
@@ -291,6 +287,8 @@ export default function App() {
                       materiList={materiList}
                       onSaveStudents={handleSaveStudents}
                       onSwitchToStudentSession={handleSwitchToStudentSession}
+                      initialSelectedStudentId={selectedStudentForDetailId || undefined}
+                      onClearInitialSelectedStudentId={() => setSelectedStudentForDetailId(null)}
                     />
                   )}
 
@@ -368,6 +366,15 @@ export default function App() {
                       materiList={materiList}
                       currentStudent={currentStudent}
                       onFinishQuiz={handleFinishQuiz}
+                    />
+                  )}
+
+                  {activeTab === 'duel' && (
+                    <DuelView
+                      currentStudent={currentStudent}
+                      students={students}
+                      onBackToLms={() => setActiveTab('dashboard')}
+                      onSimulateExpGain={handleSimulateExpGain}
                     />
                   )}
 

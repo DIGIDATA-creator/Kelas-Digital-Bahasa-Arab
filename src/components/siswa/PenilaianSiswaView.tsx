@@ -41,6 +41,17 @@ export const PenilaianSiswaView: React.FC<PenilaianSiswaViewProps> = ({
     questionCount: 10,
   });
 
+  // Helper to format Bab Label with Material Title
+  const getBabLabelWithTitle = (babNum: number) => {
+    const mat = materiList.find(m => m.category === 'kosakata' && (m.babNumber === babNum || Number(m.babNumber) === babNum));
+    if (mat) {
+      const cleanTitle = mat.title.replace(/^Bab\s*\d+\s*[:\-–]?\s*/i, '');
+      const arTitle = mat.arabicTitle ? ` (${mat.arabicTitle})` : '';
+      return `Bab ${babNum}: ${cleanTitle}${arTitle}`;
+    }
+    return `Bab ${babNum}`;
+  };
+
   // Available Bab Numbers from Vocabulary Materials
   const availableBabs = Array.from(
     new Set(
@@ -234,7 +245,7 @@ export const PenilaianSiswaView: React.FC<PenilaianSiswaViewProps> = ({
                       className="w-full bg-slate-900 text-white font-bold px-3 py-1.5 rounded-xl border border-emerald-400/40 focus:outline-hidden"
                     >
                       {(availableBabs.length > 0 ? availableBabs : [1, 2, 3, 4, 5]).map(b => (
-                        <option key={b} value={b}>Bab {b}</option>
+                        <option key={b} value={b}>{getBabLabelWithTitle(b)}</option>
                       ))}
                     </select>
                   </div>
@@ -259,7 +270,7 @@ export const PenilaianSiswaView: React.FC<PenilaianSiswaViewProps> = ({
                       className="w-full bg-slate-900 text-white font-bold px-2.5 py-1.5 rounded-xl border border-emerald-400/40"
                     >
                       {(availableBabs.length > 0 ? availableBabs : [1, 2, 3, 4, 5]).map(b => (
-                        <option key={b} value={b}>Bab {b}</option>
+                        <option key={b} value={b}>{getBabLabelWithTitle(b)}</option>
                       ))}
                     </select>
                     <span className="font-bold text-white/70">s/d</span>
@@ -269,7 +280,7 @@ export const PenilaianSiswaView: React.FC<PenilaianSiswaViewProps> = ({
                       className="w-full bg-slate-900 text-white font-bold px-2.5 py-1.5 rounded-xl border border-emerald-400/40"
                     >
                       {(availableBabs.length > 0 ? availableBabs : [1, 2, 3, 4, 5]).map(b => (
-                        <option key={b} value={b}>Bab {b}</option>
+                        <option key={b} value={b}>{getBabLabelWithTitle(b)}</option>
                       ))}
                     </select>
                   </div>
