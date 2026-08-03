@@ -37,7 +37,7 @@ export const DuelLobby: React.FC<DuelLobbyProps> = ({
   isLoading = false,
 }) => {
   const [inputCode, setInputCode] = useState('');
-  const [selectedQuestionsCount, setSelectedQuestionsCount] = useState(5);
+  const [selectedQuestionsCount, setSelectedQuestionsCount] = useState(10);
   const [isPublic, setIsPublic] = useState(true);
   const [publicRooms, setPublicRooms] = useState<DuelRoom[]>([]);
   const [isFetchingRooms, setIsFetchingRooms] = useState(false);
@@ -117,21 +117,27 @@ export const DuelLobby: React.FC<DuelLobbyProps> = ({
             </div>
 
             <div className="space-y-3 pt-2">
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Jumlah Soal Mufrodat:
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {[5, 10, 15].map((cnt) => (
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Jumlah Soal Mufrodat:
+                </label>
+                <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800">
+                  {selectedQuestionsCount} Soal
+                </span>
+              </div>
+              <div className="grid grid-cols-5 sm:grid-cols-10 gap-1.5">
+                {[10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((cnt) => (
                   <button
                     key={cnt}
+                    type="button"
                     onClick={() => setSelectedQuestionsCount(cnt)}
-                    className={`py-2 px-3 text-xs font-semibold rounded-xl border transition-all ${
+                    className={`py-2 px-1 text-[11px] sm:text-xs font-bold rounded-xl border transition-all cursor-pointer text-center ${
                       selectedQuestionsCount === cnt
-                        ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
-                        : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                        ? 'bg-amber-600 text-white border-amber-600 shadow-sm ring-2 ring-amber-400/40'
+                        : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-750'
                     }`}
                   >
-                    {cnt} Soal
+                    {cnt}
                   </button>
                 ))}
               </div>

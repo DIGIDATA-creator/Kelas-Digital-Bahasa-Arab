@@ -91,6 +91,7 @@ export interface DuelPlayer {
   answers: { [questionIndex: number]: PlayerAnswer };
   ready: boolean;
   isBot?: boolean;
+  finishedAt?: number; // timestamp in ms when player completed all questions
 }
 
 export interface DuelRoom {
@@ -281,12 +282,16 @@ export const duelService = {
     const newAnswers = { ...targetPlayer.answers, [questionIndex]: answerObj };
     const nextQuestionIndex = questionIndex + 1;
 
+    const isLastQuestion = questionIndex === currentRoom.totalRounds - 1;
+    const playerFinishedAt = isLastQuestion ? Date.now() : targetPlayer.finishedAt;
+
     const updatedPlayer: DuelPlayer = {
       ...targetPlayer,
       score: newScore,
       streak: newStreak,
       currentQuestionIndex: nextQuestionIndex,
       answers: newAnswers,
+      finishedAt: playerFinishedAt,
     };
 
     const playerKey = isHost ? 'hostPlayer' : 'challengerPlayer';
@@ -297,7 +302,7 @@ export const duelService = {
 
     let newRound = currentRoom.currentRound;
     let newStatus = currentRoom.status;
-    let winnerId = currentRoom.winnerStudentId;
+    let winnerId = currentRoom.winnerStudentId || (currentRoom as any).winnerId;
 
     if (otherPlayerAnswered || otherPlayer?.isBot) {
       if (currentRoom.currentRound < currentRoom.totalRounds - 1) {
@@ -308,12 +313,27 @@ export const duelService = {
         const hostFinalScore = isHost ? newScore : currentRoom.hostPlayer.score;
         const challengerFinalScore = !isHost ? newScore : (currentRoom.challengerPlayer?.score || 0);
 
+        const hostFinishTime = isHost
+          ? (updatedPlayer.finishedAt || answerObj.answeredAt)
+          : (currentRoom.hostPlayer.finishedAt || currentRoom.hostPlayer.answers[currentRoom.totalRounds - 1]?.answeredAt || Infinity);
+
+        const challengerFinishTime = !isHost
+          ? (updatedPlayer.finishedAt || answerObj.answeredAt)
+          : (currentRoom.challengerPlayer?.finishedAt || currentRoom.challengerPlayer?.answers[currentRoom.totalRounds - 1]?.answeredAt || Infinity);
+
         if (hostFinalScore > challengerFinalScore) {
           winnerId = currentRoom.hostPlayer.studentId;
         } else if (challengerFinalScore > hostFinalScore) {
           winnerId = currentRoom.challengerPlayer?.studentId || null;
         } else {
-          winnerId = 'DRAW';
+          // Tie-breaker: Winner is determined by completion time (waktu pertama selesai)
+          if (hostFinishTime < challengerFinishTime) {
+            winnerId = currentRoom.hostPlayer.studentId;
+          } else if (challengerFinishTime < hostFinishTime) {
+            winnerId = currentRoom.challengerPlayer?.studentId || null;
+          } else {
+            winnerId = 'DRAW';
+          }
         }
       }
     }
@@ -323,6 +343,7 @@ export const duelService = {
         [playerKey]: updatedPlayer,
         currentRound: newRound,
         status: newStatus,
+        winnerStudentId: winnerId || null,
         winnerId: winnerId || null,
         roundStartTime: Date.now(),
       });
@@ -403,6 +424,7 @@ export const duelService = {
       streak: 0,
       currentQuestionIndex: 0,
       answers: {},
+      finishedAt: undefined,
     };
 
     const resetChallenger: DuelPlayer | null = currentRoom.challengerPlayer
@@ -412,6 +434,7 @@ export const duelService = {
           streak: 0,
           currentQuestionIndex: 0,
           answers: {},
+          finishedAt: undefined,
         }
       : null;
 

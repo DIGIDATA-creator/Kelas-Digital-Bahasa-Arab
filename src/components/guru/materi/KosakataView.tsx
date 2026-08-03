@@ -12,6 +12,9 @@ interface KosakataViewProps {
   onDeleteVocabItem?: (materiId: string, vocabId: string) => void;
   onAddMateri?: () => void;
   isEditable?: boolean;
+  teacherKosakataState?: Record<string, boolean>;
+  selfKosakataState?: Record<string, boolean>;
+  onToggleSelfKosakata?: (vocabId: string) => void;
 }
 
 export const KosakataView: React.FC<KosakataViewProps> = ({
@@ -22,6 +25,9 @@ export const KosakataView: React.FC<KosakataViewProps> = ({
   onDeleteVocabItem,
   onAddMateri,
   isEditable = true,
+  teacherKosakataState,
+  selfKosakataState,
+  onToggleSelfKosakata,
 }) => {
   const kosakataMateri = materiList.filter(m => m.category === 'kosakata');
 
@@ -354,6 +360,9 @@ export const KosakataView: React.FC<KosakataViewProps> = ({
                 onDeleteItem={onDeleteVocabItem ? (vocabId) => onDeleteVocabItem(materi.id, vocabId) : undefined}
                 onAddItem={onEditMateri ? () => onEditMateri(materi) : undefined}
                 isEditable={isEditable}
+                teacherKosakataState={teacherKosakataState}
+                selfKosakataState={selfKosakataState}
+                onToggleSelfKosakata={onToggleSelfKosakata}
               />
             ))
           )}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Materi } from '../../../types';
+import { Materi, MahfudzotChecklist } from '../../../types';
 import { AudioPlayerButton } from '../../common/AudioPlayerButton';
 import {
   Quote,
@@ -19,7 +19,11 @@ import {
   Sparkles,
   ChevronDown,
   ChevronUp,
-  Layers
+  Layers,
+  CheckCircle2,
+  Bookmark,
+  Award,
+  Crown
 } from 'lucide-react';
 import { exportMahfudzotToPdf } from '../../../utils/mahfudzotPdfExport';
 import { resolveMahfudzotCategory } from '../../../data/mahfudzotData';
@@ -33,6 +37,9 @@ interface MahfudzotViewProps {
   onLaunchFlashcards: (filteredList?: Materi[]) => void;
   onOpenSheetModal?: () => void;
   isEditable?: boolean;
+  teacherMahfudzotState?: Record<string, MahfudzotChecklist>;
+  selfMahfudzotState?: Record<string, boolean>;
+  onToggleSelfMahfudzot?: (materiId: string) => void;
 }
 
 const CATEGORY_OPTIONS = [
@@ -53,6 +60,9 @@ export const MahfudzotView: React.FC<MahfudzotViewProps> = ({
   onLaunchFlashcards,
   onOpenSheetModal,
   isEditable = true,
+  teacherMahfudzotState,
+  selfMahfudzotState,
+  onToggleSelfMahfudzot,
 }) => {
   const [viewType, setViewType] = useState<'tabel' | 'flashcard'>('tabel');
   const [displayMode, setDisplayMode] = useState<'all' | 'arabic_only' | 'translation_only'>('all');
@@ -603,18 +613,28 @@ export const MahfudzotView: React.FC<MahfudzotViewProps> = ({
                       const badgeClass = getCategoryBadgeClass(categoryTag);
                       const isSelected = selectedIds.includes(materi.id);
 
+                      const chk = teacherMahfudzotState?.[materi.id];
+                      const isTeacherVerified = !!(chk && (chk.hafalanArab || chk.hafalanTerjemah || chk.pengetahuanKosakata || chk.pemahamanMateri || chk.kelancaran || chk.tajwid));
+                      const isFullyVerified = !!(chk && chk.hafalanArab && chk.hafalanTerjemah && chk.pengetahuanKosakata && chk.pemahamanMateri);
+                      const isSelfMarked = !!selfMahfudzotState?.[materi.id];
+
+                      let cardStyleClass = 'bg-white border-slate-200 shadow-xs hover:border-purple-300 hover:shadow-md';
+                      if (isSelected) {
+                        cardStyleClass = 'bg-purple-50/50 border-purple-500 ring-2 ring-purple-500/30 shadow-md';
+                      } else if (isTeacherVerified) {
+                        cardStyleClass = 'bg-purple-100/90 border-purple-400 shadow-md text-purple-950 font-medium';
+                      } else if (isSelfMarked) {
+                        cardStyleClass = 'bg-indigo-100/90 border-indigo-300 shadow-md text-indigo-950 font-medium';
+                      }
+
                       return (
                         <div
                           key={materi.id}
-                          className={`rounded-2xl border transition-all p-5 flex flex-col justify-between relative space-y-4 ${
-                            isSelected
-                              ? 'bg-purple-50/50 border-purple-500 ring-2 ring-purple-500/30 shadow-md'
-                              : 'bg-white border-slate-200 shadow-xs hover:border-purple-300 hover:shadow-md'
-                          }`}
+                          className={`rounded-2xl border transition-all p-5 flex flex-col justify-between relative space-y-4 ${cardStyleClass}`}
                         >
                           {/* Card Header */}
-                          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                            <div className="flex items-center gap-2">
+                          <div className="flex items-center justify-between border-b border-slate-100/80 pb-3">
+                            <div className="flex items-center gap-2 flex-wrap">
                               {isEditable && (
                                 <input
                                   type="checkbox"
@@ -630,6 +650,15 @@ export const MahfudzotView: React.FC<MahfudzotViewProps> = ({
                               <span className={`px-2.5 py-0.5 text-[11px] font-bold rounded-lg border ${badgeClass}`}>
                                 {categoryTag}
                               </span>
+                              {isFullyVerified ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-slate-950 font-black text-[10px] rounded-lg shadow-2xs border border-amber-200" title="Tuntas Diverifikasi Guru (4/4 Kriteria)">
+                                  <Crown size={12} className="fill-slate-950 text-slate-950" /> 100% Diverifikasi
+                                </span>
+                              ) : isTeacherVerified ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-500 text-slate-950 font-black text-[10px] rounded-lg shadow-2xs border border-amber-300" title="Diverifikasi Guru">
+                                  <Crown size={11} className="fill-slate-950 text-slate-950" /> Verified Guru
+                                </span>
+                              ) : null}
                             </div>
 
                             <div className="flex items-center gap-1">
@@ -687,6 +716,39 @@ export const MahfudzotView: React.FC<MahfudzotViewProps> = ({
                               <div className="p-2 text-center text-slate-300 italic text-xs">
                                 (Terjemahan Disembunyikan)
                               </div>
+                            )}
+                          </div>
+
+                          {/* Card Footer Status / Student Toggle */}
+                          <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold">
+                            <div>
+                              {isTeacherVerified ? (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black text-xs rounded-xl shadow-2xs border border-amber-300">
+                                  <Crown size={14} className="fill-slate-950 text-slate-950" /> Diceklis Guru
+                                </span>
+                              ) : isSelfMarked ? (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-700 text-white font-extrabold text-xs rounded-xl shadow-2xs">
+                                  <Bookmark size={13} /> Hafal (Siswa)
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 font-medium text-xs">Belum Dihafal</span>
+                              )}
+                            </div>
+
+                            {onToggleSelfMahfudzot && !isTeacherVerified && (
+                              <button
+                                type="button"
+                                onClick={() => onToggleSelfMahfudzot(materi.id)}
+                                className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs ${
+                                  isSelfMarked
+                                    ? 'bg-indigo-200 hover:bg-indigo-300 text-indigo-950 border border-indigo-300'
+                                    : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200'
+                                }`}
+                                title="Tandai Sudah Hafal (Siswa - 0 XP)"
+                              >
+                                <Bookmark size={13} className="text-indigo-600" />
+                                <span>{isSelfMarked ? 'Batalkan Tanda' : 'Tandai Hafal'}</span>
+                              </button>
                             )}
                           </div>
                         </div>

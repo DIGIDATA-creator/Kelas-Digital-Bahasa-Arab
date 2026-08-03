@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Materi, CategoryType, Student } from '../../types';
-import { BookOpen, MessageSquare, List, Quote, FileText, CheckCircle2, Play, Volume2, Search, Sparkles, RefreshCw, ChevronRight, HardDriveDownload, WifiOff, Check, Maximize2, Minimize2, Eye, X, ZoomIn, ZoomOut, Video } from 'lucide-react';
+import { BookOpen, MessageSquare, List, Quote, FileText, CheckCircle2, Play, Volume2, Search, Sparkles, RefreshCw, ChevronRight, HardDriveDownload, WifiOff, Check, Maximize2, Minimize2, Eye, X, ZoomIn, ZoomOut, Video, Award, Crown } from 'lucide-react';
 import { AudioPlayerButton } from '../common/AudioPlayerButton';
 import { PdfViewerModal } from '../common/PdfViewerModal';
 import { HiwarView } from '../guru/materi/HiwarView';
@@ -15,6 +15,7 @@ interface MateriSiswaViewProps {
   currentStudent: Student;
   selectedMateriId?: string;
   onMarkComplete: (materiId: string) => void;
+  onUpdateStudent?: (updatedStudent: Student) => void;
 }
 
 export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
@@ -22,11 +23,55 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
   currentStudent,
   selectedMateriId,
   onMarkComplete,
+  onUpdateStudent,
 }) => {
   const [activeCategory, setActiveCategory] = useState<CategoryType>('qowaid');
   const [activeMateriId, setActiveMateriId] = useState<string>(
     selectedMateriId || materiList[0]?.id || ''
   );
+
+  // Self-marking handlers for Kosakata and Mahfudzot (0 XP)
+  const handleToggleSelfKosakata = (vocabId: string) => {
+    const currentSelf = currentStudent.hafalanProgress?.selfKosakataIds || {};
+    const updatedSelf = { ...currentSelf, [vocabId]: !currentSelf[vocabId] };
+
+    const updatedStudent: Student = {
+      ...currentStudent,
+      hafalanProgress: {
+        ...currentStudent.hafalanProgress,
+        selfKosakataIds: updatedSelf,
+      },
+    };
+
+    if (onUpdateStudent) {
+      onUpdateStudent(updatedStudent);
+    } else {
+      const allStudents = storageService.getStudents();
+      const updatedList = allStudents.map(s => s.id === updatedStudent.id ? updatedStudent : s);
+      storageService.saveStudents(updatedList);
+    }
+  };
+
+  const handleToggleSelfMahfudzot = (materiId: string) => {
+    const currentSelf = currentStudent.hafalanProgress?.selfMahfudzotIds || {};
+    const updatedSelf = { ...currentSelf, [materiId]: !currentSelf[materiId] };
+
+    const updatedStudent: Student = {
+      ...currentStudent,
+      hafalanProgress: {
+        ...currentStudent.hafalanProgress,
+        selfMahfudzotIds: updatedSelf,
+      },
+    };
+
+    if (onUpdateStudent) {
+      onUpdateStudent(updatedStudent);
+    } else {
+      const allStudents = storageService.getStudents();
+      const updatedList = allStudents.map(s => s.id === updatedStudent.id ? updatedStudent : s);
+      storageService.saveStudents(updatedList);
+    }
+  };
   
   // PDF Viewer Modal state
   const [previewPdfMateri, setPreviewPdfMateri] = useState<Materi | null>(null);
@@ -138,6 +183,19 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
               const isSelected = m.id === currentMateri?.id;
               const isDone = currentStudent.completedMaterials.includes(m.id);
 
+              // Verification status calculations for Kosakata & Mahfudzot
+              const isKosakata = m.category === 'kosakata';
+              const totalVocab = m.vocabularies?.length || 0;
+              const verifiedVocab = isKosakata && totalVocab > 0
+                ? (m.vocabularies || []).filter(v => currentStudent.hafalanProgress?.kosakataIds?.[v.id]).length
+                : 0;
+              const isKosakata100Percent = isKosakata && totalVocab > 0 && verifiedVocab === totalVocab;
+
+              const isMahfudzot = m.category === 'mahfudzot';
+              const mahfudzotChk = currentStudent.hafalanProgress?.mahfudzotChecklist?.[m.id];
+              const isMahfudzot100Percent = isMahfudzot && !!(mahfudzotChk && mahfudzotChk.hafalanArab && mahfudzotChk.hafalanTerjemah && mahfudzotChk.pengetahuanKosakata && mahfudzotChk.pemahamanMateri);
+              const isMahfudzotPartiallyVerified = isMahfudzot && !isMahfudzot100Percent && !!(mahfudzotChk && (mahfudzotChk.hafalanArab || mahfudzotChk.hafalanTerjemah || mahfudzotChk.pengetahuanKosakata || mahfudzotChk.pemahamanMateri));
+
               return (
                 <button
                   key={m.id}
@@ -148,10 +206,37 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
                       : 'bg-slate-50 hover:bg-slate-100 border-slate-200'
                   }`}
                 >
-                  <div className="space-y-0.5 min-w-0">
-                    <div className={`font-bold text-xs sm:text-sm truncate ${isSelected ? 'text-emerald-900' : 'text-slate-800'}`}>
-                      {m.title}
+                  <div className="space-y-1 min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <div className={`font-bold text-xs sm:text-sm truncate ${isSelected ? 'text-emerald-900' : 'text-slate-800'}`}>
+                        {m.title}
+                      </div>
+
+                      {/* 100% Verified Badge for Kosakata Bab */}
+                      {isKosakata100Percent && (
+                        <span className="px-1.5 py-0.5 bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-black text-[9px] rounded flex items-center gap-0.5 shrink-0 shadow-2xs border border-amber-200" title="100% Kosakata Bab Ini Diverifikasi Guru">
+                          <Crown size={10} className="fill-slate-950 text-slate-950" /> 100% Verified
+                        </span>
+                      )}
+                      {isKosakata && !isKosakata100Percent && verifiedVocab > 0 && (
+                        <span className="px-1.5 py-0.5 bg-amber-500 text-slate-950 font-black text-[9px] rounded flex items-center gap-0.5 shrink-0 shadow-2xs" title={`${verifiedVocab} dari ${totalVocab} kosakata diverifikasi guru`}>
+                          <Crown size={10} className="fill-slate-950 text-slate-950" /> {verifiedVocab}/{totalVocab} Verified
+                        </span>
+                      )}
+
+                      {/* Verified Badge for Mahfudzot */}
+                      {isMahfudzot100Percent && (
+                        <span className="px-1.5 py-0.5 bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-black text-[9px] rounded flex items-center gap-0.5 shrink-0 shadow-2xs border border-amber-200" title="100% Mahfudzot Diverifikasi Guru (4/4 Kriteria)">
+                          <Crown size={10} className="fill-slate-950 text-slate-950" /> 100% Verified
+                        </span>
+                      )}
+                      {isMahfudzotPartiallyVerified && (
+                        <span className="px-1.5 py-0.5 bg-amber-500 text-slate-950 font-black text-[9px] rounded flex items-center gap-0.5 shrink-0 shadow-2xs" title="Mahfudzot ini sudah diverifikasi guru">
+                          <Crown size={10} className="fill-slate-950 text-slate-950" /> Verified Guru
+                        </span>
+                      )}
                     </div>
+
                     {m.arabicTitle && (
                       <div className="font-arabic text-base text-emerald-700 truncate">{m.arabicTitle}</div>
                     )}
@@ -180,10 +265,49 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
               {/* Workspace Header */}
               <div className="flex flex-wrap items-start justify-between gap-4 border-b pb-5">
                 <div className="space-y-1 max-w-xl">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800">
                       Tingkat {currentMateri.level}
                     </span>
+                    {currentMateri.category === 'kosakata' && (() => {
+                      const totalInBab = currentMateri.vocabularies?.length || 0;
+                      const verifiedInBab = (currentMateri.vocabularies || []).filter(
+                        v => currentStudent.hafalanProgress?.kosakataIds?.[v.id]
+                      ).length;
+                      if (totalInBab > 0 && verifiedInBab === totalInBab) {
+                        return (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-slate-950 shadow-xs flex items-center gap-1 border border-amber-200">
+                            <Crown size={12} className="fill-slate-950 text-slate-950" /> 100% Diverifikasi Guru
+                          </span>
+                        );
+                      } else if (verifiedInBab > 0) {
+                        return (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-500 text-slate-950 flex items-center gap-1 border border-amber-300 shadow-xs">
+                            <Crown size={11} className="fill-slate-950 text-slate-950" /> {verifiedInBab}/{totalInBab} Verified Guru
+                          </span>
+                        );
+                      }
+                      return null;
+                    })()}
+                    {currentMateri.category === 'mahfudzot' && (() => {
+                      const chk = currentStudent.hafalanProgress?.mahfudzotChecklist?.[currentMateri.id];
+                      const isFull = !!(chk && chk.hafalanArab && chk.hafalanTerjemah && chk.pengetahuanKosakata && chk.pemahamanMateri);
+                      const isPartial = !isFull && !!(chk && (chk.hafalanArab || chk.hafalanTerjemah || chk.pengetahuanKosakata || chk.pemahamanMateri));
+                      if (isFull) {
+                        return (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-slate-950 shadow-xs flex items-center gap-1 border border-amber-200">
+                            <Crown size={12} className="fill-slate-950 text-slate-950" /> 100% Diverifikasi Guru
+                          </span>
+                        );
+                      } else if (isPartial) {
+                        return (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-500 text-slate-950 flex items-center gap-1 border border-amber-300 shadow-xs">
+                            <Crown size={11} className="fill-slate-950 text-slate-950" /> Verified Guru
+                          </span>
+                        );
+                      }
+                      return null;
+                    })()}
                     <span className="text-xs text-slate-400">
                       Penyusun: {currentMateri.authorName}
                     </span>
@@ -268,11 +392,14 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
                 </div>
               )}
 
-              {/* 4.1 Requirement: Visual Indicator for Hafalan Checked by Teacher */}
+              {/* Status Banner for Kosakata */}
               {currentMateri.category === 'kosakata' && (() => {
                 const totalInBab = currentMateri.vocabularies?.length || 0;
                 const checkedInBab = (currentMateri.vocabularies || []).filter(
                   v => currentStudent.hafalanProgress?.kosakataIds?.[v.id]
+                ).length;
+                const selfMarkedInBab = (currentMateri.vocabularies || []).filter(
+                  v => currentStudent.hafalanProgress?.selfKosakataIds?.[v.id]
                 ).length;
                 const isAllChecked = totalInBab > 0 && checkedInBab === totalInBab;
 
@@ -280,10 +407,18 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
                   <div className={`p-4 rounded-2xl border flex flex-wrap items-center justify-between gap-3 shadow-2xs ${
                     checkedInBab > 0
                       ? 'bg-emerald-50 border-emerald-300 text-emerald-950'
+                      : selfMarkedInBab > 0
+                      ? 'bg-sky-50 border-sky-300 text-sky-950'
                       : 'bg-slate-50 border-slate-200 text-slate-700'
                   }`}>
                     <div className="flex items-center gap-2.5">
-                      <div className={`p-2 rounded-xl ${checkedInBab > 0 ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-500'}`}>
+                      <div className={`p-2 rounded-xl ${
+                        checkedInBab > 0
+                          ? 'bg-emerald-600 text-white'
+                          : selfMarkedInBab > 0
+                          ? 'bg-sky-600 text-white'
+                          : 'bg-slate-200 text-slate-500'
+                      }`}>
                         <CheckCircle2 size={18} />
                       </div>
                       <div>
@@ -291,35 +426,54 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
                           {isAllChecked
                             ? '✅ Seluruh Kosakata Bab Ini Telah Disetorkan & Diceklis Guru'
                             : checkedInBab > 0
-                            ? `✓ ${checkedInBab} dari ${totalInBab} Kosakata Telah Disetorkan ke Guru`
-                            : 'Belum Ada Kosakata Bab Ini yang Disetorkan ke Guru'}
+                            ? `✓ ${checkedInBab} dari ${totalInBab} Kosakata Disetorkan ke Guru (+${checkedInBab * 5} XP)`
+                            : selfMarkedInBab > 0
+                            ? `🔖 ${selfMarkedInBab} dari ${totalInBab} Kosakata Ditandai Hafal oleh Anda (Mandiri)`
+                            : 'Belum Ada Kosakata Bab Ini yang Ditandai / Disetorkan'}
                         </h4>
                         <p className="text-[11px] opacity-80">
-                          {checkedInBab > 0 ? `Anda memperoleh +${checkedInBab * 5} XP dari setoran kosakata bab ini.` : 'Setorkan hafalan kosakata ini ke Ust./Ustz. untuk mendapatkan +5 XP per mufrodat.'}
+                          {checkedInBab > 0
+                            ? `Diperoleh +${checkedInBab * 5} XP dari verifikasi guru.`
+                            : 'Anda dapat menandai kosakata yang sudah dihafal secara mandiri (0 XP), atau setorkan ke Guru (+5 XP per mufrodat).'}
                         </p>
                       </div>
                     </div>
 
-                    <span className="px-3 py-1 bg-emerald-600 text-white font-extrabold text-xs rounded-xl shadow-2xs">
-                      {checkedInBab}/{totalInBab} Hafal
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-1 bg-sky-700 text-white font-extrabold text-[11px] rounded-xl shadow-2xs">
+                        {selfMarkedInBab}/{totalInBab} Hafal Siswa
+                      </span>
+                      <span className="px-2.5 py-1 bg-emerald-700 text-white font-extrabold text-[11px] rounded-xl shadow-2xs">
+                        {checkedInBab}/{totalInBab} Verified Guru
+                      </span>
+                    </div>
                   </div>
                 );
               })()}
 
+              {/* Status Banner for Mahfudzot */}
               {currentMateri.category === 'mahfudzot' && (() => {
                 const chk = currentStudent.hafalanProgress?.mahfudzotChecklist?.[currentMateri.id];
                 const checkedCount = chk ? [chk.hafalanArab, chk.hafalanTerjemah, chk.pengetahuanKosakata, chk.pemahamanMateri].filter(Boolean).length : 0;
+                const isSelfMarked = !!currentStudent.hafalanProgress?.selfMahfudzotIds?.[currentMateri.id];
                 const isFull = checkedCount === 4;
 
                 return (
                   <div className={`p-4 rounded-2xl border flex flex-wrap items-center justify-between gap-3 shadow-2xs ${
                     checkedCount > 0
                       ? 'bg-purple-50 border-purple-300 text-purple-950'
+                      : isSelfMarked
+                      ? 'bg-indigo-50 border-indigo-300 text-indigo-950'
                       : 'bg-slate-50 border-slate-200 text-slate-700'
                   }`}>
                     <div className="flex items-center gap-2.5">
-                      <div className={`p-2 rounded-xl ${checkedCount > 0 ? 'bg-purple-700 text-white' : 'bg-slate-200 text-slate-500'}`}>
+                      <div className={`p-2 rounded-xl ${
+                        checkedCount > 0
+                          ? 'bg-purple-700 text-white'
+                          : isSelfMarked
+                          ? 'bg-indigo-700 text-white'
+                          : 'bg-slate-200 text-slate-500'
+                      }`}>
                         <CheckCircle2 size={18} />
                       </div>
                       <div>
@@ -328,6 +482,8 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
                             ? '✅ Mahfudzot Tuntas Disetorkan & Diceklis Guru'
                             : checkedCount > 0
                             ? `✓ Setoran Mahfudzot Terverifikasi Guru (${checkedCount}/4 Kriteria)`
+                            : isSelfMarked
+                            ? '🔖 Mahfudzot Ini Ditandai Sudah Hafal oleh Anda (Mandiri - 0 XP)'
                             : 'Belum Disetorkan ke Guru'}
                         </h4>
                         <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px]">
@@ -347,9 +503,16 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
                       </div>
                     </div>
 
-                    <span className="px-3 py-1 bg-purple-700 text-white font-extrabold text-xs rounded-xl shadow-2xs">
-                      {checkedCount}/4 Diceklis
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {isSelfMarked && (
+                        <span className="px-2.5 py-1 bg-indigo-700 text-white font-extrabold text-[11px] rounded-xl shadow-2xs">
+                          Hafal (Siswa)
+                        </span>
+                      )}
+                      <span className="px-2.5 py-1 bg-purple-700 text-white font-extrabold text-[11px] rounded-xl shadow-2xs">
+                        {checkedCount}/4 Diceklis Guru
+                      </span>
+                    </div>
                   </div>
                 );
               })()}
@@ -401,6 +564,9 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
                     materiList={materiList}
                     selectedMateriId={currentMateri.id}
                     isEditable={false}
+                    teacherKosakataState={currentStudent.hafalanProgress?.kosakataIds || {}}
+                    selfKosakataState={currentStudent.hafalanProgress?.selfKosakataIds || {}}
+                    onToggleSelfKosakata={handleToggleSelfKosakata}
                   />
                 </div>
               )}
@@ -448,6 +614,9 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
                       });
                     }}
                     isEditable={false}
+                    teacherMahfudzotState={currentStudent.hafalanProgress?.mahfudzotChecklist || {}}
+                    selfMahfudzotState={currentStudent.hafalanProgress?.selfMahfudzotIds || {}}
+                    onToggleSelfMahfudzot={handleToggleSelfMahfudzot}
                   />
                 </div>
               )}

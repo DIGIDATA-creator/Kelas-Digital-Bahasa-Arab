@@ -10,6 +10,7 @@ import {
   XCircle,
   Swords,
   Zap,
+  Clock,
 } from 'lucide-react';
 import { DuelRoom, duelService } from '../../services/duelService';
 import { Student } from '../../types';
@@ -31,8 +32,11 @@ export const DuelResult: React.FC<DuelResultProps> = ({
   const myPlayer = isHost ? room.hostPlayer : room.challengerPlayer;
   const opponentPlayer = isHost ? room.challengerPlayer : room.hostPlayer;
 
-  const isWinner = room.winnerStudentId === currentStudent.id;
-  const isDraw = room.winnerStudentId === 'DRAW';
+  const winnerId = room.winnerStudentId || (room as any).winnerId;
+  const isWinner = winnerId === currentStudent.id;
+  const isDraw = winnerId === 'DRAW';
+
+  const isScoreTied = (myPlayer?.score || 0) === (opponentPlayer?.score || 0) && (myPlayer?.score || 0) > 0;
 
   const expGained = isWinner ? 100 : 25;
 
@@ -58,12 +62,32 @@ export const DuelResult: React.FC<DuelResultProps> = ({
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 text-xs font-bold uppercase tracking-wider">
               <Sparkles size={14} /> {isWinner ? 'Kemenangan Mutlak! 🏆' : isDraw ? 'Hasil Seri / Imbang 🤝' : 'Pertandingan Selesai ⚔️'}
             </div>
+
+            {isScoreTied && !isDraw && (
+              <div className="mt-2 inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-400 text-slate-950 text-xs font-black shadow-md border border-amber-200">
+                <Clock size={14} className="stroke-[2.5]" />
+                {isWinner
+                  ? `Pemenang Waktu Tercepat! (Skor Sama: ${myPlayer?.score} PTS)`
+                  : `Kalah Kecepatan Waktu (Skor Sama: ${myPlayer?.score} PTS)`}
+              </div>
+            )}
+
             <h2 className="text-3xl sm:text-4xl font-black tracking-tight">
-              {isWinner ? 'Selamat, Anda Menang!' : isDraw ? 'Pertandingan Berimbang!' : 'Tetap Semangat!'}
+              {isWinner
+                ? isScoreTied
+                  ? 'Menang Cepat & Tepat!'
+                  : 'Selamat, Anda Menang!'
+                : isDraw
+                ? 'Pertandingan Berimbang!'
+                : 'Tetap Semangat!'}
             </h2>
             <p className="text-xs sm:text-sm text-white/80 max-w-md mx-auto">
               {isWinner
-                ? 'Luar biasa! Penguasaan mufrodat Bahasa Arab milikmu sangat mengesankan.'
+                ? isScoreTied
+                  ? 'Skor akhir sama! Kamu unggul karena menyelesaikan seluruh soal lebih cepat.'
+                  : 'Luar biasa! Penguasaan mufrodat Bahasa Arab milikmu sangat mengesankan.'
+                : isScoreTied
+                ? 'Skor akhir sama! Lawan unggul tipis karena menyelesaikan seluruh soal lebih cepat.'
                 : 'Latihan terus untuk mengasah hafalan kosakata Bahasa Arab!'}
             </p>
           </div>

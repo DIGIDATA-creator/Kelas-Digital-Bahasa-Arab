@@ -15,6 +15,7 @@ import { GuruProfile } from './components/guru/GuruProfile';
 // Siswa Components
 import { SiswaDashboard } from './components/siswa/SiswaDashboard';
 import { ToastItem } from './components/common/ToastNotification';
+import { LmsTourModal } from './components/siswa/LmsTourModal';
 import { MateriSiswaView } from './components/siswa/MateriSiswaView';
 import { PenilaianSiswaView } from './components/siswa/PenilaianSiswaView';
 import { ProgresBelajarView } from './components/siswa/ProgresBelajarView';
@@ -35,6 +36,9 @@ export default function App() {
   });
 
   const [activeTab, setActiveTab] = useState<string>('dashboard');
+
+  // LMS Onboarding Guided Tour state
+  const [isTourOpen, setIsTourOpen] = useState(false);
 
   // Dark mode state
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
@@ -122,6 +126,18 @@ export default function App() {
       clearTimeout(timer);
     };
   }, []);
+
+  // Auto open onboarding tour for student first-time login
+  useEffect(() => {
+    if (userSession && userSession.role === 'siswa') {
+      const studentId = userSession.studentId || currentStudentId;
+      const tourKey = 'lms_tour_seen_' + studentId;
+      if (!localStorage.getItem(tourKey)) {
+        setIsTourOpen(true);
+        localStorage.setItem(tourKey, 'true');
+      }
+    }
+  }, [userSession, currentStudentId]);
 
   // Sync role changes
   const handleRoleChange = (role: Role) => {
@@ -241,6 +257,7 @@ export default function App() {
         userSession={userSession}
         onLogout={handleLogout}
         onSwitchToStudentSession={handleSwitchToStudentSession}
+        onOpenTour={() => setIsTourOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -357,6 +374,7 @@ export default function App() {
                       currentStudent={currentStudent}
                       selectedMateriId={selectedMateriIdForSiswa}
                       onMarkComplete={handleMarkMaterialComplete}
+                      onUpdateStudent={handleUpdateStudentProfile}
                     />
                   )}
 
@@ -415,6 +433,13 @@ export default function App() {
           </AnimatePresence>
         )}
       </main>
+
+      {/* Onboarding Guided Tour Modal */}
+      <LmsTourModal
+        isOpen={isTourOpen}
+        onClose={() => setIsTourOpen(false)}
+        studentName={currentStudent?.name}
+      />
 
       {/* Footer */}
       <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-4 text-center text-xs text-slate-500 dark:text-slate-400">

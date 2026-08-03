@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Materi } from '../../../types';
 import { X, Save, Quote, FileSpreadsheet, Download, Upload, CheckCircle2, Trash2, AlertCircle, FileText, Sparkles, RefreshCw, Eye } from 'lucide-react';
@@ -37,6 +37,22 @@ export const MahfudzotFormModal: React.FC<MahfudzotFormModalProps> = ({
   const [arabic, setArabic] = useState(editingMateri?.mahfudzot?.arabic || editingMateri?.content || '');
   const [translation, setTranslation] = useState(editingMateri?.mahfudzot?.translation || editingMateri?.description || '');
   const [categoryTag, setCategoryTag] = useState(editingMateri?.mahfudzot?.categoryTag || editingMateri?.mahfudzotCategory || 'Akhlak');
+
+  useEffect(() => {
+    if (isOpen) {
+      if (editingMateri) {
+        setMahfudzotNumber(editingMateri.babNumber || countMahfudzot + 1);
+        setArabic(editingMateri.mahfudzot?.arabic || editingMateri.content || '');
+        setTranslation(editingMateri.mahfudzot?.translation || editingMateri.description || '');
+        setCategoryTag(editingMateri.mahfudzot?.categoryTag || editingMateri.mahfudzotCategory || 'Akhlak');
+      } else {
+        setMahfudzotNumber(countMahfudzot + 1);
+        setArabic('');
+        setTranslation('');
+        setCategoryTag('Akhlak');
+      }
+    }
+  }, [isOpen, editingMateri]);
 
   // Sheet / Massal Upload State
   const [fileName, setFileName] = useState<string>('');

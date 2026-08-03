@@ -1,6 +1,7 @@
 import React from 'react';
 import { Role, Student } from '../types';
 import { UserSession } from '../services/storage';
+import { NotificationDropdown } from './common/NotificationDropdown';
 import {
   GraduationCap,
   Shield,
@@ -9,6 +10,8 @@ import {
   LogOut,
   Lock,
   UserCheck,
+  Compass,
+  Sparkles,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -24,6 +27,7 @@ interface NavbarProps {
   userSession: UserSession | null;
   onLogout: () => void;
   onSwitchToStudentSession?: (student: Student) => void;
+  onOpenTour?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -37,6 +41,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   userSession,
   onLogout,
   onSwitchToStudentSession,
+  onOpenTour,
 }) => {
   const currentStudent = students.find(s => s.id === currentStudentId) || students[0];
 
@@ -169,6 +174,32 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </>
                   )}
                 </div>
+
+                {/* Notification Dropdown for Siswa */}
+                {userSession.role === 'siswa' && currentStudent && (
+                  <NotificationDropdown
+                    studentId={currentStudent.id}
+                    onNavigateToSection={(type) => {
+                      if (type === 'kuis') onTabChange('penilaian');
+                      else if (type === 'materi' || type === 'hafalan') onTabChange('materi');
+                      else if (type === 'duel') onTabChange('duel');
+                      else onTabChange('dashboard');
+                    }}
+                  />
+                )}
+
+                {/* Guided Tour Button for Siswa */}
+                {userSession.role === 'siswa' && onOpenTour && (
+                  <button
+                    type="button"
+                    onClick={onOpenTour}
+                    className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 rounded-xl text-xs font-black shadow-xs transition-all cursor-pointer border border-amber-300 shrink-0"
+                    title="Mulai Panduan Tur Fitur LMS"
+                  >
+                    <Sparkles size={14} className="fill-slate-950" />
+                    <span className="hidden sm:inline">Tur Panduan</span>
+                  </button>
+                )}
 
                 {/* Logout Button */}
                 <button

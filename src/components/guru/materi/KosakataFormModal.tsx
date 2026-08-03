@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Materi, VocabularyItem } from '../../../types';
 import { parseSpreadsheetText } from '../../common/ArabicUtils';
@@ -35,6 +35,32 @@ export const KosakataFormModal: React.FC<KosakataFormModalProps> = ({
 
   const [newWord, setNewWord] = useState('');
   const [newMeaning, setNewMeaning] = useState('');
+
+  // Synchronize modal state whenever isOpen or editingMateri changes
+  useEffect(() => {
+    if (isOpen) {
+      if (editingMateri) {
+        setBabNumber(editingMateri.babNumber || 1);
+        setTitle(editingMateri.title || '');
+        setArabicTitle(editingMateri.arabicTitle || '');
+        setVocabCategory(editingMateri.vocabCategory || 'اسْم');
+        setVocabularies(
+          editingMateri.vocabularies && editingMateri.vocabularies.length > 0
+            ? [...editingMateri.vocabularies]
+            : []
+        );
+      } else {
+        const nextBab = (existingMateriList.filter(m => m.category === 'kosakata').length || 0) + 1;
+        setBabNumber(nextBab);
+        setTitle('');
+        setArabicTitle('');
+        setVocabCategory('اسْم');
+        setVocabularies([]);
+      }
+      setNewWord('');
+      setNewMeaning('');
+    }
+  }, [isOpen, editingMateri, existingMateriList]);
 
   // Mass upload / spreadsheet modal
   const [isSheetModalOpen, setIsSheetModalOpen] = useState(false);

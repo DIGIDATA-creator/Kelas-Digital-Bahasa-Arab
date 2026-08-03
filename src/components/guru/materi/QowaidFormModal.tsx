@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Materi } from '../../../types';
 import { X, Plus, Trash2, UploadCloud, Loader2, Save, Video } from 'lucide-react';
@@ -19,7 +19,6 @@ export const QowaidFormModal: React.FC<QowaidFormModalProps> = ({
   existingMateriList,
   onSave,
 }) => {
-  // (Rendered using AnimatePresence below)
   // Filter already used Bab numbers in Qowaid category (except the one currently being edited)
   const usedBabs = existingMateriList
     .filter(m => m.category === 'qowaid' && m.id !== editingMateri?.id)
@@ -45,6 +44,34 @@ export const QowaidFormModal: React.FC<QowaidFormModalProps> = ({
   const [pdfFileName, setPdfFileName] = useState(editingMateri?.pdfFileName || '');
   const [pdfUrl, setPdfUrl] = useState(editingMateri?.pdfUrl || '');
   const [isUploadingPdf, setIsUploadingPdf] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (editingMateri) {
+        setBabNumber(editingMateri.babNumber || 1);
+        setTitle(editingMateri.title || '');
+        setQowaidCategory((editingMateri.qowaidCategory as any) || 'قواعد');
+        setLearningTargets(
+          editingMateri.learningTargets && editingMateri.learningTargets.length > 0
+            ? [...editingMateri.learningTargets]
+            : ['Memahami kaidah qowaid', 'Dapat mengidentifikasi contoh dalam kalimat']
+        );
+        setContent(editingMateri.content || '');
+        setVideoUrl(editingMateri.videoUrl || '');
+        setPdfFileName(editingMateri.pdfFileName || '');
+        setPdfUrl(editingMateri.pdfUrl || '');
+      } else {
+        setBabNumber(availableBabs[0] || 1);
+        setTitle('');
+        setQowaidCategory('قواعد');
+        setLearningTargets(['Memahami kaidah qowaid', 'Dapat mengidentifikasi contoh dalam kalimat']);
+        setContent('');
+        setVideoUrl('');
+        setPdfFileName('');
+        setPdfUrl('');
+      }
+    }
+  }, [isOpen, editingMateri]);
 
   const handleAddTarget = () => {
     if (newTargetInput.trim()) {

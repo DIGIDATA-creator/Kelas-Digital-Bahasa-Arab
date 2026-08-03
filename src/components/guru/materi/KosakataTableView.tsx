@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { VocabularyItem } from '../../../types';
 import { toArabicNumber } from '../../common/ArabicUtils';
 import { AudioPlayerButton } from '../../common/AudioPlayerButton';
-import { Eye, EyeOff, Layers, ChevronDown, ChevronUp, Edit3, Trash2, Plus, FileSpreadsheet, Play, LayoutGrid } from 'lucide-react';
+import { Eye, EyeOff, Layers, ChevronDown, ChevronUp, Edit3, Trash2, Plus, FileSpreadsheet, Play, LayoutGrid, CheckCircle2, Bookmark, Check, Award, Crown } from 'lucide-react';
 
 interface KosakataTableViewProps {
   title: string;
@@ -15,6 +15,9 @@ interface KosakataTableViewProps {
   onAddItem?: () => void;
   onLaunchFlashcard?: () => void;
   isEditable?: boolean;
+  teacherKosakataState?: Record<string, boolean>;
+  selfKosakataState?: Record<string, boolean>;
+  onToggleSelfKosakata?: (vocabId: string) => void;
 }
 
 export const KosakataTableView: React.FC<KosakataTableViewProps> = ({
@@ -28,6 +31,9 @@ export const KosakataTableView: React.FC<KosakataTableViewProps> = ({
   onAddItem,
   onLaunchFlashcard,
   isEditable = true,
+  teacherKosakataState,
+  selfKosakataState,
+  onToggleSelfKosakata,
 }) => {
   const [isMinimized, setIsMinimized] = useState(true);
   const [viewType, setViewType] = useState<'tabel' | 'flashcard'>('tabel');
@@ -36,6 +42,8 @@ export const KosakataTableView: React.FC<KosakataTableViewProps> = ({
   const [isFlipped, setIsFlipped] = useState(false);
 
   const total = vocabularies.length;
+  const verifiedCount = teacherKosakataState ? vocabularies.filter(v => teacherKosakataState[v.id]).length : 0;
+  const isFullyVerifiedByTeacher = total > 0 && verifiedCount === total;
 
   // Split into columns based on count: <= 20 split into 2 cols, > 20 split into 3 cols
   const numCols = total > 20 ? 3 : 2;
@@ -65,7 +73,7 @@ export const KosakataTableView: React.FC<KosakataTableViewProps> = ({
           </button>
 
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="px-2 py-0.5 bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-[11px] font-extrabold rounded-md">
                 Bab {babNumber || 1}
               </span>
@@ -75,6 +83,15 @@ export const KosakataTableView: React.FC<KosakataTableViewProps> = ({
                   ({arabicTitle})
                 </span>
               )}
+              {isFullyVerifiedByTeacher ? (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-400 text-slate-950 font-extrabold text-[10px] rounded-md border border-amber-300 shadow-2xs">
+                  <Crown size={12} className="fill-slate-950 text-slate-950" /> 100% Verified
+                </span>
+              ) : verifiedCount > 0 ? (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-900 font-extrabold text-[10px] rounded-md border border-amber-300 shadow-2xs">
+                  <Crown size={11} className="fill-amber-600 text-amber-600" /> {verifiedCount}/{total} Verified
+                </span>
+              ) : null}
             </div>
             <p className="text-[11px] text-slate-400 font-medium">
               Total {total} Kosakata (Diurutkan nomor ١ - {toArabicNumber(total)})
@@ -156,6 +173,16 @@ export const KosakataTableView: React.FC<KosakataTableViewProps> = ({
               title="Buka Flashcard Fullscreen Modal"
             >
               <Play size={14} className="fill-slate-950" /> Modal
+            </button>
+          )}
+
+          {isEditable && onEditItem && (
+            <button
+              onClick={onEditItem}
+              className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs rounded-xl flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+              title="Edit Modul / Bab Kosakata Ini"
+            >
+              <Edit3 size={14} /> Edit Bab
             </button>
           )}
 
@@ -279,6 +306,11 @@ export const KosakataTableView: React.FC<KosakataTableViewProps> = ({
                           <th className="py-2.5 px-3 text-right text-xs">
                             الترجمة (Terjemahan)
                           </th>
+                          {(onToggleSelfKosakata || teacherKosakataState || selfKosakataState) && (
+                            <th className="py-2.5 px-2 text-center text-[11px] border-r border-emerald-700/50">
+                              Status / Tandai
+                            </th>
+                          )}
                           {isEditable && <th className="py-2.5 px-2 w-14 text-center border-r border-emerald-700/50">Aksi</th>}
                         </tr>
                       </thead>
@@ -286,16 +318,31 @@ export const KosakataTableView: React.FC<KosakataTableViewProps> = ({
                         {chunk.map((item, idx) => {
                           const globalNum = globalOffset + idx + 1;
                           const arabicNum = toArabicNumber(globalNum);
+                          const isTeacherVerified = !!teacherKosakataState?.[item.id];
+                          const isSelfMarked = !!selfKosakataState?.[item.id];
+
+                          // Row style based on verification and self-marking status
+                          const rowBgClass = isTeacherVerified
+                            ? 'bg-amber-50/50 hover:bg-amber-50 text-slate-900 font-medium'
+                            : isSelfMarked
+                            ? 'bg-sky-50/50 hover:bg-sky-50 text-slate-900 font-medium'
+                            : 'hover:bg-slate-50 transition-colors';
 
                           return (
-                            <tr key={item.id || idx} className="hover:bg-emerald-50/50 transition-colors">
+                            <tr key={item.id || idx} className={`${rowBgClass} transition-all`}>
                               {/* Arabic Number Column (Positioned Rightmost in Arab Flow) */}
-                              <td className="py-2 px-3 text-center font-arabic font-extrabold text-sm text-emerald-800 bg-emerald-50/40 border-r border-slate-100">
+                              <td className={`py-1.5 px-2.5 text-center font-arabic font-bold text-xs border-r border-slate-100 ${
+                                isTeacherVerified
+                                  ? 'bg-amber-100/60 text-amber-900'
+                                  : isSelfMarked
+                                  ? 'bg-sky-100/60 text-sky-900'
+                                  : 'bg-slate-50 text-slate-600'
+                              }`}>
                                 {arabicNum}
                               </td>
 
                               {/* Arabic Word Column */}
-                              <td className="py-2 px-3 text-right font-arabic font-bold text-base text-slate-900">
+                              <td className="py-2 px-3 text-right font-arabic font-bold text-base">
                                 {displayMode === 'translation_only' ? (
                                   <span className="text-slate-300 tracking-widest text-xs select-none">••••••</span>
                                 ) : (
@@ -307,13 +354,53 @@ export const KosakataTableView: React.FC<KosakataTableViewProps> = ({
                               </td>
 
                               {/* Translation Column */}
-                              <td className="py-2 px-3 font-medium text-slate-700">
+                              <td className="py-2 px-3 font-medium">
                                 {displayMode === 'arabic_only' ? (
                                   <span className="text-slate-300 tracking-widest text-xs select-none">••••••</span>
                                 ) : (
                                   item.meaning
                                 )}
                               </td>
+
+                              {/* Status / Self-Marking Column */}
+                              {(onToggleSelfKosakata || teacherKosakataState || selfKosakataState) && (
+                                <td className="py-1.5 px-2 text-center border-l border-slate-100">
+                                  <div className="flex items-center justify-center gap-1 dir-ltr">
+                                    {isTeacherVerified ? (
+                                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-100 text-amber-900 font-extrabold text-[10px] rounded border border-amber-300" title="Diverifikasi Guru (+5 XP)">
+                                        <Crown size={11} className="fill-amber-500 text-amber-600" /> Verified
+                                      </span>
+                                    ) : isSelfMarked ? (
+                                      <div className="flex items-center gap-1">
+                                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-sky-100 text-sky-900 font-extrabold text-[10px] rounded border border-sky-300" title="Tanda Hafal Mandiri">
+                                          <Check size={11} className="text-sky-600 stroke-[3]" /> Hafal
+                                        </span>
+                                        {onToggleSelfKosakata && (
+                                          <button
+                                            type="button"
+                                            onClick={() => onToggleSelfKosakata(item.id)}
+                                            className="px-1 py-0.5 text-[9px] text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded font-semibold cursor-pointer transition-colors"
+                                            title="Batalkan Tanda Hafal"
+                                          >
+                                            Batal
+                                          </button>
+                                        )}
+                                      </div>
+                                    ) : onToggleSelfKosakata ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => onToggleSelfKosakata(item.id)}
+                                        className="px-1.5 py-0.5 bg-white hover:bg-sky-50 text-slate-600 hover:text-sky-700 border border-slate-200 hover:border-sky-300 font-semibold text-[10px] rounded cursor-pointer transition-all flex items-center gap-1"
+                                        title="Tandai Sudah Hafal (Siswa)"
+                                      >
+                                        <Bookmark size={10} className="text-slate-400" /> + Hafal
+                                      </button>
+                                    ) : (
+                                      <span className="text-[10px] text-slate-400 font-medium">-</span>
+                                    )}
+                                  </div>
+                                </td>
+                              )}
 
                               {/* Actions Column */}
                               {isEditable && (

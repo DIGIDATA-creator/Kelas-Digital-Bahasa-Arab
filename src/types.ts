@@ -141,8 +141,10 @@ export interface MahfudzotChecklist {
 }
 
 export interface StudentHafalanProgress {
-  kosakataIds?: Record<string, boolean>; // vocabId -> boolean
-  mahfudzotChecklist?: Record<string, MahfudzotChecklist>; // mahfudzotId -> MahfudzotChecklist
+  kosakataIds?: Record<string, boolean>; // vocabId -> boolean (Verified by Teacher)
+  mahfudzotChecklist?: Record<string, MahfudzotChecklist>; // mahfudzotId -> MahfudzotChecklist (Verified by Teacher)
+  selfKosakataIds?: Record<string, boolean>; // vocabId -> boolean (Marked as memorized by Student - 0 XP)
+  selfMahfudzotIds?: Record<string, boolean>; // mahfudzotId -> boolean (Marked as memorized by Student - 0 XP)
 }
 
 export interface Student {
@@ -210,3 +212,15 @@ export interface ForumPost {
   isPinned?: boolean;
   status?: 'terbuka' | 'terjawab' | 'ditutup';
 }
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'materi' | 'kuis' | 'hafalan' | 'duel' | 'general';
+  createdAt: string;
+  read: boolean;
+  targetId?: string;
+  targetCategory?: string;
+}
+
