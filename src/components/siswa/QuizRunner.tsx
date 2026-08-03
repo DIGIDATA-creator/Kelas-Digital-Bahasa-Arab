@@ -527,7 +527,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
                 onClick={onClose}
                 className="px-6 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs transition-all"
               >
-                Kembali ke Dashboard Siswa
+                Kembali ke Beranda Siswa
               </button>
             </div>
           </div>

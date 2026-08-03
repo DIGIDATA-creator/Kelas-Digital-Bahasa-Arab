@@ -44,7 +44,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const currentStudent = students.find(s => s.id === currentStudentId) || students[0];
 
   const guruTabs = [
-    { id: 'dashboard', label: 'Dashboard' },
+    { id: 'dashboard', label: 'Beranda' },
     { id: 'siswa', label: 'Data Siswa' },
     { id: 'materi', label: 'Kelola Materi' },
     { id: 'penilaian', label: 'Kelola Penilaian' },
@@ -54,7 +54,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   ];
 
   const siswaTabs = [
-    { id: 'dashboard', label: 'Dashboard' },
+    { id: 'dashboard', label: 'Beranda' },
     { id: 'materi', label: 'Materi Belajar' },
     { id: 'penilaian', label: 'Latihan & Kuis' },
     { id: 'forum', label: 'Forum Diskusi' },

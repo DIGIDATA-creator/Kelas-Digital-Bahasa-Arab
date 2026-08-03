@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { Materi, Penilaian, Student, ActivityLog } from '../../types';
-import { Users, BookOpen, FileCheck2, Award, Plus, FileUp, Sparkles, TrendingUp, Clock, CheckCircle2, UserCheck, GraduationCap, ArrowRight } from 'lucide-react';
+import { Users, BookOpen, FileCheck2, Award, Plus, FileUp, Sparkles, TrendingUp, Clock, CheckCircle2, UserCheck, GraduationCap, ArrowRight, Search, X, Eye } from 'lucide-react';
 import { DistribusiKemahiranChart } from './DistribusiKemahiranChart';
 import { GuruDashboardSkeleton } from '../common/Skeleton';
 import { MahfudzotOfTheDayCard } from '../common/MahfudzotOfTheDayCard';
@@ -24,6 +24,22 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({
   isLoading = false,
   onSwitchToStudentSession,
 }) => {
+  const [studentSearchTerm, setStudentSearchTerm] = useState('');
+  const [showPredictions, setShowPredictions] = useState(false);
+
+  // Predictive student lookup
+  const studentPredictions = useMemo(() => {
+    const q = studentSearchTerm.trim().toLowerCase();
+    if (!q) return [];
+    return students.filter(s =>
+      s.name.toLowerCase().includes(q) ||
+      s.nisn.includes(q) ||
+      s.email.toLowerCase().includes(q) ||
+      (s.schoolName || '').toLowerCase().includes(q) ||
+      (s.rombelName || '').toLowerCase().includes(q)
+    ).slice(0, 8);
+  }, [students, studentSearchTerm]);
+
   if (isLoading) {
     return <GuruDashboardSkeleton />;
   }
@@ -78,6 +94,128 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({
         </div>
         <div className="absolute -right-10 -bottom-10 opacity-10 font-arabic text-[180px] pointer-events-none select-none text-white">
           عربي
+        </div>
+      </div>
+
+      {/* Quick Predictive Student Search Bar on Beranda Guru */}
+      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-2 relative">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <div className="p-2 bg-emerald-100 text-emerald-800 rounded-xl font-bold">
+              <Search size={18} />
+            </div>
+            <div>
+              <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-1.5">
+                Pencarian Cepat Siswa (Prediksi Otomatis)
+              </h3>
+              <p className="text-xs text-slate-500">
+                Ketik nama, NISN, rombel, atau sekolah siswa untuk menemukan profil & data siswa secara instan.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => onNavigate('siswa')}
+            className="text-xs font-bold text-emerald-600 hover:text-emerald-700 hover:underline shrink-0 hidden sm:flex items-center gap-1"
+          >
+            Lihat Semua Data Siswa <ArrowRight size={13} />
+          </button>
+        </div>
+
+        {/* Search Input Box */}
+        <div className="relative mt-2">
+          <Search size={16} className="absolute left-3.5 top-3 text-slate-400 pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Cari nama siswa, NISN, kelas, atau nama sekolah..."
+            value={studentSearchTerm}
+            onChange={(e) => {
+              setStudentSearchTerm(e.target.value);
+              setShowPredictions(true);
+            }}
+            onFocus={() => setShowPredictions(true)}
+            className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-900 focus:outline-hidden focus:border-emerald-500 focus:bg-white shadow-2xs transition-all"
+          />
+          {studentSearchTerm && (
+            <button
+              type="button"
+              onClick={() => {
+                setStudentSearchTerm('');
+                setShowPredictions(false);
+              }}
+              className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 p-1 rounded-full cursor-pointer"
+            >
+              <X size={16} />
+            </button>
+          )}
+
+          {/* PREDICTIVE AUTOCOMPLETE RESULTS DROPDOWN */}
+          {showPredictions && studentPredictions.length > 0 && (
+            <div className="absolute left-0 right-0 top-full mt-2 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 overflow-hidden divide-y divide-slate-100 animate-fadeIn">
+              <div className="px-3.5 py-2 bg-slate-100/90 text-[10px] font-extrabold uppercase tracking-wider text-slate-600 flex items-center justify-between">
+                <span>✨ Prediksi Profil Siswa ({studentPredictions.length} Ditemukan)</span>
+                <span className="text-[9px] text-slate-400 font-normal">Klik siswa untuk aksi cepat</span>
+              </div>
+
+              {studentPredictions.map((st) => (
+                <div
+                  key={st.id}
+                  className="p-3 hover:bg-emerald-50/70 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 group"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <img
+                      src={st.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
+                      alt={st.name}
+                      className="w-9 h-9 rounded-full object-cover border border-slate-200 shrink-0 shadow-2xs"
+                    />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs font-bold text-slate-900 group-hover:text-emerald-700 truncate">
+                          {st.name}
+                        </p>
+                        <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-full border ${
+                          st.status === 'pending'
+                            ? 'bg-amber-50 text-amber-700 border-amber-300'
+                            : st.status === 'ditolak'
+                            ? 'bg-rose-50 text-rose-700 border-rose-300'
+                            : 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                        }`}>
+                          {st.status === 'pending' ? 'Pending' : st.status === 'ditolak' ? 'Ditolak' : 'Aktif'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 truncate">
+                        NISN: <span className="font-mono font-medium text-slate-700">{st.nisn}</span> • Kelas {st.className} ({st.rombelName || 'Umum'}) • {st.schoolName || 'Tanpa Sekolah'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onNavigate('siswa');
+                        setShowPredictions(false);
+                      }}
+                      className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer border border-slate-200"
+                    >
+                      <Eye size={12} /> Detail Siswa
+                    </button>
+                    {onSwitchToStudentSession && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onSwitchToStudentSession(st);
+                          setShowPredictions(false);
+                        }}
+                        className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition-all shadow-2xs cursor-pointer"
+                      >
+                        <UserCheck size={12} /> Simulasi Log In
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
