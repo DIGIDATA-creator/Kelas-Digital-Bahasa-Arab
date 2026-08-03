@@ -3,6 +3,7 @@ import { Penilaian, Student, QuizAttempt, AssessmentType, CategoryType, Materi }
 import { Clock, Play, CheckCircle2, Award, FileCheck2, AlertCircle, Sparkles, BookOpen, Layers, MessageSquare, Quote, ArrowRight, Zap, RefreshCw, Settings2 } from 'lucide-react';
 import { QuizRunner } from './QuizRunner';
 import { generateDynamicKosakataQuiz, KosakataQuizConfig } from './KosakataQuizGenerator';
+import { generateDynamicMahfudzotQuiz, MahfudzotQuizConfig } from './MahfudzotQuizGenerator';
 
 interface PenilaianSiswaViewProps {
   penilaianList: Penilaian[];
@@ -31,6 +32,15 @@ export const PenilaianSiswaView: React.FC<PenilaianSiswaViewProps> = ({
     questionCount: 10,
   });
 
+  // Dynamic Mahfudzot Quiz Config State
+  const [mahfudzotConfig, setMahfudzotConfig] = useState<MahfudzotQuizConfig>({
+    scopeType: 'all',
+    rangeStartNum: 1,
+    rangeEndNum: 25,
+    questionMode: 'arab_indo',
+    questionCount: 10,
+  });
+
   // Available Bab Numbers from Vocabulary Materials
   const availableBabs = Array.from(
     new Set(
@@ -51,6 +61,11 @@ export const PenilaianSiswaView: React.FC<PenilaianSiswaViewProps> = ({
 
   const handleLaunchDynamicKosakataQuiz = () => {
     const generatedQuiz = generateDynamicKosakataQuiz(materiList, kosakataConfig);
+    setActiveQuizForRun(generatedQuiz);
+  };
+
+  const handleLaunchDynamicMahfudzotQuiz = () => {
+    const generatedQuiz = generateDynamicMahfudzotQuiz(materiList, mahfudzotConfig);
     setActiveQuizForRun(generatedQuiz);
   };
 
@@ -137,7 +152,7 @@ export const PenilaianSiswaView: React.FC<PenilaianSiswaViewProps> = ({
                     {sub.arabicLabel}
                   </span>
                 </div>
-                {sub.id === 'kosakata' ? (
+                {sub.id === 'kosakata' || sub.id === 'mahfudzot' ? (
                   <span className="px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase bg-amber-400 text-slate-950 shrink-0">
                     Otomatis
                   </span>
@@ -347,6 +362,216 @@ export const PenilaianSiswaView: React.FC<PenilaianSiswaViewProps> = ({
             >
               <Play size={18} className="fill-slate-950 group-hover:scale-110 transition-transform" />
               <span>Mulai Kuis Kosakata Interaktif Sekarang</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* SPECIAL FEATURE: Dynamic Mahfudzot Quiz Configurator Card */}
+      {activeSubCategory === 'mahfudzot' && (
+        <div className="bg-gradient-to-br from-purple-950 via-indigo-950 to-slate-900 text-white p-6 rounded-3xl shadow-xl border border-purple-500/30 space-y-5 relative overflow-hidden">
+          {/* Subtle Background Arabic Text */}
+          <div className="absolute right-0 top-0 opacity-10 font-arabic text-8xl select-none pointer-events-none text-white pr-4 pt-2">
+            المَحْفُوظَات
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4 relative z-10">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-amber-400 text-slate-950 rounded-2xl shadow-md shrink-0">
+                <Quote size={22} className="fill-slate-950" />
+              </div>
+              <div>
+                <span className="px-2.5 py-0.5 rounded-full bg-purple-500/30 text-purple-200 text-[10px] font-black uppercase tracking-wider border border-purple-400/30">
+                  Fitur Kuis Mahfudzot Interaktif
+                </span>
+                <h3 className="text-lg sm:text-xl font-black text-white mt-0.5">
+                  Generator Kuis Mahfudzot Otomatis
+                </h3>
+                <p className="text-xs text-purple-200/80">
+                  Kuis interaktif dengan 4 pilihan jawaban acak. Pilih cakupan nomor, bentuk soal, dan jumlah soal.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Configuration Form Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs relative z-10">
+            
+            {/* 1. Cakupan Nomor Mahfudzot */}
+            <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/15 space-y-2">
+              <label className="font-extrabold text-amber-300 block flex items-center gap-1.5">
+                <Layers size={14} /> 1. Cakupan Nomor Mahfudzot
+              </label>
+
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer font-semibold text-white/90 hover:text-white">
+                  <input
+                    type="radio"
+                    name="mahfudzotScopeType"
+                    checked={mahfudzotConfig.scopeType === 'all'}
+                    onChange={() => setMahfudzotConfig({ ...mahfudzotConfig, scopeType: 'all' })}
+                    className="accent-amber-400"
+                  />
+                  <span>Semua Mahfudzot (No. 1 - 87)</span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer font-semibold text-white/90 hover:text-white">
+                  <input
+                    type="radio"
+                    name="mahfudzotScopeType"
+                    checked={mahfudzotConfig.scopeType === 'range'}
+                    onChange={() => setMahfudzotConfig({ ...mahfudzotConfig, scopeType: 'range' })}
+                    className="accent-amber-400"
+                  />
+                  <span>Rentang Nomor (Min 25 Mahfudzot)</span>
+                </label>
+
+                {mahfudzotConfig.scopeType === 'range' && (
+                  <div className="pt-1 pl-6 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1">
+                        <span className="text-[10px] text-purple-200/80 font-medium block mb-1">Dari No.</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={87}
+                          value={mahfudzotConfig.rangeStartNum}
+                          onChange={(e) => {
+                            const start = Math.max(1, parseInt(e.target.value) || 1);
+                            let end = mahfudzotConfig.rangeEndNum;
+                            if (end - start + 1 < 25) {
+                              end = start + 24;
+                            }
+                            setMahfudzotConfig({ ...mahfudzotConfig, rangeStartNum: start, rangeEndNum: end });
+                          }}
+                          className="w-full bg-slate-900 text-white font-bold px-2.5 py-1.5 rounded-xl border border-purple-400/40 text-xs"
+                        />
+                      </div>
+                      <span className="font-bold text-white/70 pt-4">s/d</span>
+                      <div className="flex-1">
+                        <span className="text-[10px] text-purple-200/80 font-medium block mb-1">Sampai No.</span>
+                        <input
+                          type="number"
+                          min={mahfudzotConfig.rangeStartNum + 24}
+                          max={87}
+                          value={mahfudzotConfig.rangeEndNum}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value) || (mahfudzotConfig.rangeStartNum + 24);
+                            const end = Math.max(mahfudzotConfig.rangeStartNum + 24, val);
+                            setMahfudzotConfig({ ...mahfudzotConfig, rangeEndNum: end });
+                          }}
+                          className="w-full bg-slate-900 text-white font-bold px-2.5 py-1.5 rounded-xl border border-purple-400/40 text-xs"
+                        />
+                      </div>
+                    </div>
+                    <span className="text-[10px] text-amber-300/90 font-medium block bg-amber-500/10 p-1.5 rounded-lg border border-amber-400/20">
+                      ℹ️ Rentang wajib mencakup minimal 25 nomor mahfudzot.
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 2. Bentuk Soal Mahfudzot */}
+            <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/15 space-y-2">
+              <label className="font-extrabold text-amber-300 block flex items-center gap-1.5">
+                <RefreshCw size={14} /> 2. Bentuk Soal Kuis
+              </label>
+
+              <div className="space-y-1.5 pt-0.5">
+                <button
+                  type="button"
+                  onClick={() => setMahfudzotConfig({ ...mahfudzotConfig, questionMode: 'arab_indo' })}
+                  className={`w-full p-2 rounded-xl font-bold flex items-center justify-between border transition-all cursor-pointer ${
+                    mahfudzotConfig.questionMode === 'arab_indo'
+                      ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-md'
+                      : 'bg-slate-900/60 text-white border-white/20 hover:bg-slate-900'
+                  }`}
+                >
+                  <span className="font-extrabold">Arab ➔ Indonesia</span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 bg-black/20 rounded-md">
+                    (Soal Arab)
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setMahfudzotConfig({ ...mahfudzotConfig, questionMode: 'indo_arab' })}
+                  className={`w-full p-2 rounded-xl font-bold flex items-center justify-between border transition-all cursor-pointer ${
+                    mahfudzotConfig.questionMode === 'indo_arab'
+                      ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-md'
+                      : 'bg-slate-900/60 text-white border-white/20 hover:bg-slate-900'
+                  }`}
+                >
+                  <span className="font-extrabold">Indonesia ➔ Arab</span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 bg-black/20 rounded-md">
+                    (Soal Indo)
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setMahfudzotConfig({ ...mahfudzotConfig, questionMode: 'fill_blank' })}
+                  className={`w-full p-2 rounded-xl font-bold flex items-center justify-between border transition-all cursor-pointer ${
+                    mahfudzotConfig.questionMode === 'fill_blank'
+                      ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-md'
+                      : 'bg-slate-900/60 text-white border-white/20 hover:bg-slate-900'
+                  }`}
+                >
+                  <span className="font-extrabold">Melengkapi Kata Hilang</span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 bg-black/20 rounded-md">
+                    ( ... )
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* 3. Jumlah Soal & Timer */}
+            <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/15 space-y-2">
+              <label className="font-extrabold text-amber-300 block flex items-center gap-1.5">
+                <Clock size={14} /> 3. Jumlah Soal & Timer
+              </label>
+
+              <div className="grid grid-cols-2 gap-1.5 pt-1">
+                {[
+                  { count: 10, time: '5 Mnt' },
+                  { count: 20, time: '10 Mnt' },
+                  { count: 30, time: '15 Mnt' },
+                  { count: 40, time: '20 Mnt' },
+                  { count: 50, time: '25 Mnt' },
+                ].map((item) => (
+                  <button
+                    key={item.count}
+                    type="button"
+                    onClick={() => setMahfudzotConfig({ ...mahfudzotConfig, questionCount: item.count as any })}
+                    className={`p-2 rounded-xl text-center border font-extrabold transition-all cursor-pointer ${
+                      mahfudzotConfig.questionCount === item.count
+                        ? 'bg-purple-500 text-white border-purple-300 shadow-md ring-2 ring-purple-300/50'
+                        : 'bg-slate-900/60 text-slate-200 border-white/15 hover:bg-slate-900'
+                    }`}
+                  >
+                    <div>{item.count} Soal</div>
+                    <div className="text-[10px] font-normal opacity-80">⏳ {item.time}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+          </div>
+
+          {/* Action Trigger Button */}
+          <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-white/10 relative z-10">
+            <div className="text-xs text-purple-200/90 font-medium">
+              ✨ Urutan soal & 4 pilihan jawaban A/B/C/D diacak otomatis untuk mencegah kebiasaan menyontek.
+            </div>
+
+            <button
+              type="button"
+              onClick={handleLaunchDynamicMahfudzotQuiz}
+              className="w-full sm:w-auto px-6 py-3.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm rounded-2xl shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-2 cursor-pointer group"
+            >
+              <Play size={18} className="fill-slate-950 group-hover:scale-110 transition-transform" />
+              <span>Mulai Kuis Mahfudzot Interaktif Sekarang</span>
             </button>
           </div>
         </div>

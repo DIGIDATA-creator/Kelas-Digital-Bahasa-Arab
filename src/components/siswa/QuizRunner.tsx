@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
+import { motion } from 'motion/react';
 import { Penilaian, Student, QuizAttempt, Question } from '../../types';
 import { Clock, CheckCircle2, XCircle, Award, ArrowRight, ArrowLeft, RefreshCw, Sparkles, AlertTriangle, Hash, Calendar } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -26,8 +27,8 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
   // F.1.6 Accessed At Timestamp
   const [accessedAt] = useState<string>(new Date().toISOString());
 
-  // F.1.4, F.1.5, F.1.7 Prepare Active Question Set from Bank with Question & Option Randomization
-  const questions: Question[] = useMemo(() => {
+  // F.1.4, F.1.5, F.1.7 Prepare Active Question Set from Bank ONCE on mount so option indices remain stable
+  const [questions] = useState<Question[]>(() => {
     let pool = [...(penilaian.questions || [])];
 
     // Prioritize unseen questions if requested
@@ -88,7 +89,37 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
         correctAnswer: newCorrectIndex,
       };
     });
-  }, [penilaian, student]);
+  });
+
+  // Confetti Celebration Effect on score >= 80
+  useEffect(() => {
+    if (isSubmitted && finalScore >= 80 && penilaian.gradingMethod !== 'manual') {
+      const duration = 3.5 * 1000;
+      const end = Date.now() + duration;
+
+      const frame = () => {
+        confetti({
+          particleCount: 7,
+          angle: 60,
+          spread: 60,
+          origin: { x: 0, y: 0.7 },
+          colors: ['#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#3b82f6', '#fbbf24']
+        });
+        confetti({
+          particleCount: 7,
+          angle: 120,
+          spread: 60,
+          origin: { x: 1, y: 0.7 },
+          colors: ['#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#3b82f6', '#fbbf24']
+        });
+
+        if (Date.now() < end) {
+          requestAnimationFrame(frame);
+        }
+      };
+      frame();
+    }
+  }, [isSubmitted, finalScore, penilaian.gradingMethod]);
 
   // Timer Countdown Effect
   useEffect(() => {
@@ -116,35 +147,78 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
     }));
   };
 
+  // Helper for normalizing Arabic & Indonesian text
+  const normalizeText = (str: any): string => {
+    if (str === null || str === undefined) return '';
+    return String(str)
+      .replace(/[\u064B-\u065F\u0670]/g, '') // strip Arabic diacritics
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, ' ');
+  };
+
+  const getAnswerAnalysis = (q: Question, uAns: any) => {
+    let selectedText = '';
+    if (uAns !== undefined && uAns !== null) {
+      if (q.options && typeof uAns === 'number' && q.options[uAns] !== undefined) {
+        selectedText = q.options[uAns];
+      } else {
+        selectedText = String(uAns);
+      }
+    }
+
+    let correctText = '';
+    if (q.options && typeof q.correctAnswer === 'number' && q.options[q.correctAnswer] !== undefined) {
+      correctText = q.options[q.correctAnswer];
+    } else {
+      correctText = String(q.correctAnswer ?? '');
+    }
+
+    let isCorrect = false;
+    if (uAns !== undefined && uAns !== null && uAns !== '') {
+      const normUser = normalizeText(uAns);
+      const normCorrect = normalizeText(q.correctAnswer);
+      const normSelectedText = normalizeText(selectedText);
+      const normCorrectText = normalizeText(correctText);
+
+      if (uAns === q.correctAnswer || normUser === normCorrect) {
+        isCorrect = true;
+      } else if (normSelectedText && normCorrectText && normSelectedText === normCorrectText) {
+        isCorrect = true;
+      } else if (q.options && typeof uAns === 'number' && normSelectedText === normCorrect) {
+        isCorrect = true;
+      } else if (q.options && typeof q.correctAnswer === 'string') {
+        const matchOptIdx = q.options.findIndex(opt => normalizeText(opt) === normCorrect);
+        if (matchOptIdx !== -1 && matchOptIdx === uAns) {
+          isCorrect = true;
+        }
+      }
+    }
+
+    return { selectedText, correctText, isCorrect };
+  };
+
   const handleSubmitQuiz = () => {
     if (isSubmitted) return;
 
     // Calculate score for digital questions
     let totalScorePoints = 0;
     let maxPoints = 0;
-    const isManualGrading = penilaian.gradingMethod === 'manual';
 
     questions.forEach(q => {
-      const qPoints = q.points || 20;
+      const qPoints = q.points || (100 / (questions.length || 1));
       maxPoints += qPoints;
       const userAns = userAnswers[q.id];
+      const { isCorrect } = getAnswerAnalysis(q, userAns);
 
-      if (q.type === 'multiple_choice' || q.type === 'true_false') {
-        if (userAns === q.correctAnswer) {
-          totalScorePoints += qPoints;
-        }
-      } else if (q.type === 'fill_in_blank') {
-        if (
-          typeof userAns === 'string' &&
-          userAns.trim().toLowerCase() === String(q.correctAnswer).trim().toLowerCase()
-        ) {
-          totalScorePoints += qPoints;
-        }
+      if (isCorrect) {
+        totalScorePoints += qPoints;
       }
     });
 
     const calculatedScore = maxPoints > 0 ? Math.round((totalScorePoints / maxPoints) * 100) : 0;
     const passed = calculatedScore >= penilaian.passingGrade;
+    const isManualGrading = penilaian.gradingMethod === 'manual';
 
     setFinalScore(calculatedScore);
     setIsPassed(passed);
@@ -372,37 +446,76 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
             </div>
 
             {penilaian.gradingMethod !== 'manual' && (
-              <div className="inline-block px-8 py-4 bg-slate-50 rounded-2xl border border-slate-200">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Nilai Akhir Anda</span>
-                <p className={`text-5xl font-black ${isPassed ? 'text-emerald-600' : 'text-rose-600'}`}>
-                  {finalScore}
-                </p>
+              <div className="space-y-3">
+                <div className="inline-block px-8 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Nilai Akhir Anda</span>
+                  <p className={`text-5xl font-black ${isPassed ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    {finalScore}
+                  </p>
+                </div>
+
+                {/* Framer-Motion Celebration Banner for Score > 80 */}
+                {finalScore > 80 && (
+                  <motion.div
+                    initial={{ scale: 0.8, opacity: 0, y: 10 }}
+                    animate={{ scale: 1, opacity: 1, y: 0 }}
+                    transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+                    className="p-4 bg-gradient-to-r from-amber-400 via-emerald-500 to-teal-500 text-white rounded-2xl shadow-lg border-2 border-amber-300 space-y-1.5 my-2"
+                  >
+                    <motion.div
+                      animate={{ rotate: [0, -12, 12, -12, 0], scale: [1, 1.15, 1] }}
+                      transition={{ repeat: Infinity, duration: 2, repeatDelay: 1 }}
+                      className="text-3xl"
+                    >
+                      🎉 🏆 🌟
+                    </motion.div>
+                    <h4 className="text-base font-black tracking-tight drop-shadow-xs">
+                      SANGAT PRESTASI & LUAR BIASA!
+                    </h4>
+                    <p className="text-xs font-semibold text-emerald-50">
+                      Selamat! Anda meraih nilai istimewa <strong>{finalScore}</strong> (di atas 80). Pertahankan semangat belajarmu!
+                    </p>
+                  </motion.div>
+                )}
               </div>
             )}
 
             {/* Answer Summary List */}
-            <div className="text-left space-y-3 pt-4 border-t max-h-60 overflow-y-auto pr-1">
-              <h4 className="font-bold text-xs uppercase text-slate-500">Ringkasan Pengerjaan Soal:</h4>
+            <div className="text-left space-y-3 pt-4 border-t max-h-72 overflow-y-auto pr-1">
+              <h4 className="font-bold text-xs uppercase text-slate-500 tracking-wider">Ringkasan Pengerjaan & Analisis Jawaban:</h4>
               {questions.map((q, idx) => {
                 const uAns = userAnswers[q.id];
-                const isCorrect = uAns === q.correctAnswer || (q.type === 'fill_in_blank' && String(uAns).trim().toLowerCase() === String(q.correctAnswer).trim().toLowerCase());
+                const { selectedText, correctText, isCorrect } = getAnswerAnalysis(q, uAns);
 
                 return (
-                  <div key={q.id || idx} className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1">
-                    <div className="flex items-center justify-between font-bold">
-                      <span className="text-slate-800">{idx + 1}. {q.questionText} ({q.code || `Q-${idx+1}`})</span>
+                  <div key={q.id || idx} className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-xs space-y-2">
+                    <div className="flex items-start justify-between gap-2 font-bold">
+                      <span className="text-slate-800 leading-snug">{idx + 1}. {q.questionText} ({q.code || `Q-${idx+1}`})</span>
                       {penilaian.gradingMethod === 'manual' ? (
-                        <span className="text-amber-600 font-bold flex items-center gap-1"><Clock size={14} /> Menunggu Koreksi</span>
+                        <span className="text-amber-600 font-bold shrink-0 flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 text-[11px]"><Clock size={13} /> Menunggu Koreksi</span>
                       ) : isCorrect ? (
-                        <span className="text-emerald-600 font-bold flex items-center gap-1"><CheckCircle2 size={14} /> Benar</span>
+                        <span className="text-emerald-700 font-extrabold shrink-0 flex items-center gap-1 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-300 text-[11px]"><CheckCircle2 size={13} /> Benar</span>
                       ) : (
-                        <span className="text-rose-600 font-bold flex items-center gap-1"><XCircle size={14} /> Salah</span>
+                        <span className="text-rose-700 font-extrabold shrink-0 flex items-center gap-1 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-300 text-[11px]"><XCircle size={13} /> Salah</span>
                       )}
                     </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] pt-0.5">
+                      <div className={`p-2.5 rounded-xl border ${uAns === undefined || uAns === null || uAns === '' ? 'bg-slate-100 border-slate-300 text-slate-600' : isCorrect ? 'bg-emerald-50 border-emerald-200 text-emerald-950' : 'bg-rose-50 border-rose-200 text-rose-950'}`}>
+                        <span className="font-extrabold uppercase block text-[10px] text-slate-500 mb-0.5">Jawaban Anda:</span>
+                        <p className="font-bold text-xs">{selectedText ? selectedText : '(Tidak Dijawab)'}</p>
+                      </div>
+
+                      <div className="p-2.5 bg-slate-100 border border-slate-200 text-slate-800 rounded-xl">
+                        <span className="font-extrabold uppercase block text-[10px] text-slate-500 mb-0.5">Jawaban Benar:</span>
+                        <p className="font-bold text-xs text-emerald-700">{correctText || '-'}</p>
+                      </div>
+                    </div>
+
                     {q.explanation && (
-                      <p className="text-slate-500 italic bg-white p-2 rounded-lg border border-slate-100">
-                        Pembahasan: {q.explanation}
-                      </p>
+                      <div className="p-2.5 bg-white rounded-xl border border-slate-200/80 text-slate-600 italic text-[11px] leading-relaxed">
+                        💡 <strong className="not-italic text-slate-800">Pembahasan:</strong> {q.explanation}
+                      </div>
                     )}
                   </div>
                 );

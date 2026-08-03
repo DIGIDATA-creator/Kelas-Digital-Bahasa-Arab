@@ -247,48 +247,40 @@ export const FlashcardModal: React.FC<FlashcardModalProps> = ({
           </div>
         ) : (
           <>
-            <div className="p-6 flex-1 flex flex-col items-center justify-center min-h-[320px]">
+            <div className="p-6 flex-1 flex flex-col items-center justify-center min-h-[340px]">
               <div
                 onClick={() => setIsFlipped(!isFlipped)}
-                className="w-full max-w-md h-72 cursor-pointer perspective-1000 select-none group"
+                className="w-full max-w-md h-80 cursor-pointer select-none group [perspective:1000px]"
               >
                 <div
-                  className={`relative w-full h-full rounded-3xl p-6 transition-all duration-500 transform-gpu flex flex-col items-center justify-center text-center shadow-2xl border-2 overflow-hidden ${
-                    isFlipped
-                      ? 'bg-gradient-to-br from-indigo-950 via-purple-950 to-slate-900 border-indigo-500/60 shadow-indigo-950/60'
-                      : 'bg-gradient-to-br from-emerald-950 via-teal-900 to-cyan-950 border-emerald-400/60 shadow-emerald-950/60 hover:border-emerald-300 hover:scale-[1.01]'
+                  className={`relative w-full h-full duration-700 transition-all transform-gpu [transform-style:preserve-3d] ${
+                    isFlipped ? '[transform:rotateY(180deg)]' : ''
                   }`}
                 >
-                  {/* Decorative ambient background light */}
-                  <div className={`absolute -top-16 -right-16 w-40 h-40 rounded-full blur-2xl pointer-events-none ${isFlipped ? 'bg-purple-500/20' : 'bg-emerald-400/20'}`} />
-                  <div className={`absolute -bottom-16 -left-16 w-40 h-40 rounded-full blur-2xl pointer-events-none ${isFlipped ? 'bg-indigo-500/20' : 'bg-teal-400/20'}`} />
+                  {/* FRONT FACE OF FLASHCARD */}
+                  <div className="absolute inset-0 w-full h-full rounded-3xl p-6 flex flex-col items-center justify-center text-center shadow-2xl border-2 border-emerald-400/60 bg-gradient-to-br from-emerald-950 via-teal-900 to-cyan-950 shadow-emerald-950/60 group-hover:border-emerald-300 group-hover:scale-[1.01] transition-all overflow-hidden [backface-visibility:hidden]">
+                    {/* Decorative ambient background light */}
+                    <div className="absolute -top-16 -right-16 w-40 h-40 rounded-full blur-2xl pointer-events-none bg-emerald-400/20" />
+                    <div className="absolute -bottom-16 -left-16 w-40 h-40 rounded-full blur-2xl pointer-events-none bg-teal-400/20" />
 
-                  {/* Header Badge */}
-                  <div className="absolute top-4 left-4 z-10 text-[10px] font-extrabold uppercase tracking-wider px-3 py-1 rounded-full bg-slate-950/70 text-emerald-300 border border-emerald-500/40 backdrop-blur-md shadow-sm">
-                    {isFlipped
-                      ? currentCard.speaker2Name
-                        ? `Jawaban (${currentCard.speaker2Name})`
-                        : 'Jawaban / Terjemahan'
-                      : currentCard.speaker1Name
-                      ? `Soal (${currentCard.speaker1Name})`
-                      : 'Soal / Bahasa Arab'}
-                  </div>
+                    {/* Header Badge */}
+                    <div className="absolute top-4 left-4 z-10 text-[10px] font-extrabold uppercase tracking-wider px-3 py-1 rounded-full bg-slate-950/70 text-emerald-300 border border-emerald-500/40 backdrop-blur-md shadow-sm">
+                      {currentCard.speaker1Name ? `Soal (${currentCard.speaker1Name})` : 'Soal / Bahasa Arab'}
+                    </div>
 
-                  {/* Audio Button */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleSpeak(isFlipped ? currentCard.backArabic || currentCard.frontArabic : currentCard.frontArabic);
-                    }}
-                    className="absolute top-4 right-4 z-10 p-2.5 bg-emerald-500/30 hover:bg-emerald-500/60 text-emerald-200 hover:text-white rounded-full transition-all shadow-md cursor-pointer border border-emerald-400/40 hover:scale-110"
-                    title="Dengarkan Pelafalan"
-                  >
-                    <Volume2 size={18} />
-                  </button>
+                    {/* Audio Button */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSpeak(currentCard.frontArabic);
+                      }}
+                      className="absolute top-4 right-4 z-10 p-2.5 bg-emerald-500/30 hover:bg-emerald-500/60 text-emerald-200 hover:text-white rounded-full transition-all shadow-md cursor-pointer border border-emerald-400/40 hover:scale-110"
+                      title="Dengarkan Pelafalan"
+                    >
+                      <Volume2 size={18} />
+                    </button>
 
-                  {/* Card Face Content */}
-                  {!isFlipped ? (
                     <div className="space-y-4 my-auto w-full px-2 z-10">
                       <p className="font-arabic text-3xl sm:text-4xl font-extrabold text-amber-200 leading-relaxed drop-shadow-xl my-1">
                         {currentCard.frontArabic}
@@ -314,12 +306,37 @@ export const FlashcardModal: React.FC<FlashcardModalProps> = ({
 
                       <div className="pt-2">
                         <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-300 bg-slate-950/60 px-3 py-1 rounded-full border border-emerald-500/30 animate-pulse">
-                          <Eye size={13} /> Klik kartu untuk melihat jawaban lengkap
+                          <Eye size={13} /> Klik kartu untuk me-balik melihat jawaban
                         </span>
                       </div>
                     </div>
-                  ) : (
-                    <div className="space-y-3.5 my-auto animate-fadeIn w-full px-2 z-10">
+                  </div>
+
+                  {/* BACK FACE OF FLASHCARD */}
+                  <div className="absolute inset-0 w-full h-full rounded-3xl p-6 flex flex-col items-center justify-center text-center shadow-2xl border-2 border-indigo-500/60 bg-gradient-to-br from-indigo-950 via-purple-950 to-slate-900 shadow-indigo-950/60 overflow-hidden [backface-visibility:hidden] [transform:rotateY(180deg)]">
+                    {/* Decorative ambient background light */}
+                    <div className="absolute -top-16 -right-16 w-40 h-40 rounded-full blur-2xl pointer-events-none bg-purple-500/20" />
+                    <div className="absolute -bottom-16 -left-16 w-40 h-40 rounded-full blur-2xl pointer-events-none bg-indigo-500/20" />
+
+                    {/* Header Badge */}
+                    <div className="absolute top-4 left-4 z-10 text-[10px] font-extrabold uppercase tracking-wider px-3 py-1 rounded-full bg-slate-950/70 text-purple-300 border border-purple-500/40 backdrop-blur-md shadow-sm">
+                      {currentCard.speaker2Name ? `Jawaban (${currentCard.speaker2Name})` : 'Jawaban / Terjemahan'}
+                    </div>
+
+                    {/* Audio Button */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSpeak(currentCard.backArabic || currentCard.frontArabic);
+                      }}
+                      className="absolute top-4 right-4 z-10 p-2.5 bg-purple-500/30 hover:bg-purple-500/60 text-purple-200 hover:text-white rounded-full transition-all shadow-md cursor-pointer border border-purple-400/40 hover:scale-110"
+                      title="Dengarkan Pelafalan"
+                    >
+                      <Volume2 size={18} />
+                    </button>
+
+                    <div className="space-y-3.5 my-auto w-full px-2 z-10">
                       <span className="text-xs uppercase font-extrabold tracking-widest text-purple-300 block">
                         {currentCard.backArabic ? 'Jawaban (Bahasa Arab):' : 'Terjemahan / Arti:'}
                       </span>
@@ -345,11 +362,11 @@ export const FlashcardModal: React.FC<FlashcardModalProps> = ({
 
                       <div className="pt-1">
                         <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-purple-300 bg-slate-950/60 px-3 py-1 rounded-full border border-purple-500/30">
-                          <RotateCw size={13} /> Klik kartu untuk kembali ke Soal
+                          <RotateCw size={13} /> Klik kartu untuk me-balik ke Soal
                         </span>
                       </div>
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
             </div>

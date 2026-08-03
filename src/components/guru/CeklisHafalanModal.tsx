@@ -91,10 +91,15 @@ export const CeklisHafalanModal: React.FC<CeklisHafalanModalProps> = ({
       setMahfudzotState(student.hafalanProgress?.mahfudzotChecklist || {});
       setKosakataState(student.hafalanProgress?.kosakataIds || {});
       setSavedSuccessMsg(false);
-    }
-  }, [student, isOpen]);
 
-  if (!isOpen || !student) return null;
+      // Default all Kosakata Babs to collapsed state for clean list preview first
+      const initKosakataCollapsed: Record<string, boolean> = {};
+      materiList.filter(m => m.category === 'kosakata').forEach(m => {
+        initKosakataCollapsed[m.id] = true;
+      });
+      setCollapsedKosakataBabs(initKosakataCollapsed);
+    }
+  }, [student, isOpen, materiList]);
 
   // Filter Mahfudzot List
   const mahfudzotMateri = materiList.filter(m => m.category === 'mahfudzot');
@@ -134,6 +139,8 @@ export const CeklisHafalanModal: React.FC<CeklisHafalanModalProps> = ({
     }
     return groups;
   }, [filteredMahfudzot]);
+
+  if (!isOpen || !student) return null;
 
   // Filter Kosakata Bab
   const kosakataMateri = materiList.filter(m => m.category === 'kosakata');

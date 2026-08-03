@@ -54,9 +54,10 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
     try {
       const inputStr = identifier.trim().toLowerCase();
+      const inputPass = password.trim();
 
-      // ================= 1. GURU / ADMIN LOGIN CHECK =================
-      if (loginRole === 'guru') {
+      // Helper function to check Guru credentials
+      const checkGuruLogin = () => {
         const savedGuruProfile = localStorage.getItem('lms_guru_profile');
         let guruEmail = 'ahmad.dahlan@sekolah.sch.id';
         let guruName = 'Ust. Ahmad Dahlan, M.Pd.';
@@ -69,93 +70,131 @@ export const LoginView: React.FC<LoginViewProps> = ({
         }
 
         const savedGuruCreds = localStorage.getItem('lms_guru_credentials');
-        let validGuruUsernames = ['admin_guru', 'admin', 'guru', 'guru@sekolah.sch.id', 'admin@sekolah.sch.id', 'ruangk106@gmail.com', guruEmail.toLowerCase()];
+        let validGuruUsernames = ['admin_guru', 'admin', 'guru', 'guru@sekolah.sch.id', 'admin@sekolah.sch.id', 'ruangk106@gmail.com', guruEmail.toLowerCase().trim()];
         let validGuruPasswords = ['admin123', '123456', 'admin', 'guru123'];
 
         if (savedGuruCreds) {
           try {
             const parsed = JSON.parse(savedGuruCreds);
-            if (parsed.username) validGuruUsernames.push(parsed.username.toLowerCase());
-            if (parsed.newPassword) validGuruPasswords.push(parsed.newPassword);
-            if (parsed.currentPassword) validGuruPasswords.push(parsed.currentPassword);
+            if (parsed.username) validGuruUsernames.push(String(parsed.username).toLowerCase().trim());
+            if (parsed.newPassword) validGuruPasswords.push(String(parsed.newPassword).trim());
+            if (parsed.currentPassword) validGuruPasswords.push(String(parsed.currentPassword).trim());
+            if (parsed.password) validGuruPasswords.push(String(parsed.password).trim());
           } catch (e) { /* fallback */ }
         }
 
-        const isUserMatch = validGuruUsernames.includes(inputStr) || inputStr.includes('guru') || inputStr.includes('admin') || inputStr === guruEmail.toLowerCase();
-        
+        const isUserMatch = validGuruUsernames.includes(inputStr) || inputStr.includes('guru') || inputStr.includes('admin') || inputStr === guruEmail.toLowerCase().trim();
+
         if (isUserMatch) {
-          // If password is set, verify
-          const isPassValid = !password || validGuruPasswords.includes(password) || password.length >= 4;
-          
+          const isPassValid = !inputPass || validGuruPasswords.includes(inputPass) || inputPass.length >= 4;
           if (isPassValid) {
-            const session: UserSession = {
-              role: 'guru',
+            return {
+              role: 'guru' as Role,
               userName: guruName,
               userEmail: guruEmail,
               avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&auto=format&fit=crop&q=80',
               loggedInAt: new Date().toISOString(),
             };
-            setSuccessMsg(`Berhasil masuk sebagai Guru (${guruName})!`);
-            setTimeout(() => onLoginSuccess(session), 800);
-            return;
-          } else {
-            setErrorMsg('Kata sandi Guru tidak valid. Periksa kembali kata sandi Anda.');
-            setIsLoading(false);
-            return;
           }
-        } else {
-          setErrorMsg('Username / Email Guru tidak ditemukan. Gunakan email atau username Guru.');
+        }
+        return null;
+      };
+
+      // Helper function to check Siswa credentials
+      const checkSiswaLogin = () => {
+        const matchedStudent = students.find(s => {
+          const e = s.email ? s.email.toLowerCase().trim() : '';
+          const u = (s as any).username ? (s as any).username.toLowerCase().trim() : '';
+          const n = s.nisn ? s.nisn.toLowerCase().trim() : '';
+          const nm = s.name ? s.name.toLowerCase().trim() : '';
+          const handle = e.includes('@') ? e.split('@')[0] : '';
+
+          return (
+            e === inputStr ||
+            (u && u === inputStr) ||
+            (n && n === inputStr) ||
+            nm === inputStr ||
+            (handle && handle === inputStr)
+          );
+        });
+
+        if (!matchedStudent) return { error: 'NOT_FOUND', student: null };
+
+        if (matchedStudent.status === 'pending') {
+          return { error: `Akun "${matchedStudent.name}" masih MENUNGGU ACC (Persetujuan) dari Guru. Silakan hubungi Guru Anda untuk mengaktifkan akun.`, student: matchedStudent };
+        }
+
+        if (matchedStudent.status === 'ditolak') {
+          return { error: `Pendaftaran akun "${matchedStudent.name}" DITOLAK oleh Guru. Silakan hubungi guru pengampu.`, student: matchedStudent };
+        }
+
+        const expectedPassword = (matchedStudent.password || '123456').trim();
+        if (inputPass && inputPass !== expectedPassword && inputPass !== '123456') {
+          return { error: 'Kata sandi salah. Silakan periksa kembali kata sandi Anda.', student: matchedStudent };
+        }
+
+        return {
+          session: {
+            role: 'siswa' as Role,
+            studentId: matchedStudent.id,
+            userName: matchedStudent.name,
+            userEmail: matchedStudent.email,
+            avatar: matchedStudent.avatar,
+            loggedInAt: new Date().toISOString(),
+          },
+          student: matchedStudent
+        };
+      };
+
+      // Execute based on selected role with smart fallback
+      if (loginRole === 'guru') {
+        const guruSession = checkGuruLogin();
+        if (guruSession) {
+          setSuccessMsg(`Berhasil masuk sebagai Guru (${guruSession.userName})!`);
+          setTimeout(() => onLoginSuccess(guruSession), 800);
+          return;
+        }
+
+        // Try student fallback if user accidentally stayed on Guru tab
+        const siswaResult = checkSiswaLogin();
+        if (siswaResult.session) {
+          setSuccessMsg(`Berhasil masuk sebagai Siswa (${siswaResult.session.userName})!`);
+          setTimeout(() => onLoginSuccess(siswaResult.session), 800);
+          return;
+        } else if (siswaResult.error && siswaResult.error !== 'NOT_FOUND') {
+          setErrorMsg(siswaResult.error);
           setIsLoading(false);
           return;
         }
-      }
 
-      // ================= 2. SISWA LOGIN CHECK =================
-      const matchedStudent = students.find(s =>
-        s.email.toLowerCase().trim() === inputStr ||
-        s.nisn === inputStr ||
-        s.name.toLowerCase().trim() === inputStr
-      );
+        setErrorMsg('Username / Email Guru tidak ditemukan. Gunakan email atau username Guru.');
+        setIsLoading(false);
+        return;
+      } else {
+        // Siswa Login
+        const siswaResult = checkSiswaLogin();
+        if (siswaResult.session) {
+          setSuccessMsg(`Berhasil masuk! Selamat datang, ${siswaResult.session.userName}.`);
+          setTimeout(() => onLoginSuccess(siswaResult.session), 800);
+          return;
+        } else if (siswaResult.error && siswaResult.error !== 'NOT_FOUND') {
+          setErrorMsg(siswaResult.error);
+          setIsLoading(false);
+          return;
+        }
 
-      if (!matchedStudent) {
-        setErrorMsg('Email / Username siswa tidak ditemukan. Jika Anda siswa baru, silakan klik tab "Daftar Siswa Baru".');
+        // Try guru fallback if teacher accidentally stayed on Siswa tab
+        const guruSession = checkGuruLogin();
+        if (guruSession) {
+          setSuccessMsg(`Berhasil masuk sebagai Guru (${guruSession.userName})!`);
+          setTimeout(() => onLoginSuccess(guruSession), 800);
+          return;
+        }
+
+        setErrorMsg('Email / Username tidak ditemukan. Jika Anda siswa baru, silakan klik tab "Daftar Siswa Baru".');
         setIsLoading(false);
         return;
       }
-
-      // Check account approval status
-      if (matchedStudent.status === 'pending') {
-        setErrorMsg(`Akun "${matchedStudent.name}" masih MENUNGGU ACC (Persetujuan) dari Guru. Silakan hubungi Guru Anda untuk mengaktifkan akun.`);
-        setIsLoading(false);
-        return;
-      }
-
-      if (matchedStudent.status === 'ditolak') {
-        setErrorMsg(`Pendaftaran akun "${matchedStudent.name}" DITOLAK oleh Guru. Silakan hubungi guru pengampu.`);
-        setIsLoading(false);
-        return;
-      }
-
-      // Check Password
-      const expectedPassword = matchedStudent.password || '123456';
-      if (password && password !== expectedPassword && password !== '123456') {
-        setErrorMsg('Kata sandi salah. Silakan periksa kembali kata sandi Anda.');
-        setIsLoading(false);
-        return;
-      }
-
-      // Login Successful!
-      const session: UserSession = {
-        role: 'siswa',
-        studentId: matchedStudent.id,
-        userName: matchedStudent.name,
-        userEmail: matchedStudent.email,
-        avatar: matchedStudent.avatar,
-        loggedInAt: new Date().toISOString(),
-      };
-
-      setSuccessMsg(`Berhasil masuk! Selamat datang, ${matchedStudent.name}.`);
-      setTimeout(() => onLoginSuccess(session), 800);
 
     } catch (err: any) {
       setErrorMsg(err.message || 'Gagal login. Periksa kembali email & password Anda.');

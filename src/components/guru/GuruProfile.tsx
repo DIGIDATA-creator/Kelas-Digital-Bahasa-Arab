@@ -183,15 +183,22 @@ export const GuruProfile: React.FC = () => {
     }
 
     const updatedCreds = {
-      username: credentials.username,
+      username: credentials.username.trim(),
       currentPassword: '',
       newPassword: '',
       confirmPassword: '',
     };
 
     setCredentials(updatedCreds);
-    localStorage.setItem('lms_guru_credentials', JSON.stringify({ username: credentials.username }));
-    setDoc(docGuruProfile, sanitizeForFirestore({ profile, credentials: { username: credentials.username } })).catch(console.error);
+
+    const storageCreds: Record<string, string> = { username: credentials.username.trim() };
+    if (credentials.newPassword) {
+      storageCreds.password = credentials.newPassword.trim();
+      storageCreds.newPassword = credentials.newPassword.trim();
+    }
+
+    localStorage.setItem('lms_guru_credentials', JSON.stringify(storageCreds));
+    setDoc(docGuruProfile, sanitizeForFirestore({ profile, credentials: { username: credentials.username.trim(), ...(credentials.newPassword ? { password: credentials.newPassword.trim() } : {}) } })).catch(console.error);
     setCredMsg({ type: 'success', text: 'Username dan Password berhasil diperbarui!' });
     setTimeout(() => setCredMsg(null), 3000);
   };

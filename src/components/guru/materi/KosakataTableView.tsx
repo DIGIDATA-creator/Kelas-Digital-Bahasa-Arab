@@ -29,7 +29,7 @@ export const KosakataTableView: React.FC<KosakataTableViewProps> = ({
   onLaunchFlashcard,
   isEditable = true,
 }) => {
-  const [isMinimized, setIsMinimized] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(true);
   const [viewType, setViewType] = useState<'tabel' | 'flashcard'>('tabel');
   const [displayMode, setDisplayMode] = useState<'all' | 'arabic_only' | 'translation_only'>('all');
   const [cardIndex, setCardIndex] = useState(0);

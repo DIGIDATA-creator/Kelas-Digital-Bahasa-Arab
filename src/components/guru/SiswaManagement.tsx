@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Student, StudentStatus, Materi, TingkatType } from '../../types';
 import {
@@ -103,6 +103,7 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
   onSwitchToStudentSession,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [showPredictions, setShowPredictions] = useState(false);
   const [selectedClass, setSelectedClass] = useState('semua');
   const [selectedSchoolFilter, setSelectedSchoolFilter] = useState('semua');
   const [activeMainSection, setActiveMainSection] = useState<'acc' | 'aktif' | 'semua'>('acc');
@@ -111,6 +112,19 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
 
   const [selectedStudentForDetail, setSelectedStudentForDetail] = useState<Student | null>(null);
   const [studentForHafalanChecklist, setStudentForHafalanChecklist] = useState<Student | null>(null);
+
+  // Predictive search calculation
+  const studentPredictions = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    if (!q || q.length < 1) return [];
+    return students.filter(s =>
+      s.name.toLowerCase().includes(q) ||
+      s.nisn.includes(q) ||
+      s.email.toLowerCase().includes(q) ||
+      (s.schoolName || '').toLowerCase().includes(q) ||
+      (s.rombelName || '').toLowerCase().includes(q)
+    ).slice(0, 6);
+  }, [students, searchTerm]);
 
   // Bulk selection state
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
@@ -628,9 +642,71 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
               type="text"
               placeholder="Cari nama, email, sekolah, rombel..."
               value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-hidden focus:border-emerald-500"
+              onChange={e => {
+                setSearchTerm(e.target.value);
+                setShowPredictions(true);
+              }}
+              onFocus={() => setShowPredictions(true)}
+              className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-hidden focus:border-emerald-500 shadow-2xs"
             />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchTerm('');
+                  setShowPredictions(false);
+                }}
+                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 p-0.5 rounded-full"
+              >
+                <X size={14} />
+              </button>
+            )}
+
+            {/* PREDICTIVE AUTOCOMPLETE DROPDOWN */}
+            {showPredictions && studentPredictions.length > 0 && (
+              <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 overflow-hidden divide-y divide-slate-100 animate-fadeIn">
+                <div className="px-3 py-1.5 bg-slate-100/90 text-[10px] font-extrabold uppercase tracking-wider text-slate-600 flex items-center justify-between">
+                  <span>✨ Prediksi Nama Siswa ({studentPredictions.length})</span>
+                  <span className="text-[9px] text-slate-400 font-normal">Klik untuk memilih</span>
+                </div>
+                {studentPredictions.map((st) => (
+                  <button
+                    key={st.id}
+                    type="button"
+                    onClick={() => {
+                      setSearchTerm(st.name);
+                      setShowPredictions(false);
+                    }}
+                    className="w-full p-2.5 text-left hover:bg-emerald-50/80 transition-colors flex items-center justify-between gap-2 group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <img
+                        src={st.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
+                        alt={st.name}
+                        className="w-7 h-7 rounded-full object-cover shrink-0 border border-slate-200 shadow-2xs"
+                      />
+                      <div className="truncate">
+                        <p className="text-xs font-bold text-slate-900 group-hover:text-emerald-700 truncate">
+                          {st.name}
+                        </p>
+                        <p className="text-[10px] text-slate-500 truncate">
+                          Kelas {st.className} • {st.schoolName || 'Tanpa Sekolah'}
+                        </p>
+                      </div>
+                    </div>
+                    <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border shrink-0 ${
+                      st.status === 'pending'
+                        ? 'bg-amber-50 text-amber-700 border-amber-300'
+                        : st.status === 'ditolak'
+                        ? 'bg-rose-50 text-rose-700 border-rose-300'
+                        : 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                    }`}>
+                      {st.status === 'pending' ? 'Pending' : st.status === 'ditolak' ? 'Ditolak' : 'Aktif'}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>
