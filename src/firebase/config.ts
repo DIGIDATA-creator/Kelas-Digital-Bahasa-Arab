@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth, signInAnonymously } from 'firebase/auth';
+import { getAuth, signInAnonymously, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import appletConfig from '../../firebase-applet-config.json';
 
@@ -17,8 +17,24 @@ export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 export const auth = getAuth(app);
 export const db = getFirestore(app, appletConfig.firestoreDatabaseId || '(default)');
 
-// Ensure user is authenticated anonymously so firestore rules with auth work seamlessly
-signInAnonymously(auth).catch((err) => {
-  console.warn('Anonymous auth failed:', err);
-});
+// Set explicit Auth local persistence so login sessions persist across browser restarts & tabs
+setPersistence(auth, browserLocalPersistence)
+  .then(() => {
+    console.log('🔒 [FIREBASE CONFIG] Auth persistence set to LOCAL.');
+  })
+  .catch((err) => {
+    console.warn('⚠️ [FIREBASE CONFIG] Error setting persistence:', err);
+  });
+
+// Ensure user is authenticated anonymously if not logged in, so firestore rules with auth work seamlessly
+if (!auth.currentUser) {
+  signInAnonymously(auth)
+    .then((cred) => {
+      console.log('🔑 [FIREBASE CONFIG] Anonymous Auth initialized successfully (UID:', cred.user.uid, ')');
+    })
+    .catch((err) => {
+      console.warn('⚠️ [FIREBASE CONFIG] Anonymous Auth note:', err?.message || err);
+    });
+}
+
 
