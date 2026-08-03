@@ -60,6 +60,7 @@ const docPenilaian = doc(db, 'app_collections', 'penilaian');
 const docStudents = doc(db, 'app_collections', 'students');
 const docLogs = doc(db, 'app_collections', 'logs');
 const docForum = doc(db, 'app_collections', 'forum');
+const docGuruProfile = doc(db, 'app_collections', 'guru_profile');
 
 // Helper to strip undefined values before sending to Firestore
 function sanitizeForFirestore<T>(data: T): T {
@@ -89,6 +90,20 @@ function getLocal<T>(key: string, fallback: T): T {
 }
 
 const SYSTEM_SAMPLE_QUIZ_IDS = ['pen-1', 'pen-2', 'pen-3'];
+
+// Cached Guru Profile & Credentials
+let cachedGuruProfile = getLocal('lms_guru_profile', {
+  name: 'Ust. Ahmad Dahlan, M.Pd.',
+  title: 'Pengampu Bahasa Arab & Kepala Kurikulum Digital',
+  email: 'ahmad.dahlan@sekolah.sch.id',
+  phone: '+62 812-3456-7890',
+  avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&auto=format&fit=crop&q=80',
+});
+
+let cachedGuruCredentials = getLocal('lms_guru_credentials', {
+  username: 'admin_guru',
+  password: '',
+});
 
 // Initialize cached data from LocalStorage first
 cachedMateri = getLocal(KEYS.MATERI, INITIAL_MATERI);
@@ -173,6 +188,24 @@ export const storageService = {
       }
     }, (err) => console.warn('Forum snapshot warning:', err));
 
+    // 6. Listen to Guru Profile & Credentials
+    const unsubGuruProfile = onSnapshot(docGuruProfile, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.profile) {
+          cachedGuruProfile = data.profile;
+          saveLocal('lms_guru_profile', data.profile);
+        }
+        if (data.credentials) {
+          cachedGuruCredentials = data.credentials;
+          saveLocal('lms_guru_credentials', data.credentials);
+        }
+        notifyListeners();
+      } else {
+        setDoc(docGuruProfile, sanitizeForFirestore({ profile: cachedGuruProfile, credentials: cachedGuruCredentials })).catch(console.error);
+      }
+    }, (err) => console.warn('Guru profile snapshot warning:', err));
+
     return () => {
       syncListeners = syncListeners.filter(cb => cb !== onUpdate);
       unsubMateri();
@@ -180,7 +213,27 @@ export const storageService = {
       unsubStudents();
       unsubLogs();
       unsubForum();
+      unsubGuruProfile();
     };
+  },
+
+  getGuruProfile() {
+    return cachedGuruProfile;
+  },
+  getGuruCredentials() {
+    return cachedGuruCredentials;
+  },
+  saveGuruProfile(profile: any) {
+    cachedGuruProfile = profile;
+    saveLocal('lms_guru_profile', profile);
+    setDoc(docGuruProfile, sanitizeForFirestore({ profile, credentials: cachedGuruCredentials })).catch(console.error);
+    notifyListeners();
+  },
+  saveGuruCredentials(creds: any) {
+    cachedGuruCredentials = creds;
+    saveLocal('lms_guru_credentials', creds);
+    setDoc(docGuruProfile, sanitizeForFirestore({ profile: cachedGuruProfile, credentials: creds })).catch(console.error);
+    notifyListeners();
   },
 
   getMateri(): Materi[] {

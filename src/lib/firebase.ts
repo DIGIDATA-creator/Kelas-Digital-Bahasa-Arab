@@ -1,6 +1,5 @@
-import { initializeApp, getApps, getApp } from "firebase/app";
+import { app, auth } from "../firebase/config";
 import {
-  getAuth,
   GoogleAuthProvider,
   signInWithPopup,
   signInWithEmailAndPassword,
@@ -11,21 +10,8 @@ import {
   updateProfile,
 } from "firebase/auth";
 
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyArofa6652iumhArxlcItzqnZByy59rOX0",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "kelas-digital-bahasa-arab.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "kelas-digital-bahasa-arab",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "kelas-digital-bahasa-arab.firebasestorage.app",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "796218290643",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:796218290643:web:bcf4c7a70f7f3f698b7f26",
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-DLXY72BF43"
-};
-
-// Initialize Firebase safely
-export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 // Authentication Helpers
 export const signInWithGoogle = async () => {
@@ -37,7 +23,7 @@ export const signInWithGoogle = async () => {
     if (error?.code === 'auth/unauthorized-domain') {
       const domain = typeof window !== 'undefined' ? window.location.hostname : 'domain Anda';
       throw new Error(
-        `Domain "${domain}" belum terdaftar di Authorized Domains Firebase Console. Silakan tambahkan domain ini di Firebase Console (Authentication > Settings > Authorized domains), atau gunakan Login Email di bawah.`
+        `Domain "${domain}" belum terdaftar di Authorized Domains Firebase Console (atau proses sinkronisasi domain Google butuh waktu 5-10 menit). Silakan pastikan domain "${domain}" sudah ditambahkan di Firebase Console (Authentication > Settings > Authorized domains), atau gunakan Login Email / Username di bawah.`
       );
     }
     if (error?.code === 'auth/api-key-not-valid' || error?.message?.includes('API key not valid')) {

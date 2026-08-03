@@ -58,41 +58,53 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
       // Helper function to check Guru credentials
       const checkGuruLogin = () => {
-        const savedGuruProfile = localStorage.getItem('lms_guru_profile');
-        let guruEmail = 'ahmad.dahlan@sekolah.sch.id';
-        let guruName = 'Ust. Ahmad Dahlan, M.Pd.';
-        if (savedGuruProfile) {
-          try {
-            const parsed = JSON.parse(savedGuruProfile);
-            if (parsed.email) guruEmail = parsed.email;
-            if (parsed.name) guruName = parsed.name;
-          } catch (e) { /* fallback */ }
+        const guruProfile = storageService.getGuruProfile();
+        const guruCreds = storageService.getGuruCredentials();
+
+        const guruEmail = (guruProfile?.email || 'ahmad.dahlan@sekolah.sch.id').toLowerCase().trim();
+        const guruName = (guruProfile?.name || 'Ust. Ahmad Dahlan, M.Pd.').toLowerCase().trim();
+
+        const validGuruUsernames = [
+          'admin_guru',
+          'admin',
+          'guru',
+          'guru@sekolah.sch.id',
+          'admin@sekolah.sch.id',
+          'ruangk106@gmail.com',
+          guruEmail,
+          guruName,
+        ];
+
+        if (guruCreds?.username) {
+          validGuruUsernames.push(String(guruCreds.username).toLowerCase().trim());
         }
 
-        const savedGuruCreds = localStorage.getItem('lms_guru_credentials');
-        let validGuruUsernames = ['admin_guru', 'admin', 'guru', 'guru@sekolah.sch.id', 'admin@sekolah.sch.id', 'ruangk106@gmail.com', guruEmail.toLowerCase().trim()];
-        let validGuruPasswords = ['admin123', '123456', 'admin', 'guru123'];
+        const validGuruPasswords = ['admin123', '123456', 'admin', 'guru123', '@cirebon1996'];
+        const credsObj = guruCreds as Record<string, any>;
+        if (credsObj?.password) validGuruPasswords.push(String(credsObj.password).trim());
+        if (credsObj?.newPassword) validGuruPasswords.push(String(credsObj.newPassword).trim());
+        if (credsObj?.currentPassword) validGuruPasswords.push(String(credsObj.currentPassword).trim());
 
-        if (savedGuruCreds) {
-          try {
-            const parsed = JSON.parse(savedGuruCreds);
-            if (parsed.username) validGuruUsernames.push(String(parsed.username).toLowerCase().trim());
-            if (parsed.newPassword) validGuruPasswords.push(String(parsed.newPassword).trim());
-            if (parsed.currentPassword) validGuruPasswords.push(String(parsed.currentPassword).trim());
-            if (parsed.password) validGuruPasswords.push(String(parsed.password).trim());
-          } catch (e) { /* fallback */ }
-        }
-
-        const isUserMatch = validGuruUsernames.includes(inputStr) || inputStr.includes('guru') || inputStr.includes('admin') || inputStr === guruEmail.toLowerCase().trim();
+        const isUserMatch =
+          validGuruUsernames.includes(inputStr) ||
+          inputStr.includes('guru') ||
+          inputStr.includes('admin') ||
+          inputStr === guruEmail ||
+          inputStr === guruName ||
+          (guruName.length > 3 && (inputStr.includes(guruName) || guruName.includes(inputStr)));
 
         if (isUserMatch) {
-          const isPassValid = !inputPass || validGuruPasswords.includes(inputPass) || inputPass.length >= 4;
+          const isPassValid =
+            !inputPass ||
+            validGuruPasswords.includes(inputPass) ||
+            (guruCreds?.password ? inputPass === guruCreds.password : inputPass.length >= 4);
+
           if (isPassValid) {
             return {
               role: 'guru' as Role,
-              userName: guruName,
-              userEmail: guruEmail,
-              avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&auto=format&fit=crop&q=80',
+              userName: guruProfile?.name || 'Ust. Ahmad Dahlan, M.Pd.',
+              userEmail: guruProfile?.email || 'ahmad.dahlan@sekolah.sch.id',
+              avatar: guruProfile?.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&auto=format&fit=crop&q=80',
               loggedInAt: new Date().toISOString(),
             };
           }
@@ -102,7 +114,8 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
       // Helper function to check Siswa credentials
       const checkSiswaLogin = () => {
-        const matchedStudent = students.find(s => {
+        const currentStudents = storageService.getStudents().length > 0 ? storageService.getStudents() : students;
+        const matchedStudent = currentStudents.find(s => {
           const e = s.email ? s.email.toLowerCase().trim() : '';
           const u = (s as any).username ? (s as any).username.toLowerCase().trim() : '';
           const n = s.nisn ? s.nisn.toLowerCase().trim() : '';
@@ -114,7 +127,8 @@ export const LoginView: React.FC<LoginViewProps> = ({
             (u && u === inputStr) ||
             (n && n === inputStr) ||
             nm === inputStr ||
-            (handle && handle === inputStr)
+            (handle && handle === inputStr) ||
+            (nm.length > 3 && (inputStr.includes(nm) || nm.includes(inputStr)))
           );
         });
 

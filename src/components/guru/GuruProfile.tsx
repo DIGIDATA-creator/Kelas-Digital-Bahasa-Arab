@@ -3,6 +3,7 @@ import { Shield, Mail, Phone, Edit3, Lock, Check, Key, UserCheck, Camera, Save, 
 import { db } from '../../firebase/config';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { uploadToSupabaseStorage } from '../../lib/supabase';
+import { storageService } from '../../services/storage';
 
 const docGuruProfile = doc(db, 'app_collections', 'guru_profile');
 
@@ -96,8 +97,7 @@ export const GuruProfile: React.FC = () => {
       return;
     }
     setProfile(profileFormData);
-    localStorage.setItem('lms_guru_profile', JSON.stringify(profileFormData));
-    setDoc(docGuruProfile, sanitizeForFirestore({ profile: profileFormData, credentials: { username: credentials.username } })).catch(console.error);
+    storageService.saveGuruProfile(profileFormData);
     setIsEditingProfile(false);
     setProfileMsg({ type: 'success', text: 'Data profil berhasil diperbarui!' });
     setTimeout(() => setProfileMsg(null), 3000);
@@ -197,8 +197,7 @@ export const GuruProfile: React.FC = () => {
       storageCreds.newPassword = credentials.newPassword.trim();
     }
 
-    localStorage.setItem('lms_guru_credentials', JSON.stringify(storageCreds));
-    setDoc(docGuruProfile, sanitizeForFirestore({ profile, credentials: { username: credentials.username.trim(), ...(credentials.newPassword ? { password: credentials.newPassword.trim() } : {}) } })).catch(console.error);
+    storageService.saveGuruCredentials(storageCreds);
     setCredMsg({ type: 'success', text: 'Username dan Password berhasil diperbarui!' });
     setTimeout(() => setCredMsg(null), 3000);
   };
