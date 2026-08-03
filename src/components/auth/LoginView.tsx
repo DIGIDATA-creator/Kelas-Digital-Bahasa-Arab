@@ -3,7 +3,8 @@ import { motion } from 'motion/react';
 import { Role, Student, TingkatType } from '../../types';
 import { storageService, UserSession } from '../../services/storage';
 import { PendaftaranSiswaForm } from './PendaftaranSiswaForm';
-import { signInWithGoogle, registerUser } from '../../lib/firebase';
+import { signInWithGoogle, registerUser, loginUser } from '../../lib/firebase';
+import { auth } from '../../firebase/config';
 import {
   Lock,
   Mail,
@@ -51,15 +52,33 @@ export const LoginView: React.FC<LoginViewProps> = ({
     }
 
     setIsLoading(true);
+    console.group('🔐 [AUTH DEBUG] Starting Login Process');
+    console.log('📌 Form Identifier Input:', identifier);
+    console.log('📌 Password Provided:', password ? `(Length: ${password.length})` : '(No password entered)');
+    console.log('📌 Selected UI Role Tab:', loginRole);
+    console.log('📌 Current Firebase Auth State:', auth.currentUser ? {
+      uid: auth.currentUser.uid,
+      email: auth.currentUser.email,
+      isAnonymous: auth.currentUser.isAnonymous,
+    } : 'No active Firebase Auth user (or anonymous)');
 
     try {
       const inputStr = identifier.trim().toLowerCase();
       const inputPass = password.trim();
 
+      // Fetch fresh data directly from Firestore before validation to support multi-device logins
+      console.log('📡 [AUTH DEBUG] Fetching real-time credentials & student records from Firestore...');
+      const freshGuru = await storageService.fetchLatestGuruData();
+      const freshStudents = await storageService.fetchLatestStudentsData();
+
+      console.log('📦 [AUTH DEBUG] Firestore Guru Profile:', freshGuru.profile);
+      console.log('📦 [AUTH DEBUG] Firestore Guru Credentials:', freshGuru.credentials);
+      console.log(`📦 [AUTH DEBUG] Firestore Students Count: ${freshStudents.length}`);
+
       // Helper function to check Guru credentials
       const checkGuruLogin = () => {
-        const guruProfile = storageService.getGuruProfile();
-        const guruCreds = storageService.getGuruCredentials();
+        const guruProfile = freshGuru.profile || storageService.getGuruProfile();
+        const guruCreds = freshGuru.credentials || storageService.getGuruCredentials();
 
         const guruEmail = (guruProfile?.email || 'ahmad.dahlan@sekolah.sch.id').toLowerCase().trim();
         const guruName = (guruProfile?.name || 'Ust. Ahmad Dahlan, M.Pd.').toLowerCase().trim();
@@ -93,11 +112,17 @@ export const LoginView: React.FC<LoginViewProps> = ({
           inputStr === guruName ||
           (guruName.length > 3 && (inputStr.includes(guruName) || guruName.includes(inputStr)));
 
+        console.log('🔍 [AUTH DEBUG] Checking Guru Login match...');
+        console.log('   - Valid Guru Usernames:', validGuruUsernames);
+        console.log('   - Input matches Guru Username/Email?', isUserMatch);
+
         if (isUserMatch) {
           const isPassValid =
             !inputPass ||
             validGuruPasswords.includes(inputPass) ||
             (guruCreds?.password ? inputPass === guruCreds.password : inputPass.length >= 4);
+
+          console.log('   - Password provided valid?', isPassValid);
 
           if (isPassValid) {
             return {
@@ -114,7 +139,10 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
       // Helper function to check Siswa credentials
       const checkSiswaLogin = () => {
-        const currentStudents = storageService.getStudents().length > 0 ? storageService.getStudents() : students;
+        const currentStudents = freshStudents.length > 0 ? freshStudents : (storageService.getStudents().length > 0 ? storageService.getStudents() : students);
+        
+        console.log(`🔍 [AUTH DEBUG] Searching Siswa Login among ${currentStudents.length} student records...`);
+
         const matchedStudent = currentStudents.find(s => {
           const e = s.email ? s.email.toLowerCase().trim() : '';
           const u = (s as any).username ? (s as any).username.toLowerCase().trim() : '';
@@ -132,7 +160,12 @@ export const LoginView: React.FC<LoginViewProps> = ({
           );
         });
 
-        if (!matchedStudent) return { error: 'NOT_FOUND', student: null };
+        if (!matchedStudent) {
+          console.log('   - No matching student record found for:', inputStr);
+          return { error: 'NOT_FOUND', student: null };
+        }
+
+        console.log('   - Matched student record found:', matchedStudent.name, `(Status: ${matchedStudent.status})`);
 
         if (matchedStudent.status === 'pending') {
           return { error: `Akun "${matchedStudent.name}" masih MENUNGGU ACC (Persetujuan) dari Guru. Silakan hubungi Guru Anda untuk mengaktifkan akun.`, student: matchedStudent };
@@ -143,7 +176,10 @@ export const LoginView: React.FC<LoginViewProps> = ({
         }
 
         const expectedPassword = (matchedStudent.password || '123456').trim();
-        if (inputPass && inputPass !== expectedPassword && inputPass !== '123456') {
+        const isPasswordOk = !inputPass || inputPass === expectedPassword || inputPass === '123456';
+        console.log('   - Student password check OK?', isPasswordOk);
+
+        if (!isPasswordOk) {
           return { error: 'Kata sandi salah. Silakan periksa kembali kata sandi Anda.', student: matchedStudent };
         }
 
@@ -160,57 +196,76 @@ export const LoginView: React.FC<LoginViewProps> = ({
         };
       };
 
+      let finalSession: UserSession | null = null;
+      let finalErrorMsg = '';
+
       // Execute based on selected role with smart fallback
       if (loginRole === 'guru') {
         const guruSession = checkGuruLogin();
         if (guruSession) {
-          setSuccessMsg(`Berhasil masuk sebagai Guru (${guruSession.userName})!`);
-          setTimeout(() => onLoginSuccess(guruSession), 800);
-          return;
+          finalSession = guruSession;
+        } else {
+          // Try student fallback if user accidentally stayed on Guru tab
+          const siswaResult = checkSiswaLogin();
+          if (siswaResult.session) {
+            finalSession = siswaResult.session;
+          } else if (siswaResult.error && siswaResult.error !== 'NOT_FOUND') {
+            finalErrorMsg = siswaResult.error;
+          } else {
+            finalErrorMsg = 'Username / Email Guru tidak ditemukan. Gunakan email atau username Guru.';
+          }
         }
-
-        // Try student fallback if user accidentally stayed on Guru tab
-        const siswaResult = checkSiswaLogin();
-        if (siswaResult.session) {
-          setSuccessMsg(`Berhasil masuk sebagai Siswa (${siswaResult.session.userName})!`);
-          setTimeout(() => onLoginSuccess(siswaResult.session), 800);
-          return;
-        } else if (siswaResult.error && siswaResult.error !== 'NOT_FOUND') {
-          setErrorMsg(siswaResult.error);
-          setIsLoading(false);
-          return;
-        }
-
-        setErrorMsg('Username / Email Guru tidak ditemukan. Gunakan email atau username Guru.');
-        setIsLoading(false);
-        return;
       } else {
         // Siswa Login
         const siswaResult = checkSiswaLogin();
         if (siswaResult.session) {
-          setSuccessMsg(`Berhasil masuk! Selamat datang, ${siswaResult.session.userName}.`);
-          setTimeout(() => onLoginSuccess(siswaResult.session), 800);
-          return;
+          finalSession = siswaResult.session;
         } else if (siswaResult.error && siswaResult.error !== 'NOT_FOUND') {
-          setErrorMsg(siswaResult.error);
-          setIsLoading(false);
-          return;
+          finalErrorMsg = siswaResult.error;
+        } else {
+          // Try guru fallback if teacher accidentally stayed on Siswa tab
+          const guruSession = checkGuruLogin();
+          if (guruSession) {
+            finalSession = guruSession;
+          } else {
+            finalErrorMsg = 'Email / Username tidak ditemukan. Jika Anda siswa baru, silakan klik tab "Daftar Siswa Baru".';
+          }
+        }
+      }
+
+      if (finalSession) {
+        console.log('✅ [AUTH DEBUG] Login Validation Succeeded! Session created:', finalSession);
+
+        // Background Firebase Auth Email sign-in attempt to keep Firebase Auth token in sync
+        if (finalSession.userEmail && inputPass) {
+          console.log(`🔥 [AUTH DEBUG] Attempting background Firebase Auth sign-in for ${finalSession.userEmail}...`);
+          loginUser(finalSession.userEmail, inputPass)
+            .then(user => {
+              if (user) {
+                console.log('🔥 [AUTH DEBUG] Firebase Auth sign-in succeeded! UID:', user.uid);
+              } else {
+                console.info('ℹ️ [AUTH DEBUG] Firebase Auth email sign-in skipped/unsupported in this environment. Session authenticated via Firestore dataset.');
+              }
+            })
+            .catch(err => {
+              console.warn('⚠️ [AUTH DEBUG] Firebase Auth background note:', err?.message || err);
+            });
         }
 
-        // Try guru fallback if teacher accidentally stayed on Siswa tab
-        const guruSession = checkGuruLogin();
-        if (guruSession) {
-          setSuccessMsg(`Berhasil masuk sebagai Guru (${guruSession.userName})!`);
-          setTimeout(() => onLoginSuccess(guruSession), 800);
-          return;
-        }
-
-        setErrorMsg('Email / Username tidak ditemukan. Jika Anda siswa baru, silakan klik tab "Daftar Siswa Baru".');
-        setIsLoading(false);
+        setSuccessMsg(`Berhasil masuk sebagai ${finalSession.role === 'guru' ? 'Guru' : 'Siswa'} (${finalSession.userName})!`);
+        console.groupEnd();
+        setTimeout(() => onLoginSuccess(finalSession!), 800);
         return;
       }
 
+      console.warn('❌ [AUTH DEBUG] Login Validation Failed:', finalErrorMsg);
+      console.groupEnd();
+      setErrorMsg(finalErrorMsg);
+      setIsLoading(false);
+
     } catch (err: any) {
+      console.error('❌ [AUTH DEBUG] Login Error Exception:', err);
+      console.groupEnd();
       setErrorMsg(err.message || 'Gagal login. Periksa kembali email & password Anda.');
     } finally {
       setIsLoading(false);
@@ -222,43 +277,66 @@ export const LoginView: React.FC<LoginViewProps> = ({
     setErrorMsg('');
     setSuccessMsg('');
     setIsLoading(true);
+    console.group('🔐 [AUTH DEBUG] Starting Google Auth Login');
 
     try {
       const user = await signInWithGoogle();
       const userEmail = user.email?.toLowerCase().trim() || '';
+      console.log('🔥 [AUTH DEBUG] Google Auth User authenticated:', {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+      });
 
-      const isTeacher = userEmail.includes('guru') || userEmail.includes('admin') || userEmail === 'ruangk106@gmail.com';
+      // Fetch latest students from Firestore
+      const freshStudents = await storageService.fetchLatestStudentsData();
+      const freshGuru = await storageService.fetchLatestGuruData();
+
+      const guruEmail = (freshGuru.profile?.email || 'ahmad.dahlan@sekolah.sch.id').toLowerCase().trim();
+      const isTeacher = userEmail.includes('guru') || userEmail.includes('admin') || userEmail === 'ruangk106@gmail.com' || userEmail === guruEmail;
 
       if (isTeacher) {
         const session: UserSession = {
           role: 'guru',
-          userName: user.displayName || 'Ust. Ahmad Dahlan, M.Pd.',
-          userEmail: user.email || 'ahmad.dahlan@sekolah.sch.id',
-          avatar: user.photoURL || undefined,
+          userName: user.displayName || freshGuru.profile?.name || 'Ust. Ahmad Dahlan, M.Pd.',
+          userEmail: user.email || guruEmail,
+          avatar: user.photoURL || freshGuru.profile?.avatar,
           loggedInAt: new Date().toISOString(),
         };
+        console.log('✅ [AUTH DEBUG] Google Login identified as Guru Session:', session);
         setSuccessMsg(`Berhasil masuk via Google Account sebagai Guru!`);
+        console.groupEnd();
         setTimeout(() => onLoginSuccess(session), 800);
         return;
       }
 
       // Search student match
-      const matchedStudent = students.find(s => s.email.toLowerCase().trim() === userEmail);
+      const currentStudents = freshStudents.length > 0 ? freshStudents : (storageService.getStudents().length > 0 ? storageService.getStudents() : students);
+      const matchedStudent = currentStudents.find(s => s.email.toLowerCase().trim() === userEmail);
 
       if (!matchedStudent) {
-        setErrorMsg(`Email Google (${user.email}) belum terdaftar sebagai siswa. Silakan daftarkan diri pada tab "Daftar Siswa Baru".`);
+        const errMsg = `Email Google (${user.email}) belum terdaftar sebagai siswa. Silakan daftarkan diri pada tab "Daftar Siswa Baru".`;
+        console.warn('❌ [AUTH DEBUG] Google Login email not found in student list:', user.email);
+        console.groupEnd();
+        setErrorMsg(errMsg);
         setIsLoading(false);
         return;
       }
 
       if (matchedStudent.status === 'pending') {
-        setErrorMsg(`Akun Google (${user.email}) atas nama "${matchedStudent.name}" masih MENUNGGU ACC dari Guru.`);
+        const errMsg = `Akun Google (${user.email}) atas nama "${matchedStudent.name}" masih MENUNGGU ACC dari Guru.`;
+        console.warn('❌ [AUTH DEBUG] Google Login student account is pending:', matchedStudent.name);
+        console.groupEnd();
+        setErrorMsg(errMsg);
         setIsLoading(false);
         return;
       }
 
       if (matchedStudent.status === 'ditolak') {
-        setErrorMsg(`Akun Google (${user.email}) DITOLAK oleh Guru.`);
+        const errMsg = `Akun Google (${user.email}) DITOLAK oleh Guru.`;
+        console.warn('❌ [AUTH DEBUG] Google Login student account is rejected:', matchedStudent.name);
+        console.groupEnd();
+        setErrorMsg(errMsg);
         setIsLoading(false);
         return;
       }
@@ -272,10 +350,14 @@ export const LoginView: React.FC<LoginViewProps> = ({
         loggedInAt: new Date().toISOString(),
       };
 
+      console.log('✅ [AUTH DEBUG] Google Login identified as Siswa Session:', session);
       setSuccessMsg(`Berhasil masuk via Google sebagai ${matchedStudent.name}!`);
+      console.groupEnd();
       setTimeout(() => onLoginSuccess(session), 800);
 
     } catch (err: any) {
+      console.error('❌ [AUTH DEBUG] Google Auth Error:', err);
+      console.groupEnd();
       setErrorMsg(err.message || 'Gagal masuk dengan Google.');
     } finally {
       setIsLoading(false);

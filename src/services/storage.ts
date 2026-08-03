@@ -1,7 +1,7 @@
 import { Materi, Penilaian, Student, ActivityLog, Role, QuizAttempt, ForumPost, ForumReply } from '../types';
 import { INITIAL_MATERI, INITIAL_PENILAIAN, INITIAL_STUDENTS, INITIAL_LOGS, INITIAL_FORUM_POSTS } from '../data/initialData';
 import { db } from '../firebase/config';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore';
 
 export interface UserSession {
   role: Role;
@@ -217,6 +217,39 @@ export const storageService = {
     };
   },
 
+  async fetchLatestGuruData() {
+    try {
+      const docSnap = await getDoc(docGuruProfile);
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.profile) {
+          cachedGuruProfile = { ...cachedGuruProfile, ...data.profile };
+          saveLocal('lms_guru_profile', cachedGuruProfile);
+        }
+        if (data.credentials) {
+          cachedGuruCredentials = { ...cachedGuruCredentials, ...data.credentials };
+          saveLocal('lms_guru_credentials', cachedGuruCredentials);
+        }
+      }
+    } catch (err) {
+      console.warn('[AUTH DEBUG] Error fetching latest Guru data from Firestore:', err);
+    }
+    return { profile: cachedGuruProfile, credentials: cachedGuruCredentials };
+  },
+
+  async fetchLatestStudentsData() {
+    try {
+      const docSnap = await getDoc(docStudents);
+      if (docSnap.exists() && docSnap.data().items) {
+        cachedStudents = docSnap.data().items;
+        saveLocal(KEYS.STUDENTS, cachedStudents);
+      }
+    } catch (err) {
+      console.warn('[AUTH DEBUG] Error fetching latest Students data from Firestore:', err);
+    }
+    return cachedStudents;
+  },
+
   getGuruProfile() {
     return cachedGuruProfile;
   },
@@ -224,15 +257,15 @@ export const storageService = {
     return cachedGuruCredentials;
   },
   saveGuruProfile(profile: any) {
-    cachedGuruProfile = profile;
-    saveLocal('lms_guru_profile', profile);
-    setDoc(docGuruProfile, sanitizeForFirestore({ profile, credentials: cachedGuruCredentials })).catch(console.error);
+    cachedGuruProfile = { ...cachedGuruProfile, ...profile };
+    saveLocal('lms_guru_profile', cachedGuruProfile);
+    setDoc(docGuruProfile, sanitizeForFirestore({ profile: cachedGuruProfile, credentials: cachedGuruCredentials }), { merge: true }).catch(console.error);
     notifyListeners();
   },
   saveGuruCredentials(creds: any) {
-    cachedGuruCredentials = creds;
-    saveLocal('lms_guru_credentials', creds);
-    setDoc(docGuruProfile, sanitizeForFirestore({ profile: cachedGuruProfile, credentials: creds })).catch(console.error);
+    cachedGuruCredentials = { ...cachedGuruCredentials, ...creds };
+    saveLocal('lms_guru_credentials', cachedGuruCredentials);
+    setDoc(docGuruProfile, sanitizeForFirestore({ profile: cachedGuruProfile, credentials: cachedGuruCredentials }), { merge: true }).catch(console.error);
     notifyListeners();
   },
 
