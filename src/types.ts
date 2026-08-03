@@ -29,6 +29,9 @@ export interface VocabularyItem {
   latin: string;
   meaning: string;
   category: string;
+  fiilMadhi?: string; // الفعل الماضي (Kata Kerja Lampau)
+  fiilMudhari?: string; // الفعل المضارع (Kata Kerja Sekarang/Mendatang)
+  fiilAmr?: string; // فعل الأمر (Kata Perintah)
   exampleArabic?: string;
   exampleTranslation?: string;
 }
@@ -168,6 +171,8 @@ export interface Student {
   hafalanProgress?: StudentHafalanProgress;
   visitHistory?: string[]; // ISO string timestamps of app logins/visits
   visitCount?: number; // Total visit counter
+  streakCount?: number; // Consecutive active days
+  lastStreakDate?: string; // YYYY-MM-DD of last active streak day
 }
 
 export interface ActivityLog {

@@ -35,6 +35,9 @@ export const KosakataFormModal: React.FC<KosakataFormModalProps> = ({
 
   const [newWord, setNewWord] = useState('');
   const [newMeaning, setNewMeaning] = useState('');
+  const [fiilMadhi, setFiilMadhi] = useState('');
+  const [fiilMudhari, setFiilMudhari] = useState('');
+  const [fiilAmr, setFiilAmr] = useState('');
 
   // Synchronize modal state whenever isOpen or editingMateri changes
   useEffect(() => {
@@ -59,6 +62,9 @@ export const KosakataFormModal: React.FC<KosakataFormModalProps> = ({
       }
       setNewWord('');
       setNewMeaning('');
+      setFiilMadhi('');
+      setFiilMudhari('');
+      setFiilAmr('');
     }
   }, [isOpen, editingMateri, existingMateriList]);
 
@@ -67,17 +73,40 @@ export const KosakataFormModal: React.FC<KosakataFormModalProps> = ({
   const [sheetText, setSheetText] = useState('');
 
   const handleAddWord = () => {
-    if (newWord.trim() && newMeaning.trim()) {
-      const newItem: VocabularyItem = {
-        id: `vocab-${Date.now()}-${Math.random()}`,
-        word: newWord.trim(),
-        meaning: newMeaning.trim(),
-        latin: '',
-        category: 'Umum',
-      };
-      setVocabularies([...vocabularies, newItem]);
-      setNewWord('');
-      setNewMeaning('');
+    if (vocabCategory === 'فِعل') {
+      if ((fiilMadhi.trim() || fiilMudhari.trim() || fiilAmr.trim()) && newMeaning.trim()) {
+        const combinedWord = [fiilMadhi.trim(), fiilMudhari.trim(), fiilAmr.trim()]
+          .filter(Boolean)
+          .join(' - ');
+        const newItem: VocabularyItem = {
+          id: `vocab-${Date.now()}-${Math.random()}`,
+          word: combinedWord,
+          meaning: newMeaning.trim(),
+          latin: '',
+          category: vocabCategory,
+          fiilMadhi: fiilMadhi.trim(),
+          fiilMudhari: fiilMudhari.trim(),
+          fiilAmr: fiilAmr.trim(),
+        };
+        setVocabularies([...vocabularies, newItem]);
+        setFiilMadhi('');
+        setFiilMudhari('');
+        setFiilAmr('');
+        setNewMeaning('');
+      }
+    } else {
+      if (newWord.trim() && newMeaning.trim()) {
+        const newItem: VocabularyItem = {
+          id: `vocab-${Date.now()}-${Math.random()}`,
+          word: newWord.trim(),
+          meaning: newMeaning.trim(),
+          latin: '',
+          category: vocabCategory,
+        };
+        setVocabularies([...vocabularies, newItem]);
+        setNewWord('');
+        setNewMeaning('');
+      }
     }
   };
 
@@ -93,7 +122,7 @@ export const KosakataFormModal: React.FC<KosakataFormModalProps> = ({
     }
 
     const newItems: VocabularyItem[] = parsed.map((item, index) => ({
-      id: `sheet-${Date.now()}-${index}`,
+      id: `sheet-${Date.now()}-${Math.random().toString(36).substring(2, 7)}-${index}`,
       word: item.word,
       meaning: item.meaning,
       latin: '',
@@ -241,43 +270,122 @@ export const KosakataFormModal: React.FC<KosakataFormModalProps> = ({
             </div>
 
             {/* Input Row for Individual Word */}
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl grid grid-cols-1 sm:grid-cols-5 gap-2 items-end">
-              <div className="sm:col-span-2">
-                <label className="block font-semibold text-slate-600 mb-1">Input Mufrodat (Teks Arab)</label>
-                <input
-                  type="text"
-                  placeholder="مَكْتَبٌ"
-                  value={newWord}
-                  onChange={(e) => setNewWord(e.target.value)}
-                  className="w-full px-3 py-1.5 border border-slate-300 rounded-xl font-arabic text-lg text-right focus:border-teal-500 bg-white"
-                />
-              </div>
+            {vocabCategory === 'فِعل' ? (
+              <div className="p-3 bg-amber-50/60 border border-amber-200 rounded-2xl space-y-2">
+                <div className="flex items-center justify-between border-b border-amber-200 pb-1.5">
+                  <span className="font-extrabold text-amber-900 text-xs flex items-center gap-1.5">
+                    <span className="px-2 py-0.5 bg-amber-200 text-amber-950 font-arabic rounded text-xs">فِعْل</span>
+                    Format Input Kata Kerja (Fi'il) - 3 Bagian Tasyrif
+                  </span>
+                  <span className="text-[11px] text-amber-800 font-medium">الماضي - المضارع - الأمر</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-end">
+                  <div>
+                    <label className="block font-bold text-slate-700 text-[11px] mb-1">
+                      1. Fi'il Madhi (الماضي)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="كَتَبَ"
+                      value={fiilMadhi}
+                      onChange={(e) => setFiilMadhi(e.target.value)}
+                      className="w-full px-2.5 py-1.5 border border-slate-300 rounded-xl font-arabic text-base text-right focus:border-amber-500 bg-white"
+                    />
+                  </div>
 
-              <div className="sm:col-span-2">
-                <label className="block font-semibold text-slate-600 mb-1">Terjemahan</label>
-                <input
-                  type="text"
-                  placeholder="Meja"
-                  value={newMeaning}
-                  onChange={(e) => setNewMeaning(e.target.value)}
-                  className="w-full px-3 py-1.5 border border-slate-300 rounded-xl font-medium focus:border-teal-500 bg-white"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleAddWord();
-                    }
-                  }}
-                />
-              </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 text-[11px] mb-1">
+                      2. Fi'il Mudhori' (المضارع)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="يَكْتُبُ"
+                      value={fiilMudhari}
+                      onChange={(e) => setFiilMudhari(e.target.value)}
+                      className="w-full px-2.5 py-1.5 border border-slate-300 rounded-xl font-arabic text-base text-right focus:border-amber-500 bg-white"
+                    />
+                  </div>
 
-              <button
-                type="button"
-                onClick={handleAddWord}
-                className="w-full py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl flex items-center justify-center gap-1 text-xs"
-              >
-                <Plus size={16} /> Tambah
-              </button>
-            </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 text-[11px] mb-1">
+                      3. Fi'il Amr (الأمر)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="اُكْتُبْ"
+                      value={fiilAmr}
+                      onChange={(e) => setFiilAmr(e.target.value)}
+                      className="w-full px-2.5 py-1.5 border border-slate-300 rounded-xl font-arabic text-base text-right focus:border-amber-500 bg-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 text-[11px] mb-1">
+                      Terjemahan (Arti)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Menulis"
+                      value={newMeaning}
+                      onChange={(e) => setNewMeaning(e.target.value)}
+                      className="w-full px-2.5 py-1.5 border border-slate-300 rounded-xl font-medium focus:border-amber-500 bg-white"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddWord();
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleAddWord}
+                  className="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl flex items-center justify-center gap-1.5 text-xs shadow-xs cursor-pointer"
+                >
+                  <Plus size={16} /> Tambah Fi'il (3 Bagian)
+                </button>
+              </div>
+            ) : (
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl grid grid-cols-1 sm:grid-cols-5 gap-2 items-end">
+                <div className="sm:col-span-2">
+                  <label className="block font-semibold text-slate-600 mb-1">Input Mufrodat (Teks Arab)</label>
+                  <input
+                    type="text"
+                    placeholder="مَكْتَبٌ"
+                    value={newWord}
+                    onChange={(e) => setNewWord(e.target.value)}
+                    className="w-full px-3 py-1.5 border border-slate-300 rounded-xl font-arabic text-lg text-right focus:border-teal-500 bg-white"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block font-semibold text-slate-600 mb-1">Terjemahan</label>
+                  <input
+                    type="text"
+                    placeholder="Meja"
+                    value={newMeaning}
+                    onChange={(e) => setNewMeaning(e.target.value)}
+                    className="w-full px-3 py-1.5 border border-slate-300 rounded-xl font-medium focus:border-teal-500 bg-white"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddWord();
+                      }
+                    }}
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleAddWord}
+                  className="w-full py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl flex items-center justify-center gap-1 text-xs cursor-pointer"
+                >
+                  <Plus size={16} /> Tambah
+                </button>
+              </div>
+            )}
 
             {/* List of current vocabularies */}
             <div className="max-h-60 overflow-y-auto space-y-2 border border-slate-200 rounded-2xl p-2 bg-white">
@@ -285,7 +393,7 @@ export const KosakataFormModal: React.FC<KosakataFormModalProps> = ({
                 <p className="text-center py-4 text-slate-400 font-medium">Belum ada item kosakata. Gunakan form di atas untuk menambah.</p>
               ) : (
                 vocabularies.map((v, i) => (
-                  <div key={v.id || i} className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
+                  <div key={`${v.id || 'vocab'}-${i}`} className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
                     <span className="font-extrabold text-teal-800 w-6 text-center">{i + 1}.</span>
                     <span className="font-arabic text-lg font-bold text-slate-900 px-2">{v.word}</span>
                     <span className="text-slate-600 font-medium flex-1 px-2 border-l border-slate-200">{v.meaning}</span>

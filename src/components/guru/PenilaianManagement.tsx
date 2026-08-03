@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Penilaian, Question, AssessmentType, CategoryType } from '../../types';
 import { Plus, Edit3, Trash2, Clock, Award, FileCheck2, CheckCircle2, HelpCircle, X, Sparkles, AlertCircle, FileSpreadsheet, Upload, Shuffle, Eye, Calendar, Layers, Hash } from 'lucide-react';
+import { notificationService } from '../../services/notificationService';
 
 interface PenilaianManagementProps {
   penilaianList: Penilaian[];
@@ -244,6 +245,14 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
         createdAt: new Date().toISOString(),
       };
       onSavePenilaian([...penilaianList, newPen]);
+
+      // Alert all students about new kuis/latihan
+      notificationService.addNotificationToAllStudents({
+        title: `🎯 ${newPen.type === 'kuis' ? 'Kuis Baru Dibuka' : newPen.type === 'ujian' ? 'Ujian Evaluasi Dibuka' : 'Tamrin / Latihan Baru'}: ${newPen.title}`,
+        message: `Paket ${newPen.type} Bab ${newPen.babNumber || 1} (${newPen.category.toUpperCase()}) telah diterbitkan. Kerjakan sekarang!`,
+        type: 'kuis',
+        targetId: newPen.id,
+      });
     }
 
     setIsModalOpen(false);

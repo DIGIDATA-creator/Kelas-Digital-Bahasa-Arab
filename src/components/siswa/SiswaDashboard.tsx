@@ -5,6 +5,7 @@ import { calculateHafalanXP } from '../guru/CeklisHafalanModal';
 import { SiswaDashboardSkeleton } from '../common/Skeleton';
 import { MahfudzotOfTheDayCard } from '../common/MahfudzotOfTheDayCard';
 import { ToastNotificationContainer, ToastItem } from '../common/ToastNotification';
+import { LearningStreakWidget } from './LearningStreakWidget';
 
 interface SiswaDashboardProps {
   currentStudent: Student;
@@ -85,10 +86,6 @@ export const SiswaDashboard: React.FC<SiswaDashboardProps> = ({
               <Award size={16} className="text-amber-400" />
               <span>{currentStudent.totalXP} Total XP</span>
             </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-white/10 rounded-xl backdrop-blur-xs text-xs font-bold border border-white/10">
-              <Flame size={16} className="text-rose-400" />
-              <span>Streak Belajar: 5 Hari</span>
-            </div>
             <button
               onClick={() => onNavigate('duel')}
               className="flex items-center gap-2 px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl font-black text-xs transition-all cursor-pointer shadow-md"
@@ -102,6 +99,12 @@ export const SiswaDashboard: React.FC<SiswaDashboardProps> = ({
           {currentStudent.gender === 'Perempuan' ? 'طَالِبَةٌ' : 'طَالِبٌ'}
         </div>
       </div>
+
+      {/* Learning Streak Counter Widget */}
+      <LearningStreakWidget
+        currentStudent={currentStudent}
+        onSimulateExpGain={onSimulateExpGain}
+      />
 
       {/* 4.3 Data Hafalan Setoran Siswa (Kosakata & Mahfudzot) */}
       <div className="bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 rounded-2xl p-5 text-white shadow-lg border border-purple-700/60 space-y-4">

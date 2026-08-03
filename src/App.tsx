@@ -16,6 +16,7 @@ import { GuruProfile } from './components/guru/GuruProfile';
 import { SiswaDashboard } from './components/siswa/SiswaDashboard';
 import { ToastItem } from './components/common/ToastNotification';
 import { LmsTourModal } from './components/siswa/LmsTourModal';
+import { GlossaryModal } from './components/common/GlossaryModal';
 import { MateriSiswaView } from './components/siswa/MateriSiswaView';
 import { PenilaianSiswaView } from './components/siswa/PenilaianSiswaView';
 import { ProgresBelajarView } from './components/siswa/ProgresBelajarView';
@@ -39,6 +40,9 @@ export default function App() {
 
   // LMS Onboarding Guided Tour state
   const [isTourOpen, setIsTourOpen] = useState(false);
+
+  // Global Glossary Modal state
+  const [isGlossaryOpen, setIsGlossaryOpen] = useState(false);
 
   // Dark mode state
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
@@ -258,6 +262,7 @@ export default function App() {
         onLogout={handleLogout}
         onSwitchToStudentSession={handleSwitchToStudentSession}
         onOpenTour={() => setIsTourOpen(true)}
+        onOpenGlossary={() => setIsGlossaryOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -439,6 +444,17 @@ export default function App() {
         isOpen={isTourOpen}
         onClose={() => setIsTourOpen(false)}
         studentName={currentStudent?.name}
+      />
+
+      {/* Global Glossary Modal */}
+      <GlossaryModal
+        isOpen={isGlossaryOpen}
+        onClose={() => setIsGlossaryOpen(false)}
+        materiList={materiList}
+        onSelectMateri={(materiId) => {
+          setSelectedMateriIdForSiswa(materiId);
+          setActiveTab('materi');
+        }}
       />
 
       {/* Footer */}

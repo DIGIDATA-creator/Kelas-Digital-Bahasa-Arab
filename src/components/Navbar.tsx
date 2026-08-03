@@ -12,6 +12,7 @@ import {
   UserCheck,
   Compass,
   Sparkles,
+  BookOpen,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -28,6 +29,7 @@ interface NavbarProps {
   onLogout: () => void;
   onSwitchToStudentSession?: (student: Student) => void;
   onOpenTour?: () => void;
+  onOpenGlossary?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -42,6 +44,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onLogout,
   onSwitchToStudentSession,
   onOpenTour,
+  onOpenGlossary,
 }) => {
   const currentStudent = students.find(s => s.id === currentStudentId) || students[0];
 
@@ -186,6 +189,19 @@ export const Navbar: React.FC<NavbarProps> = ({
                       else onTabChange('dashboard');
                     }}
                   />
+                )}
+
+                {/* Global Glossary Button */}
+                {onOpenGlossary && (
+                  <button
+                    type="button"
+                    onClick={onOpenGlossary}
+                    className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 bg-emerald-800/80 hover:bg-emerald-700 text-emerald-200 border border-emerald-600/50 rounded-xl text-xs font-black shadow-xs transition-all cursor-pointer shrink-0"
+                    title="Buka Kamus Mufrodat & Glosarium LMS"
+                  >
+                    <BookOpen size={14} className="text-emerald-300" />
+                    <span className="hidden sm:inline">Glosarium</span>
+                  </button>
                 )}
 
                 {/* Guided Tour Button for Siswa */}

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Penilaian, Student, QuizAttempt, Question } from '../../types';
-import { Clock, CheckCircle2, XCircle, Award, ArrowRight, ArrowLeft, RefreshCw, Sparkles, AlertTriangle, Hash, Calendar } from 'lucide-react';
+import { Clock, CheckCircle2, XCircle, Award, ArrowRight, ArrowLeft, RefreshCw, Sparkles, AlertTriangle, Hash, Calendar, Mic } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { VoiceAnswerInput } from '../common/VoiceAnswerInput';
 
 interface QuizRunnerProps {
   penilaian: Penilaian;
@@ -428,6 +429,25 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
                     />
                   </div>
                 )}
+
+                {/* Web Speech API Voice Answer Widget */}
+                <VoiceAnswerInput
+                  onTranscript={(text) => {
+                    // For essay/fill in blank or typed input, set user answer text
+                    if (!currentQ.options || currentQ.options.length === 0 || currentQ.type === 'essay' || currentQ.type === 'fill_in_blank') {
+                      handleSelectAnswer(text);
+                    }
+                  }}
+                  onOptionSelect={(optIdx) => {
+                    handleSelectAnswer(optIdx);
+                  }}
+                  options={currentQ.options}
+                  currentValue={String(userAnswers[currentQ.id] || '')}
+                  questionArabic={currentQ.questionArabic}
+                  questionText={currentQ.questionText}
+                  defaultLanguage={currentQ.questionArabic || penilaian.category === 'hiwar' || (currentQ.questionText && currentQ.questionText.toLowerCase().includes('arab')) ? 'ar-SA' : 'id-ID'}
+                  mode={currentQ.options && currentQ.options.length > 0 ? 'multiple_choice' : 'essay'}
+                />
               </div>
             )}
 

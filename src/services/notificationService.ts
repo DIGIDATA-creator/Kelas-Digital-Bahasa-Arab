@@ -1,6 +1,8 @@
 import { AppNotification } from '../types';
+import { storageService } from './storage';
 
 const NOTIF_STORAGE_PREFIX = 'lms_notifications_';
+const BROADCAST_STORAGE_KEY = 'lms_broadcast_notifications';
 
 const INITIAL_DEFAULT_NOTIFICATIONS: AppNotification[] = [
   {
@@ -79,6 +81,43 @@ export const notificationService = {
     return newNotif;
   },
 
+  addNotificationToAllStudents(
+    notif: Omit<AppNotification, 'id' | 'createdAt' | 'read'>
+  ): AppNotification {
+    const newNotif: AppNotification = {
+      ...notif,
+      id: 'notif-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+      createdAt: new Date().toISOString(),
+      read: false,
+    };
+
+    // 1. Get all students from storage
+    const students = storageService.getStudents();
+    students.forEach((std) => {
+      const list = this.getNotifications(std.id);
+      const updated = [newNotif, ...list];
+      this.saveNotifications(std.id, updated);
+    });
+
+    // 2. Also save to global broadcast list
+    const broadcastRaw = localStorage.getItem(BROADCAST_STORAGE_KEY);
+    let broadcastList: AppNotification[] = [];
+    if (broadcastRaw) {
+      try {
+        broadcastList = JSON.parse(broadcastRaw);
+      } catch {
+        broadcastList = [];
+      }
+    }
+    broadcastList = [newNotif, ...broadcastList];
+    localStorage.setItem(BROADCAST_STORAGE_KEY, JSON.stringify(broadcastList));
+
+    // Trigger web notification
+    this.triggerWebNotification(newNotif.title, newNotif.message);
+
+    return newNotif;
+  },
+
   markAsRead(studentId: string, notifId: string): AppNotification[] {
     const current = this.getNotifications(studentId);
     const updated = current.map(n => (n.id === notifId ? { ...n, read: true } : n));
@@ -117,3 +156,4 @@ export const notificationService = {
     }
   }
 };
+

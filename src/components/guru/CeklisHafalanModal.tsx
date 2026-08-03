@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Student, Materi, MahfudzotChecklist } from '../../types';
+import { notificationService } from '../../services/notificationService';
 import {
   X,
   Search,
@@ -280,6 +281,15 @@ export const CeklisHafalanModal: React.FC<CeklisHafalanModalProps> = ({
     };
 
     onSaveStudent(updatedStudent);
+
+    // Alert student that their setoran hafalan has been reviewed
+    notificationService.addNotification(student.id, {
+      title: '👑 Setoran Hafalan Diverifikasi Guru',
+      message: `Ustadz telah memverifikasi setoran hafalan Anda. Total XP Hafalan Anda: ${xpCalculation.totalHafalanXP} XP.`,
+      type: 'hafalan',
+      targetCategory: activeTab === 'mahfudzot' ? 'mahfudzot' : 'kosakata',
+    });
+
     setSavedSuccessMsg(true);
     setTimeout(() => {
       setSavedSuccessMsg(false);

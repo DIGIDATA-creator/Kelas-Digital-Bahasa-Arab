@@ -295,6 +295,52 @@ export const storageService = {
     return cachedStudents;
   },
 
+  checkAndUpdateStreak(studentId: string): { streakCount: number; bonusXP: number; isNewDay: boolean } {
+    const students = this.getStudents();
+    const student = students.find(s => s.id === studentId);
+    if (!student) return { streakCount: 0, bonusXP: 0, isNewDay: false };
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const lastDateStr = student.lastStreakDate || '';
+
+    if (lastDateStr === todayStr) {
+      return { streakCount: student.streakCount || 1, bonusXP: 0, isNewDay: false };
+    }
+
+    let currentStreak = student.streakCount || 0;
+    let bonusXP = 0;
+
+    if (lastDateStr) {
+      const lastDate = new Date(lastDateStr);
+      const todayDate = new Date(todayStr);
+      const diffTime = Math.abs(todayDate.getTime() - lastDate.getTime());
+      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 1) {
+        currentStreak += 1;
+        bonusXP = 15 + Math.min(currentStreak * 2, 50);
+      } else {
+        currentStreak = 1;
+        bonusXP = 10;
+      }
+    } else {
+      currentStreak = 1;
+      bonusXP = 10;
+    }
+
+    const updatedStudent: Student = {
+      ...student,
+      streakCount: currentStreak,
+      lastStreakDate: todayStr,
+      totalXP: (student.totalXP || 0) + bonusXP,
+    };
+
+    const updatedList = students.map(s => s.id === studentId ? updatedStudent : s);
+    this.saveStudents(updatedList);
+
+    return { streakCount: currentStreak, bonusXP, isNewDay: true };
+  },
+
   saveStudents(list: Student[]): void {
     cachedStudents = list;
     saveLocal(KEYS.STUDENTS, list);

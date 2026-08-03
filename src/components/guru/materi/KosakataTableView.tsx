@@ -329,7 +329,7 @@ export const KosakataTableView: React.FC<KosakataTableViewProps> = ({
                             : 'hover:bg-slate-50 transition-colors';
 
                           return (
-                            <tr key={item.id || idx} className={`${rowBgClass} transition-all`}>
+                            <tr key={`${item.id || 'item'}-${globalNum}`} className={`${rowBgClass} transition-all`}>
                               {/* Arabic Number Column (Positioned Rightmost in Arab Flow) */}
                               <td className={`py-1.5 px-2.5 text-center font-arabic font-bold text-xs border-r border-slate-100 ${
                                 isTeacherVerified
@@ -345,6 +345,30 @@ export const KosakataTableView: React.FC<KosakataTableViewProps> = ({
                               <td className="py-2 px-3 text-right font-arabic font-bold text-base">
                                 {displayMode === 'translation_only' ? (
                                   <span className="text-slate-300 tracking-widest text-xs select-none">••••••</span>
+                                ) : item.fiilMadhi || item.fiilMudhari || item.fiilAmr ? (
+                                  <div className="flex flex-col gap-1 dir-rtl text-right">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      {item.fiilMadhi && (
+                                        <span className="inline-flex items-center gap-1">
+                                          <span className="text-[10px] bg-amber-100 text-amber-900 px-1.5 py-0.2 rounded font-sans font-bold">الماضي</span>
+                                          <span className="font-arabic text-base font-extrabold text-amber-950">{item.fiilMadhi}</span>
+                                        </span>
+                                      )}
+                                      {item.fiilMudhari && (
+                                        <span className="inline-flex items-center gap-1">
+                                          <span className="text-[10px] bg-teal-100 text-teal-900 px-1.5 py-0.2 rounded font-sans font-bold">المضارع</span>
+                                          <span className="font-arabic text-base font-extrabold text-teal-950">{item.fiilMudhari}</span>
+                                        </span>
+                                      )}
+                                      {item.fiilAmr && (
+                                        <span className="inline-flex items-center gap-1">
+                                          <span className="text-[10px] bg-indigo-100 text-indigo-900 px-1.5 py-0.2 rounded font-sans font-bold">الأمر</span>
+                                          <span className="font-arabic text-base font-extrabold text-indigo-950">{item.fiilAmr}</span>
+                                        </span>
+                                      )}
+                                      <AudioPlayerButton arabicText={`${item.fiilMadhi || ''} ${item.fiilMudhari || ''} ${item.fiilAmr || ''}`} size="sm" />
+                                    </div>
+                                  </div>
                                 ) : (
                                   <div className="flex items-center gap-1.5 justify-start dir-rtl">
                                     <span>{item.word}</span>

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Materi, CategoryType, VocabularyItem } from '../../types';
 import { Plus, Edit3, Trash2, Eye, FileText, BookOpen, Quote, List, Sparkles, Play, Search, CheckCircle, MessageSquare, AlertTriangle, X, FileSpreadsheet } from 'lucide-react';
 import { PdfViewerModal } from '../common/PdfViewerModal';
+import { notificationService } from '../../services/notificationService';
 import { QowaidFormModal } from './materi/QowaidFormModal';
 import { HiwarFormModal } from './materi/HiwarFormModal';
 import { KosakataFormModal } from './materi/KosakataFormModal';
@@ -226,6 +227,15 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
         ...partial,
       };
       onSaveMateri([...materiList, newMateri]);
+
+      // Alert all students about newly published materi
+      notificationService.addNotificationToAllStudents({
+        title: `📚 Materi Baru Dipublikasikan: ${newMateri.title}`,
+        message: `Guru telah mempublikasikan materi baru Bab ${newMateri.babNumber || 1} (${newMateri.category.toUpperCase()}). Yuk pelajari sekarang!`,
+        type: 'materi',
+        targetId: newMateri.id,
+        targetCategory: newMateri.category,
+      });
     }
   };
 
