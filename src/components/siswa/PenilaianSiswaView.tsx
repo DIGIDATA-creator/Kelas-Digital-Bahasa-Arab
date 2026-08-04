@@ -199,54 +199,90 @@ export const PenilaianSiswaView: React.FC<PenilaianSiswaViewProps> = ({
                   Generator Kuis Kosakata Otomatis
                 </h3>
                 <p className="text-xs text-emerald-100/80">
-                  {kosakataConfig.quizMode === 'voice'
-                    ? 'Mode Kuis Suara: Siswa menjawab soal kosakata secara lisan menggunakan mikrofon (Web Speech API).'
-                    : 'Mode Pilihan Ganda: Soal acak dengan 1 jawaban benar, 2 jawaban salah bab/rentang sama, dan 1 jawaban salah bab lain.'}
+                  Pilih metode kuis (Pilihan Ganda atau Kuis Suara Lisan), cakupan bab, dan jumlah soal untuk mulai berlatih.
                 </p>
               </div>
             </div>
+          </div>
 
-            {/* Mode Selection Tabs (Pilihan Ganda vs Kuis Suara) */}
-            <div className="flex items-center bg-black/40 p-1 rounded-2xl border border-white/15 self-start sm:self-auto shrink-0">
+          {/* STEP 0: PROMINENT MODE SELECTION CARDS (Pilihan Ganda vs Kuis Suara) */}
+          <div className="space-y-2 relative z-10">
+            <label className="text-xs font-black uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
+              <Settings2 size={15} /> Pilih Metode Kuis Jawaban:
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={() => setKosakataConfig({ ...kosakataConfig, quizMode: 'multiple_choice' })}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                className={`p-3.5 rounded-2xl border text-left transition-all flex items-center gap-3.5 cursor-pointer ${
                   kosakataConfig.quizMode !== 'voice'
-                    ? 'bg-amber-400 text-slate-950 shadow-md font-extrabold'
-                    : 'text-white/80 hover:text-white'
+                    ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-lg ring-2 ring-amber-300/50'
+                    : 'bg-slate-900/70 hover:bg-slate-900 text-white border-white/15'
                 }`}
               >
-                <Layers size={14} />
-                <span>Pilihan Ganda</span>
+                <div className={`p-2.5 rounded-xl shrink-0 ${
+                  kosakataConfig.quizMode !== 'voice' ? 'bg-slate-950 text-amber-400' : 'bg-white/10 text-white'
+                }`}>
+                  <Layers size={20} />
+                </div>
+                <div>
+                  <div className="font-black text-sm flex items-center gap-2">
+                    <span>1. Pilihan Ganda (Opsi A, B, C, D)</span>
+                    {kosakataConfig.quizMode !== 'voice' && (
+                      <span className="px-2 py-0.5 bg-slate-950 text-amber-300 text-[10px] font-bold rounded-md">AKTIF</span>
+                    )}
+                  </div>
+                  <p className={`text-[11px] mt-0.5 ${
+                    kosakataConfig.quizMode !== 'voice' ? 'text-slate-800 font-medium' : 'text-slate-300'
+                  }`}>
+                    Memilih 1 dari 4 pilihan jawaban secara tertulis & visual.
+                  </p>
+                </div>
               </button>
+
               <button
                 type="button"
                 onClick={() => setKosakataConfig({ ...kosakataConfig, quizMode: 'voice' })}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                className={`p-3.5 rounded-2xl border text-left transition-all flex items-center gap-3.5 cursor-pointer ${
                   kosakataConfig.quizMode === 'voice'
-                    ? 'bg-amber-400 text-slate-950 shadow-md font-extrabold'
-                    : 'text-white/80 hover:text-white'
+                    ? 'bg-rose-500 text-white border-rose-400 shadow-lg ring-2 ring-rose-400/50'
+                    : 'bg-slate-900/70 hover:bg-slate-900 text-white border-white/15'
                 }`}
               >
-                <Mic size={14} className="text-rose-600 animate-pulse" />
-                <span>Kuis Suara (Web Speech)</span>
+                <div className={`p-2.5 rounded-xl shrink-0 ${
+                  kosakataConfig.quizMode === 'voice' ? 'bg-white text-rose-600' : 'bg-white/10 text-white'
+                }`}>
+                  <Mic size={20} className={kosakataConfig.quizMode === 'voice' ? 'animate-bounce' : ''} />
+                </div>
+                <div>
+                  <div className="font-black text-sm flex items-center gap-2">
+                    <span>2. Kuis Suara Lisan (Web Speech API)</span>
+                    {kosakataConfig.quizMode === 'voice' && (
+                      <span className="px-2 py-0.5 bg-white text-rose-700 text-[10px] font-extrabold rounded-md">AKTIF</span>
+                    )}
+                  </div>
+                  <p className={`text-[11px] mt-0.5 ${
+                    kosakataConfig.quizMode === 'voice' ? 'text-rose-100 font-medium' : 'text-slate-300'
+                  }`}>
+                    Menjawab langsung dengan suara mikrofon &amp; Verifikasi Hafalan (2x berturut-turut).
+                  </p>
+                </div>
               </button>
             </div>
           </div>
 
           {/* Voice Quiz Verification Banner */}
           {kosakataConfig.quizMode === 'voice' && (
-            <div className="p-3 bg-emerald-500/20 border border-emerald-400/40 rounded-2xl text-xs text-emerald-200 flex items-center gap-2.5 relative z-10">
-              <div className="p-1.5 bg-emerald-400 text-slate-950 rounded-xl font-bold shrink-0">
-                <Mic size={16} />
+            <div className="p-3.5 bg-rose-500/20 border border-rose-400/40 rounded-2xl text-xs text-rose-100 flex items-center gap-3 relative z-10 shadow-inner">
+              <div className="p-2 bg-rose-500 text-white rounded-xl font-bold shrink-0">
+                <Mic size={18} className="animate-pulse" />
               </div>
-              <div>
-                <span className="font-extrabold text-amber-300 block">
-                  ✨ Mode Verifikasi Hafalan Suara
+              <div className="space-y-0.5">
+                <span className="font-extrabold text-amber-300 block text-xs">
+                  ✨ Fitur Kuis Suara &amp; Verifikasi Hafalan Lisan
                 </span>
-                <span>
-                  Apabila siswa dapat menjawab dengan benar <strong>2 kali berturut-turut</strong> pada kuis suara ini, siswa otomatis mendapat <strong>Verifikasi Hafalan</strong>!
+                <span className="text-slate-200 block text-[11px]">
+                  Siswa mengucapkan jawaban ke mikrofon. Apabila menjawab benar <strong>2 kali berturut-turut</strong> pada kosakata yang sama, siswa otomatis mendapat <strong>Verifikasi Hafalan Kuis</strong>!
                 </span>
               </div>
             </div>
@@ -416,10 +452,22 @@ export const PenilaianSiswaView: React.FC<PenilaianSiswaViewProps> = ({
             <button
               type="button"
               onClick={handleLaunchDynamicKosakataQuiz}
-              className="w-full sm:w-auto px-6 py-3.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm rounded-2xl shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-2 cursor-pointer group"
+              className={`w-full sm:w-auto px-6 py-3.5 font-black text-sm rounded-2xl shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-2 cursor-pointer group ${
+                kosakataConfig.quizMode === 'voice'
+                  ? 'bg-rose-500 hover:bg-rose-400 text-white'
+                  : 'bg-amber-400 hover:bg-amber-300 text-slate-950'
+              }`}
             >
-              <Play size={18} className="fill-slate-950 group-hover:scale-110 transition-transform" />
-              <span>Mulai Kuis Kosakata Interaktif Sekarang</span>
+              {kosakataConfig.quizMode === 'voice' ? (
+                <Mic size={18} className="animate-pulse" />
+              ) : (
+                <Play size={18} className="fill-slate-950 group-hover:scale-110 transition-transform" />
+              )}
+              <span>
+                {kosakataConfig.quizMode === 'voice'
+                  ? `Mulai Kuis Suara Kosakata (${kosakataConfig.questionCount} Soal - Web Speech)`
+                  : `Mulai Kuis Pilihan Ganda (${kosakataConfig.questionCount} Soal)`}
+              </span>
             </button>
           </div>
         </div>
