@@ -155,9 +155,15 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({
           </div>
           <button
             onClick={() => onNavigate('siswa')}
-            className="text-xs font-bold text-emerald-600 hover:text-emerald-700 hover:underline shrink-0 hidden sm:flex items-center gap-1"
+            className="text-xs font-bold text-emerald-600 hover:text-emerald-700 hover:underline shrink-0 hidden sm:flex items-center gap-1.5 cursor-pointer"
           >
-            Lihat Semua Data Siswa <ArrowRight size={13} />
+            <span>Lihat Semua Data Siswa</span>
+            {students.filter(s => s.status === 'pending').length > 0 && (
+              <span className="px-1.5 py-0.5 bg-rose-600 text-white font-black text-[10px] rounded-full shadow-xs">
+                {students.filter(s => s.status === 'pending').length} baru
+              </span>
+            )}
+            <ArrowRight size={13} />
           </button>
         </div>
 

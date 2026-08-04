@@ -271,8 +271,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                   >
                     <span>{tab.label}</span>
                     {showBadge && (
-                      <span className="px-1.5 py-0.5 bg-rose-500 text-white font-black text-[10px] rounded-full shadow-md animate-pulse shrink-0">
-                        {pendingCount}
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-rose-600 text-white font-black text-[10px] rounded-full shadow-md animate-bounce shrink-0 ring-2 ring-rose-900/50">
+                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                        <span>{pendingCount}</span>
                       </span>
                     )}
                   </button>
