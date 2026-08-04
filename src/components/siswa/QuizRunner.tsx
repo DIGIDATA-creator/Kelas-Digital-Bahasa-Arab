@@ -4,6 +4,7 @@ import { Penilaian, Student, QuizAttempt, Question } from '../../types';
 import { Clock, CheckCircle2, XCircle, Award, ArrowRight, ArrowLeft, RefreshCw, Sparkles, AlertTriangle, Hash, Calendar, Mic, Volume2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { VoiceAnswerInput } from '../common/VoiceAnswerInput';
+import { normalizeArabicSpeechText } from '../../utils/pronunciationEvaluator';
 
 interface QuizRunnerProps {
   penilaian: Penilaian;
@@ -152,14 +153,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
   // Helper for normalizing Arabic & Indonesian text
   const normalizeText = (str: any): string => {
     if (str === null || str === undefined) return '';
-    return String(str)
-      .replace(/[\u064B-\u065F\u0670]/g, '') // strip Arabic diacritics
-      .replace(/[أإآء]/g, 'ا')
-      .replace(/ى/g, 'ي')
-      .replace(/ة/g, 'ه')
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, ' ');
+    return normalizeArabicSpeechText(String(str));
   };
 
   const getAnswerAnalysis = (q: Question, uAns: any) => {
@@ -440,6 +434,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
                     </div>
 
                     <VoiceAnswerInput
+                      key={currentQ.id}
                       onTranscript={(text) => {
                         handleSelectAnswer(text);
                       }}
@@ -515,6 +510,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
                         />
 
                         <VoiceAnswerInput
+                          key={currentQ.id}
                           onTranscript={(text) => {
                             handleSelectAnswer(text);
                           }}

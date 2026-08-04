@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Mic, MicOff, Volume2, Globe, Sparkles, Check, AlertCircle, RefreshCw, Award, Trophy, Edit3, Keyboard, Info } from 'lucide-react';
-import { evaluatePronunciationScore, PronunciationEvaluation } from '../../utils/pronunciationEvaluator';
+import { evaluatePronunciationScore, normalizeArabicSpeechText, PronunciationEvaluation } from '../../utils/pronunciationEvaluator';
 
 interface VoiceAnswerInputProps {
   onTranscript: (text: string) => void;
@@ -41,10 +41,14 @@ export const VoiceAnswerInput: React.FC<VoiceAnswerInputProps> = ({
   // Check Web Speech API Support
   const isSpeechSupported = typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
 
-  // Sync transcript state when currentValue prop changes
+  // Sync transcript state and reset evaluation when question or currentValue prop changes
   useEffect(() => {
     setTranscript(currentValue || '');
-    if (currentValue) {
+    setInterimText('');
+    setErrorMessage(null);
+    setMatchFoundNotice(null);
+
+    if (currentValue && currentValue.trim()) {
       const targetAnswer = questionArabic || questionText || (options && options.length > 0 ? options[0] : '');
       const evalRes = evaluatePronunciationScore(currentValue, targetAnswer);
       setPronunciationEval(evalRes);
@@ -192,7 +196,8 @@ export const VoiceAnswerInput: React.FC<VoiceAnswerInputProps> = ({
 
   // Helper to match spoken answer with Multiple Choice options
   const matchOptionWithSpeech = (speechText: string, opts: string[]) => {
-    const normSpeech = speechText.toLowerCase().replace(/[\u064B-\u065F\u0670]/g, '').trim();
+    const rawNormSpeech = speechText.toLowerCase().trim();
+    const normSpeechArabic = normalizeArabicSpeechText(speechText);
 
     // 1. Check for spoken choice indicators (e.g. "pilihan A", "opsi B", "A", "B", "C", "D")
     const letterMatches: Record<string, number> = {
@@ -202,10 +207,10 @@ export const VoiceAnswerInput: React.FC<VoiceAnswerInputProps> = ({
       'd': 3, 'pilihan d': 3, 'opsi d': 3, 'jawaban d': 3, 'nomor d': 3, 'د': 3,
     };
 
-    if (letterMatches[normSpeech] !== undefined && letterMatches[normSpeech] < opts.length) {
-      const idx = letterMatches[normSpeech];
+    if (letterMatches[rawNormSpeech] !== undefined && letterMatches[rawNormSpeech] < opts.length) {
+      const idx = letterMatches[rawNormSpeech];
       onOptionSelect!(idx);
-      setMatchFoundNotice(`Terdeteksi pilihan Opsi ${String.fromCharCode(65 + idx)} (${opts[idx]})`);
+      setMatchFoundNotice(`Terdeteksi jawaban: "${opts[idx]}"`);
       return;
     }
 
@@ -214,11 +219,17 @@ export const VoiceAnswerInput: React.FC<VoiceAnswerInputProps> = ({
     let highestSim = 0;
 
     opts.forEach((optText, idx) => {
-      const normOpt = optText.toLowerCase().replace(/[\u064B-\u065F\u0670]/g, '').trim();
-      if (normOpt === normSpeech) {
+      const normOptArabic = normalizeArabicSpeechText(optText);
+      const normOptRaw = optText.toLowerCase().trim();
+
+      if (normOptArabic === normSpeechArabic || normOptRaw === rawNormSpeech) {
         bestIdx = idx;
         highestSim = 100;
-      } else if (normSpeech.includes(normOpt) || normOpt.includes(normSpeech)) {
+      } else if (
+        (normSpeechArabic && normOptArabic && (normSpeechArabic.includes(normOptArabic) || normOptArabic.includes(normSpeechArabic))) ||
+        rawNormSpeech.includes(normOptRaw) ||
+        normOptRaw.includes(rawNormSpeech)
+      ) {
         if (highestSim < 80) {
           bestIdx = idx;
           highestSim = 80;
@@ -228,7 +239,7 @@ export const VoiceAnswerInput: React.FC<VoiceAnswerInputProps> = ({
 
     if (bestIdx !== -1 && onOptionSelect) {
       onOptionSelect(bestIdx);
-      setMatchFoundNotice(`Terpilih otomatis: Opsi ${String.fromCharCode(65 + bestIdx)} (${opts[bestIdx]})`);
+      setMatchFoundNotice(`Terdeteksi jawaban: "${opts[bestIdx]}"`);
     }
   };
 

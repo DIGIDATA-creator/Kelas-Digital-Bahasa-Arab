@@ -6,14 +6,41 @@
 // Helper to strip diacritics and normalize text for comparison
 export const normalizeArabicSpeechText = (text: string): string => {
   if (!text) return '';
-  return text
-    .replace(/[\u064B-\u065F\u0670]/g, '') // strip harakat/diacritics
-    .replace(/[أإآء]/g, 'ا') // normalize alef variants
+  
+  return String(text)
+    // 1. Strip all Arabic diacritics / harakat
+    .replace(/[\u064B-\u065F\u0670]/g, '')
+    // 2. Normalize alef and hamza variants
+    .replace(/[أإآءئؤ]/g, 'ا')
     .replace(/ى/g, 'ي')
-    .replace(/ة/g, 'ه')
+    // 3. Process each word individually to normalize speech recognition artifacts for tanwin & ta marbutah
+    .split(/\s+/)
+    .map(word => {
+      let w = word.trim();
+      if (!w) return '';
+
+      // Normalize ta marbutah + tanwin nun artifacts at word end
+      // (e.g. مدرستن, مدرسهن, مدرسةن, مدرسته -> مدرسه)
+      w = w.replace(/(تن|هن|ةن|ته|هت)$/g, 'ه');
+
+      // Normalize trailing nun or waw-nun from dammah tanwin / tanwin phonetics
+      // (e.g. كتابن -> كتاب, مدرسن -> مدرس, كتابون -> كتاب)
+      if (w.length > 2 && w.endsWith('ون')) {
+        w = w.slice(0, -2);
+      } else if (w.length > 2 && w.endsWith('ن')) {
+        w = w.slice(0, -1);
+      }
+
+      // Normalize word-ending Ta Marbutah / Ta / Ha equivalence
+      // (e.g. مدرسة / مدرسه / مدرست -> مدرسه)
+      w = w.replace(/([ةت])$/g, 'ه');
+
+      return w;
+    })
+    .filter(Boolean)
+    .join(' ')
     .toLowerCase()
-    .trim()
-    .replace(/\s+/g, ' ');
+    .trim();
 };
 
 export interface PronunciationEvaluation {
