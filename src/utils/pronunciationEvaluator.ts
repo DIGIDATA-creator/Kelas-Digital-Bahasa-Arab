@@ -97,8 +97,10 @@ export const evaluatePronunciationScore = (
 
   const wordMatchRatio = expectedWords.length > 0 ? (matchedWordsCount / expectedWords.length) : 0;
   
-  // Calculate character distance
-  const charSimilarity = calculateLevenshteinSimilarity(normSpoken, normExpected);
+  // Calculate character distance using Levenshtein distance
+  const dist = getLevenshteinDistance(normSpoken, normExpected);
+  const maxLen = Math.max(normSpoken.length, normExpected.length, 1);
+  const charSimilarity = Math.max(0, (maxLen - dist) / maxLen);
 
   // Weighted score
   const finalScore = Math.round(wordMatchRatio * 60 + charSimilarity * 40);
@@ -152,12 +154,21 @@ const getEvaluationTier = (score: number, matchedCount: number, totalCount: numb
   }
 };
 
-function calculateLevenshteinSimilarity(str1: string, str2: string): number {
-  if (str1 === str2) return 1;
-  if (!str1 || !str2) return 0;
+export interface LevenshteinAnalysisResult {
+  distance: number;
+  similarityPercentage: number;
+  spokenNorm: string;
+  expectedNorm: string;
+  errorFeedbackTips: string[];
+}
 
-  const len1 = str1.length;
-  const len2 = str2.length;
+export const getLevenshteinDistance = (a: string, b: string): number => {
+  if (a === b) return 0;
+  if (!a) return b.length;
+  if (!b) return a.length;
+
+  const len1 = a.length;
+  const len2 = b.length;
   const matrix: number[][] = [];
 
   for (let i = 0; i <= len1; i++) matrix[i] = [i];
@@ -165,7 +176,7 @@ function calculateLevenshteinSimilarity(str1: string, str2: string): number {
 
   for (let i = 1; i <= len1; i++) {
     for (let j = 1; j <= len2; j++) {
-      const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
       matrix[i][j] = Math.min(
         matrix[i - 1][j] + 1,
         matrix[i][j - 1] + 1,
@@ -174,7 +185,65 @@ function calculateLevenshteinSimilarity(str1: string, str2: string): number {
     }
   }
 
-  const dist = matrix[len1][len2];
-  const maxLen = Math.max(len1, len2);
-  return Math.max(0, (maxLen - dist) / maxLen);
-}
+  return matrix[len1][len2];
+};
+
+export const analyzePronunciationError = (
+  spokenText: string,
+  expectedText: string
+): LevenshteinAnalysisResult => {
+  const spokenNorm = normalizeArabicSpeechText(spokenText);
+  const expectedNorm = normalizeArabicSpeechText(expectedText);
+
+  const dist = getLevenshteinDistance(spokenNorm, expectedNorm);
+  const maxLen = Math.max(spokenNorm.length, expectedNorm.length, 1);
+  const similarityPercentage = Math.max(0, Math.round(((maxLen - dist) / maxLen) * 100));
+
+  const tips: string[] = [];
+
+  if (spokenNorm === expectedNorm) {
+    return {
+      distance: 0,
+      similarityPercentage: 100,
+      spokenNorm,
+      expectedNorm,
+      errorFeedbackTips: ['Pelafalan sesuai sempurna dengan teks target.'],
+    };
+  }
+
+  // 1. Check for Ta Marbutah / Ha ending
+  if (/[ةهت]$/.test(expectedText) || /[ةهت]$/.test(expectedNorm)) {
+    if (!/[ةهت]$/.test(spokenNorm)) {
+      tips.push('Akhiran Ta Marbutah (ة/ه): Pastikan menghembuskan bunyi "h" atau "at" jelas di akhir kata.');
+    }
+  }
+
+  // 2. Check for Dlommah Tanwin / Nun Sukun (un sound)
+  if (/[\u064C]/.test(expectedText) || /un$/i.test(expectedText) || expectedText.includes('tanwin')) {
+    tips.push('Dlommah Tanwin ( ٌ / un ): Ucapkan vokal "un" artikulatif tanpa menahan bunyi nun sukun terlalu panjang.');
+  }
+
+  // 3. Length / word count difference
+  const spokenWords = spokenNorm.split(' ').filter(Boolean);
+  const expectedWords = expectedNorm.split(' ').filter(Boolean);
+  if (spokenWords.length < expectedWords.length) {
+    tips.push(`Ada kata yang terlewat (${expectedWords.length - spokenWords.length} kata belum terucap).`);
+  } else if (spokenWords.length > expectedWords.length) {
+    tips.push('Terdeteksi suara tambahan di luar kata target.');
+  }
+
+  // 4. Distance based general tip
+  if (dist > 0 && dist <= 3) {
+    tips.push(`Hanya terdapat perbedaan ${dist} karakter/bunyi fonetik.`);
+  } else if (dist > 3) {
+    tips.push('Pelafalan cukup jauh dari target. Coba dengarkan audio contoh lalu ucapkan kembali.');
+  }
+
+  return {
+    distance: dist,
+    similarityPercentage,
+    spokenNorm,
+    expectedNorm,
+    errorFeedbackTips: tips,
+  };
+};

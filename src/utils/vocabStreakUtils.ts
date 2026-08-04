@@ -1,7 +1,8 @@
 import { Student, Question, Materi, Penilaian, VocabularyItem } from '../types';
 
 export interface VocabVerificationResult {
-  quizVerifiedKosakata: Record<string, boolean>; // vocabId -> boolean
+  quizVerifiedKosakata: Record<string, boolean>; // vocabId -> boolean (General Quiz Verified)
+  voiceVerifiedKosakata: Record<string, boolean>; // vocabId -> boolean (Verified via Kuis Suara 2x berturut-turut 2 sisi)
   quizKosakataStreaks: Record<string, number>;  // vocabId -> streak count
 }
 
@@ -47,6 +48,25 @@ export function matchQuestionToVocabId(
 }
 
 /**
+ * Determines question direction (indo_arab or arab_indo)
+ */
+export function getQuestionLanguageDirection(q: Question, vocab?: VocabularyItem): 'indo_arab' | 'arab_indo' {
+  const text = (q.questionText || '').toLowerCase();
+  if (text.includes('bahasa arab') || text.includes('mufradat')) {
+    return 'indo_arab';
+  }
+  if (text.includes('terjemahan') || text.includes('indonesia')) {
+    return 'arab_indo';
+  }
+  if (vocab) {
+    const cleanCorr = cleanArabicOrIndo(String(q.correctAnswer));
+    const cleanWord = cleanArabicOrIndo(vocab.word);
+    if (cleanCorr === cleanWord) return 'indo_arab';
+  }
+  return 'arab_indo';
+}
+
+/**
  * Determines if the student's answer for a question was correct
  */
 
@@ -80,6 +100,7 @@ function isAnswerCorrect(q: Question, userAns: any): boolean {
  * 
  * Rules specified by user:
  * - 1 Vocabulary Item is VERIFIED via Quiz if student answers correctly in quizzes 3 times consecutively (streak >= 3).
+ * - For VOICE QUIZ: Student must answer correctly 2 times consecutively covering BOTH language sides (Indo-Arab & Arab-Indo).
  * - If the vocabulary item does NOT appear in a quiz, that quiz attempt is IGNORED for that item (streak is preserved).
  * - If the vocabulary item APPEARS in a quiz and the student gets it WRONG, the streak for that vocabulary item RESETS to 0.
  */
@@ -89,10 +110,11 @@ export function calculateStudentVocabStreaks(
   penilaianList: Penilaian[]
 ): VocabVerificationResult {
   const quizVerifiedKosakata: Record<string, boolean> = {};
+  const voiceVerifiedKosakata: Record<string, boolean> = {};
   const quizKosakataStreaks: Record<string, number> = {};
 
   if (!student || !student.attempts || student.attempts.length === 0) {
-    return { quizVerifiedKosakata, quizKosakataStreaks };
+    return { quizVerifiedKosakata, voiceVerifiedKosakata, quizKosakataStreaks };
   }
 
   // Gather all vocabularies
@@ -104,7 +126,7 @@ export function calculateStudentVocabStreaks(
   });
 
   if (allVocabs.length === 0) {
-    return { quizVerifiedKosakata, quizKosakataStreaks };
+    return { quizVerifiedKosakata, voiceVerifiedKosakata, quizKosakataStreaks };
   }
 
   // Sort attempts by completedAt ascending
@@ -113,10 +135,11 @@ export function calculateStudentVocabStreaks(
   );
 
   const streakMap: Record<string, number> = {};
+  const voiceStreakMap: Record<string, number> = {};
+  const voiceDirectionsMap: Record<string, Set<'indo_arab' | 'arab_indo'>> = {};
 
   sortedAttempts.forEach(attempt => {
     const isVoiceQuiz = attempt.mode === 'voice' || (attempt.penilaianTitle && attempt.penilaianTitle.toLowerCase().includes('suara'));
-    const targetStreakThreshold = isVoiceQuiz ? 2 : 3;
 
     // Find matching penilaian or use attempt seen questions
     const penilaian = penilaianList.find(p => p.id === attempt.penilaianId || p.title === attempt.penilaianTitle);
@@ -132,24 +155,51 @@ export function calculateStudentVocabStreaks(
       if (!vocabId || evaluatedInThisAttempt.has(vocabId)) return;
 
       evaluatedInThisAttempt.add(vocabId);
+      const matchedVocab = allVocabs.find(v => v.id === vocabId);
 
       const userAns = attempt.answers?.[q.id];
       const correct = isAnswerCorrect(q, userAns);
 
       if (correct) {
+        // Standard streak count
         const currentStreak = (streakMap[vocabId] || 0) + 1;
         streakMap[vocabId] = currentStreak;
-        if (currentStreak >= targetStreakThreshold) {
+
+        if (currentStreak >= 3) {
           quizVerifiedKosakata[vocabId] = true;
+        }
+
+        // Voice specific verification tracking
+        if (isVoiceQuiz) {
+          const dir = getQuestionLanguageDirection(q, matchedVocab);
+          const currentVoiceStreak = (voiceStreakMap[vocabId] || 0) + 1;
+          voiceStreakMap[vocabId] = currentVoiceStreak;
+
+          if (!voiceDirectionsMap[vocabId]) {
+            voiceDirectionsMap[vocabId] = new Set();
+          }
+          voiceDirectionsMap[vocabId].add(dir);
+
+          // Check if answered 2+ times consecutively covering BOTH sides
+          if (currentVoiceStreak >= 2 && voiceDirectionsMap[vocabId].has('indo_arab') && voiceDirectionsMap[vocabId].has('arab_indo')) {
+            voiceVerifiedKosakata[vocabId] = true;
+            quizVerifiedKosakata[vocabId] = true;
+          }
         }
       } else {
         // Reset streak to 0 on wrong answer
         streakMap[vocabId] = 0;
         quizVerifiedKosakata[vocabId] = false;
+
+        if (isVoiceQuiz) {
+          voiceStreakMap[vocabId] = 0;
+          voiceDirectionsMap[vocabId] = new Set();
+          voiceVerifiedKosakata[vocabId] = false;
+        }
       }
     });
   });
 
   Object.assign(quizKosakataStreaks, streakMap);
-  return { quizVerifiedKosakata, quizKosakataStreaks };
+  return { quizVerifiedKosakata, voiceVerifiedKosakata, quizKosakataStreaks };
 }

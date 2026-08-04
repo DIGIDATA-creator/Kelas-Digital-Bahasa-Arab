@@ -647,6 +647,7 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
                     teacherKosakataState={currentStudent.hafalanProgress?.kosakataIds || {}}
                     selfKosakataState={currentStudent.hafalanProgress?.selfKosakataIds || {}}
                     quizKosakataState={vocabStreakResult.quizVerifiedKosakata}
+                    voiceKosakataState={vocabStreakResult.voiceVerifiedKosakata}
                     quizKosakataStreaks={vocabStreakResult.quizKosakataStreaks}
                     onToggleSelfKosakata={handleToggleSelfKosakata}
                   />
@@ -881,6 +882,7 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
                     teacherKosakataState={currentStudent.hafalanProgress?.kosakataIds}
                     selfKosakataState={currentStudent.hafalanProgress?.selfKosakataIds}
                     quizKosakataState={vocabStreakResult.quizVerifiedKosakata}
+                    voiceKosakataState={vocabStreakResult.voiceVerifiedKosakata}
                     quizKosakataStreaks={vocabStreakResult.quizKosakataStreaks}
                     onToggleSelfKosakata={handleToggleSelfKosakata}
                     onLaunchFlashcard={() => {

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Penilaian, Student, QuizAttempt, AssessmentType, CategoryType, Materi } from '../../types';
-import { Clock, Play, CheckCircle2, Award, FileCheck2, AlertCircle, Sparkles, BookOpen, Layers, MessageSquare, Quote, ArrowRight, Zap, RefreshCw, Settings2, Mic, Volume2 } from 'lucide-react';
+import { Clock, Play, CheckCircle2, Award, FileCheck2, AlertCircle, Sparkles, BookOpen, Layers, MessageSquare, Quote, ArrowRight, Zap, RefreshCw, Settings2, Mic, Volume2, ShieldCheck, ShieldAlert, Info } from 'lucide-react';
 import { QuizRunner } from './QuizRunner';
 import { generateDynamicKosakataQuiz, KosakataQuizConfig } from './KosakataQuizGenerator';
 import { generateDynamicMahfudzotQuiz, MahfudzotQuizConfig } from './MahfudzotQuizGenerator';
@@ -32,7 +32,18 @@ export const PenilaianSiswaView: React.FC<PenilaianSiswaViewProps> = ({
     questionCount: 10,
   });
 
-  // Dynamic Mahfudzot Quiz Config State
+  const [micStatusState, setMicStatusState] = useState<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown');
+
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && navigator.permissions && navigator.permissions.query) {
+      navigator.permissions.query({ name: 'microphone' as PermissionName })
+        .then((perm) => {
+          setMicStatusState(perm.state as any);
+          perm.onchange = () => setMicStatusState(perm.state as any);
+        })
+        .catch(() => setMicStatusState('unknown'));
+    }
+  }, []);
   const [mahfudzotConfig, setMahfudzotConfig] = useState<MahfudzotQuizConfig>({
     scopeType: 'all',
     rangeStartNum: 1,
@@ -443,10 +454,33 @@ export const PenilaianSiswaView: React.FC<PenilaianSiswaViewProps> = ({
 
           </div>
 
-          {/* Action Trigger Button */}
+          {/* Action Trigger Button & Microphone Status Indicator */}
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-white/10 relative z-10">
-            <div className="text-xs text-emerald-200/90 font-medium">
-              ✨ Soal diacak otomatis setiap sesi. Pilihan jawaban benar & salah bervariasi antar siswa.
+            <div className="text-xs space-y-1">
+              <div className="text-emerald-200/90 font-medium">
+                ✨ Soal diacak otomatis setiap sesi. Pilihan jawaban benar &amp; salah bervariasi antar siswa.
+              </div>
+
+              {kosakataConfig.quizMode === 'voice' && (
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 rounded-xl border border-white/20 text-xs font-bold mt-1">
+                  {micStatusState === 'granted' ? (
+                    <span className="flex items-center gap-1.5 text-emerald-300">
+                      <ShieldCheck size={15} className="text-emerald-400" />
+                      Status Izin Mikrofon: Diberikan (Siap Digunakan)
+                    </span>
+                  ) : micStatusState === 'denied' ? (
+                    <span className="flex items-center gap-1.5 text-rose-300">
+                      <ShieldAlert size={15} className="text-rose-400 animate-pulse" />
+                      Status Izin Mikrofon: Ditolak di Browser (Izinkan via Ikon Gembok)
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1.5 text-amber-300">
+                      <Info size={15} className="text-amber-400" />
+                      Status Izin Mikrofon: Perlu Akses (Izinkan saat diminta)
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
             <button

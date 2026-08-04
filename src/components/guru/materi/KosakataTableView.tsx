@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { VocabularyItem } from '../../../types';
 import { toArabicNumber } from '../../common/ArabicUtils';
 import { AudioPlayerButton } from '../../common/AudioPlayerButton';
-import { Eye, EyeOff, Layers, ChevronDown, ChevronUp, Edit3, Trash2, Plus, FileSpreadsheet, Play, LayoutGrid, CheckCircle2, Bookmark, Check, Award, Crown, Target, X } from 'lucide-react';
+import { Eye, EyeOff, Layers, ChevronDown, ChevronUp, Edit3, Trash2, Plus, FileSpreadsheet, Play, LayoutGrid, CheckCircle2, Bookmark, Check, Award, Crown, Target, X, Mic } from 'lucide-react';
 
 interface KosakataTableViewProps {
   title: string;
@@ -18,6 +18,7 @@ interface KosakataTableViewProps {
   teacherKosakataState?: Record<string, boolean>;
   selfKosakataState?: Record<string, boolean>;
   quizKosakataState?: Record<string, boolean>;
+  voiceKosakataState?: Record<string, boolean>;
   quizKosakataStreaks?: Record<string, number>;
   onToggleSelfKosakata?: (vocabId: string) => void;
 }
@@ -36,6 +37,7 @@ export const KosakataTableView: React.FC<KosakataTableViewProps> = ({
   teacherKosakataState,
   selfKosakataState,
   quizKosakataState,
+  voiceKosakataState,
   quizKosakataStreaks,
   onToggleSelfKosakata,
 }) => {
@@ -323,6 +325,7 @@ export const KosakataTableView: React.FC<KosakataTableViewProps> = ({
                           const globalNum = globalOffset + idx + 1;
                           const arabicNum = toArabicNumber(globalNum);
                           const isTeacherVerified = !!teacherKosakataState?.[item.id];
+                          const isVoiceVerified = !!voiceKosakataState?.[item.id];
                           const isQuizVerified = !!quizKosakataState?.[item.id];
                           const isSelfMarked = !!selfKosakataState?.[item.id];
                           const streakCount = quizKosakataStreaks?.[item.id] || 0;
@@ -410,8 +413,18 @@ export const KosakataTableView: React.FC<KosakataTableViewProps> = ({
                                       </span>
                                     )}
 
-                                    {/* 2. Quiz Verification Badge (Icon Only - Distinct Badge for Quiz) */}
-                                    {isQuizVerified && (
+                                    {/* 2. Voice Quiz Verification Badge (Distinct Mic Icon for Voice Quiz) */}
+                                    {isVoiceVerified && (
+                                      <span
+                                        className="p-1 bg-indigo-100 text-indigo-900 rounded-md border border-indigo-300 shadow-2xs inline-flex items-center justify-center cursor-help transition-transform hover:scale-110"
+                                        title="Verified Kuis Suara (Benar 2x Berturut-turut 2 Sisi Bahasa Indo-Arab & Arab-Indo)"
+                                      >
+                                        <Mic size={12} className="fill-indigo-600 text-indigo-700" />
+                                      </span>
+                                    )}
+
+                                    {/* 3. General Quiz Verification Badge */}
+                                    {isQuizVerified && !isVoiceVerified && (
                                       <span
                                         className="p-1 bg-emerald-100 text-emerald-900 rounded-md border border-emerald-300 shadow-2xs inline-flex items-center justify-center cursor-help transition-transform hover:scale-110"
                                         title={`Verified Kuis (${streakCount >= 3 ? streakCount : 3}x Consecutive Benar)`}

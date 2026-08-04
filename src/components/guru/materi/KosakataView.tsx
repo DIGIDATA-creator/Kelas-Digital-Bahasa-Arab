@@ -15,6 +15,7 @@ interface KosakataViewProps {
   teacherKosakataState?: Record<string, boolean>;
   selfKosakataState?: Record<string, boolean>;
   quizKosakataState?: Record<string, boolean>;
+  voiceKosakataState?: Record<string, boolean>;
   quizKosakataStreaks?: Record<string, number>;
   onToggleSelfKosakata?: (vocabId: string) => void;
 }
@@ -30,6 +31,7 @@ export const KosakataView: React.FC<KosakataViewProps> = ({
   teacherKosakataState,
   selfKosakataState,
   quizKosakataState,
+  voiceKosakataState,
   quizKosakataStreaks,
   onToggleSelfKosakata,
 }) => {
@@ -367,6 +369,7 @@ export const KosakataView: React.FC<KosakataViewProps> = ({
                 teacherKosakataState={teacherKosakataState}
                 selfKosakataState={selfKosakataState}
                 quizKosakataState={quizKosakataState}
+                voiceKosakataState={voiceKosakataState}
                 quizKosakataStreaks={quizKosakataStreaks}
                 onToggleSelfKosakata={onToggleSelfKosakata}
               />
