@@ -642,13 +642,17 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
               <PendaftaranSiswaForm
                 existingStudents={students}
+                isLoading={isLoading}
                 onRegisterSubmit={async (data) => {
+                  setIsLoading(true);
+                  setErrorMsg('');
+                  setSuccessMsg('');
                   try {
                     if (data.password) {
                       try {
                         await registerUser(data.email, data.password, data.name);
                       } catch (fbErr: any) {
-                        console.warn("Firebase register skipped/handled:", fbErr);
+                        console.warn("Firebase register handled:", fbErr?.message || fbErr);
                       }
                     }
 
@@ -676,13 +680,15 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
                     const result = await storageService.addStudent(newStudent);
                     if (result.success) {
-                      setSuccessMsg('Pendaftaran siswa baru berhasil dikirim! Menunggu persetujuan (ACC) dari Guru.');
-                      setTimeout(() => setActiveTab('login'), 2000);
+                      setSuccessMsg('Pendaftaran siswa baru berhasil dikirim ke database cloud Firestore! Menunggu persetujuan (ACC) dari Guru.');
+                      setTimeout(() => setActiveTab('login'), 2200);
                     } else {
                       setErrorMsg(result.message || 'Gagal mendaftar. Silakan coba beberapa saat lagi.');
                     }
                   } catch (err: any) {
                     setErrorMsg(err.message || 'Gagal mendaftar. Silakan coba beberapa saat lagi.');
+                  } finally {
+                    setIsLoading(false);
                   }
                 }}
               />

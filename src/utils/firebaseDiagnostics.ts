@@ -36,16 +36,32 @@ export async function runFirebaseDiagnostics() {
   let firestoreStatus = 'UNKNOWN';
   try {
     const testDocRef = doc(db, 'app_collections', 'materi');
-    const docSnap = await getDoc(testDocRef);
+    let docSnap;
+    try {
+      docSnap = await getDoc(testDocRef);
+    } catch (firstErr: any) {
+      if (firstErr?.code === 'unavailable' || firstErr?.message?.includes('offline')) {
+        console.warn('🔄 Initial Firestore connection establishing, retrying in 1.5s...');
+        await new Promise(r => setTimeout(r, 1500));
+        docSnap = await getDoc(testDocRef);
+      } else {
+        throw firstErr;
+      }
+    }
     firestoreStatus = '✅ CONNECTED (Doc exists: ' + docSnap.exists() + ')';
     console.log('📊 3. FIRESTORE DATABASE STATUS:', firestoreStatus);
   } catch (err: any) {
-    firestoreStatus = `❌ ERROR (${err?.code || 'UNKNOWN'}): ${err?.message || err}`;
-    console.error('📊 3. FIRESTORE DATABASE ERROR:', firestoreStatus);
-    if (err?.message?.includes('Database') && err?.message?.includes('not found')) {
-      console.warn('💡 ACTION REQUIRED: Firestore database not created or database ID mismatch. Ensure default Firestore database is provisioned in Firebase Console for project:', options.projectId);
-    } else if (err?.code === 'permission-denied') {
-      console.warn('💡 PERMISSION DENIED: Check firestore.rules security rules or Auth token status.');
+    if (err?.code === 'unavailable' || err?.message?.includes('offline')) {
+      firestoreStatus = '⚠️ ONLINE PENDING (Client initializing or offline cache active)';
+      console.warn('📊 3. FIRESTORE DATABASE STATUS:', firestoreStatus, '- Data will automatically sync when connection is live.');
+    } else {
+      firestoreStatus = `❌ ERROR (${err?.code || 'UNKNOWN'}): ${err?.message || err}`;
+      console.error('📊 3. FIRESTORE DATABASE ERROR:', firestoreStatus);
+      if (err?.message?.includes('Database') && err?.message?.includes('not found')) {
+        console.warn('💡 ACTION REQUIRED: Firestore database not created or database ID mismatch. Ensure default Firestore database is provisioned in Firebase Console for project:', options.projectId);
+      } else if (err?.code === 'permission-denied') {
+        console.warn('💡 PERMISSION DENIED: Check firestore.rules security rules or Auth token status.');
+      }
     }
   }
 
