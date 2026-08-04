@@ -10,6 +10,7 @@ export interface UserSession {
   userEmail: string;
   avatar?: string;
   loggedInAt: string;
+  firebaseUid?: string;
 }
 
 const KEYS = {

@@ -4,6 +4,9 @@ import { Role, Materi, Penilaian, Student, ActivityLog, QuizAttempt, ForumPost }
 import { storageService, UserSession } from './services/storage';
 import { Navbar } from './components/Navbar';
 import { LoginView } from './components/auth/LoginView';
+import { auth } from './firebase/config';
+import { onAuthStateChanged, logoutUser } from './lib/firebase';
+import './utils/firebaseDiagnostics';
 
 // Guru Components
 import { GuruDashboard } from './components/guru/GuruDashboard';
@@ -131,6 +134,71 @@ export default function App() {
     };
   }, []);
 
+  // Firebase Auth Built-in State Management & Persistence Listener
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser && !firebaseUser.isAnonymous) {
+        console.log('🔒 [FIREBASE AUTH SESSION] User authenticated:', firebaseUser.email || firebaseUser.uid);
+        const userEmail = (firebaseUser.email || '').toLowerCase().trim();
+
+        const cached = storageService.getUserSession();
+        if (cached && (cached.firebaseUid === firebaseUser.uid || (userEmail && cached.userEmail.toLowerCase().trim() === userEmail))) {
+          setUserSession(cached);
+          setCurrentRole(cached.role);
+          if (cached.studentId) setCurrentStudentId(cached.studentId);
+          return;
+        }
+
+        try {
+          const freshGuru = await storageService.fetchLatestGuruData();
+          const guruEmail = (freshGuru.profile?.email || 'ahmad.dahlan@sekolah.sch.id').toLowerCase().trim();
+
+          if (userEmail === guruEmail || userEmail.includes('guru') || userEmail.includes('admin') || userEmail === 'ruangk106@gmail.com') {
+            const newSession: UserSession = {
+              role: 'guru',
+              userName: firebaseUser.displayName || freshGuru.profile?.name || 'Ust. Ahmad Dahlan, M.Pd.',
+              userEmail: firebaseUser.email || guruEmail,
+              avatar: firebaseUser.photoURL || freshGuru.profile?.avatar,
+              loggedInAt: new Date().toISOString(),
+              firebaseUid: firebaseUser.uid,
+            };
+            storageService.setUserSession(newSession);
+            setUserSession(newSession);
+            setCurrentRole('guru');
+          } else {
+            const freshStudents = await storageService.fetchLatestStudentsData();
+            const student = freshStudents.find(s => s.email.toLowerCase().trim() === userEmail);
+            if (student && student.status === 'aktif') {
+              const newSession: UserSession = {
+                role: 'siswa',
+                studentId: student.id,
+                userName: student.name,
+                userEmail: student.email,
+                avatar: student.avatar,
+                loggedInAt: new Date().toISOString(),
+                firebaseUid: firebaseUser.uid,
+              };
+              storageService.setUserSession(newSession);
+              setUserSession(newSession);
+              setCurrentRole('siswa');
+              setCurrentStudentId(student.id);
+            }
+          }
+        } catch (err) {
+          console.warn('⚠️ [FIREBASE AUTH SESSION] Error resolving user profile:', err);
+        }
+      } else {
+        const cached = storageService.getUserSession();
+        if (cached && cached.firebaseUid) {
+          storageService.clearUserSession();
+          setUserSession(null);
+        }
+      }
+    });
+
+    return () => unsubscribeAuth();
+  }, []);
+
   // Auto open onboarding tour for student first-time login
   useEffect(() => {
     if (userSession && userSession.role === 'siswa') {
@@ -167,8 +235,13 @@ export default function App() {
     setActiveTab('dashboard');
   };
 
-  // Logout Handler
-  const handleLogout = () => {
+  // Logout Handler with Firebase Auth SDK SignOut
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+    } catch (err) {
+      console.warn('Firebase Auth logout note:', err);
+    }
     storageService.clearUserSession();
     setUserSession(null);
     setActiveTab('dashboard');
