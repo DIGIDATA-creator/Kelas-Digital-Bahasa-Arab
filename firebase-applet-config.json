@@ -1,12 +1,10 @@
 {
-  "projectId": "peta-stack-st3g1",
-  "appId": "1:86947705571:web:2dee1e33c3144ebe104bd6",
-  "apiKey": "AIzaSyAKXBdPB7SAIq318t1OuQ18GoihHrmRxm8",
-  "authDomain": "peta-stack-st3g1-37135.firebaseapp.com",
+  "projectId": "kelas-digital-bahasa-arab",
+  "appId": "1:796218290643:web:bcf4c7a70f7f3f698b7f26",
+  "apiKey": "AIzaSyArofa6652iumhArxlcItzqnZByy59rOX0",
+  "authDomain": "kelas-digital-bahasa-arab.firebaseapp.com",
   "firestoreDatabaseId": "(default)",
-  "storageBucket": "peta-stack-st3g1.firebasestorage.app",
-  "messagingSenderId": "86947705571",
-  "measurementId": "",
-  "oAuthClientId": "86947705571-segon2t51j6cqlannlfptupap3adfugk.apps.googleusercontent.com",
-  "recaptchaSiteKey": ""
+  "storageBucket": "kelas-digital-bahasa-arab.firebasestorage.app",
+  "messagingSenderId": "796218290643",
+  "measurementId": "G-DLXY72BF43"
 }
