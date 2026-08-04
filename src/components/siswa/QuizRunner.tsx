@@ -154,6 +154,9 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
     if (str === null || str === undefined) return '';
     return String(str)
       .replace(/[\u064B-\u065F\u0670]/g, '') // strip Arabic diacritics
+      .replace(/[أإآء]/g, 'ا')
+      .replace(/ى/g, 'ي')
+      .replace(/ة/g, 'ه')
       .trim()
       .toLowerCase()
       .replace(/\s+/g, ' ');
@@ -186,6 +189,9 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
       if (uAns === q.correctAnswer || normUser === normCorrect) {
         isCorrect = true;
       } else if (normSelectedText && normCorrectText && normSelectedText === normCorrectText) {
+        isCorrect = true;
+      } else if (normUser && normCorrect && (normUser.includes(normCorrect) || normCorrect.includes(normUser))) {
+        // Substring match for spoken voice answers
         isCorrect = true;
       } else if (q.options && typeof uAns === 'number' && normSelectedText === normCorrect) {
         isCorrect = true;
@@ -445,7 +451,11 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
                       questionArabic={currentQ.questionArabic}
                       questionText={currentQ.questionText}
                       defaultLanguage={
-                        currentQ.questionArabic || penilaian.category === 'hiwar' || (currentQ.questionText && currentQ.questionText.toLowerCase().includes('arab'))
+                        currentQ.questionText && currentQ.questionText.toLowerCase().includes('terjemahan bahasa indonesia')
+                          ? 'id-ID'
+                          : currentQ.questionText && currentQ.questionText.toLowerCase().includes('bahasa arab')
+                          ? 'ar-SA'
+                          : currentQ.questionArabic || penilaian.category === 'hiwar'
                           ? 'ar-SA'
                           : 'id-ID'
                       }

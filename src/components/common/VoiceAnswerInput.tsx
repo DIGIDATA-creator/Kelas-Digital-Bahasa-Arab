@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mic, MicOff, Volume2, Globe, Sparkles, Check, AlertCircle, RefreshCw, Award, Trophy } from 'lucide-react';
+import { Mic, MicOff, Volume2, Globe, Sparkles, Check, AlertCircle, RefreshCw, Award, Trophy, Edit3, Keyboard, Info } from 'lucide-react';
 import { evaluatePronunciationScore, PronunciationEvaluation } from '../../utils/pronunciationEvaluator';
 
 interface VoiceAnswerInputProps {
@@ -20,7 +20,7 @@ export const VoiceAnswerInput: React.FC<VoiceAnswerInputProps> = ({
   onOptionSelect,
   options = [],
   currentValue = '',
-  placeholder = 'Bicara sekarang atau tulis jawaban...',
+  placeholder = 'Bicara sekarang atau ketik jawaban...',
   questionArabic,
   questionText,
   defaultLanguage = 'ar-SA',
@@ -28,17 +28,30 @@ export const VoiceAnswerInput: React.FC<VoiceAnswerInputProps> = ({
 }) => {
   const [isListening, setIsListening] = useState(false);
   const [speechLang, setSpeechLang] = useState<'ar-SA' | 'id-ID'>(defaultLanguage);
-  const [transcript, setTranscript] = useState('');
+  const [transcript, setTranscript] = useState(currentValue || '');
   const [interimText, setInterimText] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSpeakingQuestion, setIsSpeakingQuestion] = useState(false);
   const [matchFoundNotice, setMatchFoundNotice] = useState<string | null>(null);
   const [pronunciationEval, setPronunciationEval] = useState<PronunciationEvaluation | null>(null);
+  const [isPermissionRequesting, setIsPermissionRequesting] = useState(false);
 
   const recognitionRef = useRef<any>(null);
 
   // Check Web Speech API Support
   const isSpeechSupported = typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+
+  // Sync transcript state when currentValue prop changes
+  useEffect(() => {
+    setTranscript(currentValue || '');
+    if (currentValue) {
+      const targetAnswer = questionArabic || questionText || (options && options.length > 0 ? options[0] : '');
+      const evalRes = evaluatePronunciationScore(currentValue, targetAnswer);
+      setPronunciationEval(evalRes);
+    } else {
+      setPronunciationEval(null);
+    }
+  }, [currentValue, questionArabic, questionText]);
 
   // Clean up recognition on unmount
   useEffect(() => {
@@ -51,13 +64,30 @@ export const VoiceAnswerInput: React.FC<VoiceAnswerInputProps> = ({
     };
   }, []);
 
-  const handleStartListening = () => {
+  const handleStartListening = async () => {
     setErrorMessage(null);
     setMatchFoundNotice(null);
 
     if (!isSpeechSupported) {
-      setErrorMessage('Web Speech API tidak didukung di peramban ini. Gunakan Google Chrome, Microsoft Edge, atau Safari.');
+      setErrorMessage('Web Speech API tidak didukung natively di browser ini. Gunakan Chrome/Edge, atau gunakan kolom ketik manual di bawah.');
       return;
+    }
+
+    // Request microphone permission explicitly via getUserMedia first (especially for mobile browsers)
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        setIsPermissionRequesting(true);
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // Stop stream tracks immediately after permission granted
+        stream.getTracks().forEach(track => track.stop());
+        setIsPermissionRequesting(false);
+      }
+    } catch (permErr: any) {
+      setIsPermissionRequesting(false);
+      if (permErr.name === 'NotAllowedError' || permErr.name === 'PermissionDeniedError') {
+        setErrorMessage('Izin mikrofon ditolak atau diblokir. Izinkan akses mikrofon di ikon gembok/pengaturan browser Anda, atau ketik jawaban di bawah.');
+        return;
+      }
     }
 
     try {
@@ -111,12 +141,17 @@ export const VoiceAnswerInput: React.FC<VoiceAnswerInputProps> = ({
 
       recognition.onerror = (event: any) => {
         setIsListening(false);
-        if (event.error === 'no-speech') {
-          setErrorMessage('Tidak ada suara terdeteksi. Silakan coba bicara lagi.');
-        } else if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-          setErrorMessage('Izin mikrofon ditolak. Izinkan akses mikrofon di browser.');
+        const err = event.error;
+        if (err === 'no-speech') {
+          setErrorMessage('Suara tidak terdeteksi. Dekatkan mikrofon HP dan bicara lebih jelas.');
+        } else if (err === 'not-allowed' || err === 'service-not-allowed') {
+          setErrorMessage('Izin mikrofon ditolak/diblokir oleh browser mobile ini. Izinkan mikrofon di pengaturan browser.');
+        } else if (err === 'audio-capture') {
+          setErrorMessage('Mikrofon tidak ditemukan pada perangkat ini.');
+        } else if (err === 'network') {
+          setErrorMessage('Memerlukan koneksi jaringan internet untuk pengenalan suara.');
         } else {
-          setErrorMessage(`Gagal mendengarkan suara: ${event.error}`);
+          setErrorMessage(`Terjadi kendala perekaman suara (${err}). Gunakan ketik manual di bawah.`);
         }
       };
 
@@ -140,6 +175,19 @@ export const VoiceAnswerInput: React.FC<VoiceAnswerInputProps> = ({
       } catch (_) {}
     }
     setIsListening(false);
+  };
+
+  const handleTextChange = (val: string) => {
+    setTranscript(val);
+    onTranscript(val);
+
+    const targetAnswer = questionArabic || questionText || (options && options.length > 0 ? options[0] : '');
+    if (val.trim()) {
+      const evalRes = evaluatePronunciationScore(val, targetAnswer);
+      setPronunciationEval(evalRes);
+    } else {
+      setPronunciationEval(null);
+    }
   };
 
   // Helper to match spoken answer with Multiple Choice options
@@ -194,7 +242,7 @@ export const VoiceAnswerInput: React.FC<VoiceAnswerInputProps> = ({
 
     const utterance = new SpeechSynthesisUtterance(textToRead);
     utterance.lang = questionArabic ? 'ar-SA' : 'id-ID';
-    utterance.rate = 0.85; // slightly slower for educational clarity
+    utterance.rate = 0.85;
 
     utterance.onstart = () => setIsSpeakingQuestion(true);
     utterance.onend = () => setIsSpeakingQuestion(false);
@@ -213,28 +261,28 @@ export const VoiceAnswerInput: React.FC<VoiceAnswerInputProps> = ({
           </span>
           <div>
             <span className="text-xs font-extrabold text-slate-800 block">
-              Input Suara (Web Speech API)
+              Input Suara &amp; Jawaban Lisan
             </span>
             <span className="text-[10px] text-slate-500 font-medium">
-              Bicara untuk menjawab kuis kosakata / hiwar
+              Ucapkan jawaban ke mikrofon HP atau ketik pada kolom di bawah
             </span>
           </div>
         </div>
 
         <div className="flex items-center gap-1.5">
           {/* Read Question Audio Button */}
-          {(questionArabic || questionText) && 'speechSynthesis' in window && (
+          {(questionArabic || questionText) && typeof window !== 'undefined' && 'speechSynthesis' in window && (
             <button
               type="button"
               onClick={handleReadQuestion}
-              className={`px-2.5 py-1 rounded-xl text-xs font-bold flex items-center gap-1 border transition-all cursor-pointer ${
+              className={`px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 border transition-all cursor-pointer shrink-0 min-h-[36px] ${
                 isSpeakingQuestion
                   ? 'bg-purple-600 text-white border-purple-600 animate-pulse'
                   : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
               }`}
               title="Dengarkan Pengucapan Soal"
             >
-              <Volume2 size={13} />
+              <Volume2 size={14} />
               <span className="text-[11px]">{isSpeakingQuestion ? 'Memutar...' : 'Dengar Soal'}</span>
             </button>
           )}
@@ -244,9 +292,9 @@ export const VoiceAnswerInput: React.FC<VoiceAnswerInputProps> = ({
             <button
               type="button"
               onClick={() => setSpeechLang('ar-SA')}
-              className={`px-2 py-0.5 rounded-lg transition-all ${
+              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                 speechLang === 'ar-SA'
-                  ? 'bg-purple-700 text-white shadow-2xs font-extrabold'
+                  ? 'bg-purple-700 text-white font-extrabold shadow-2xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -255,9 +303,9 @@ export const VoiceAnswerInput: React.FC<VoiceAnswerInputProps> = ({
             <button
               type="button"
               onClick={() => setSpeechLang('id-ID')}
-              className={`px-2 py-0.5 rounded-lg transition-all ${
+              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                 speechLang === 'id-ID'
-                  ? 'bg-purple-700 text-white shadow-2xs font-extrabold'
+                  ? 'bg-purple-700 text-white font-extrabold shadow-2xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
@@ -267,58 +315,99 @@ export const VoiceAnswerInput: React.FC<VoiceAnswerInputProps> = ({
         </div>
       </div>
 
-      {/* Mic Controls & Live Transcript display */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          {!isListening ? (
-            <button
-              type="button"
-              onClick={handleStartListening}
-              className="px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white font-extrabold text-xs rounded-xl flex items-center gap-2 shadow-xs transition-all cursor-pointer"
-            >
-              <Mic size={16} className="animate-pulse" />
-              <span>Mulai Bicara ({speechLang === 'ar-SA' ? 'Bahasa Arab' : 'Bahasa Indonesia'})</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleStopListening}
-              className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs rounded-xl flex items-center gap-2 shadow-xs transition-all cursor-pointer animate-pulse"
-            >
-              <MicOff size={16} />
-              <span>Hentikan Rekaman</span>
-            </button>
-          )}
-
-          {isListening && (
-            <div className="flex items-center gap-2 text-xs font-bold text-purple-900 bg-purple-100 px-3 py-1.5 rounded-xl border border-purple-200">
-              <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
-              <span>Mendengarkan... Silakan ucapkan jawaban Anda</span>
-            </div>
-          )}
+      {/* Web Speech API Unsupported Mobile Warning Banner */}
+      {!isSpeechSupported && (
+        <div className="p-2.5 bg-amber-50 border border-amber-300 text-amber-900 rounded-xl text-xs flex items-center gap-2">
+          <Info size={16} className="text-amber-600 shrink-0" />
+          <span>
+            Fitur pengenalan suara langsung (Web Speech) tidak aktif di browser HP ini. <strong>Gunakan kolom ketik manual di bawah</strong> untuk menjawab kuis.
+          </span>
         </div>
+      )}
 
-        {/* Interim / Final Transcript box */}
-        {(interimText || transcript) && (
-          <div className="p-2.5 bg-white border border-purple-200 rounded-xl text-xs space-y-1">
-            <span className="text-[10px] font-extrabold text-purple-700 uppercase tracking-wider block">
-              Teks Terdeteksi Suara:
-            </span>
-            <p className={`font-medium ${speechLang === 'ar-SA' ? 'font-arabic text-base dir-rtl text-purple-950' : 'text-slate-800'}`}>
-              {interimText ? (
-                <span className="text-slate-400 italic">{interimText}...</span>
-              ) : (
-                <span>{transcript}</span>
-              )}
-            </p>
+      {/* Mic Controls */}
+      <div className="space-y-2.5">
+        {isSpeechSupported && (
+          <div className="flex flex-wrap items-center gap-2">
+            {!isListening ? (
+              <button
+                type="button"
+                onClick={handleStartListening}
+                disabled={isPermissionRequesting}
+                className="px-4 py-2.5 bg-purple-700 hover:bg-purple-800 active:scale-95 text-white font-extrabold text-xs rounded-xl flex items-center gap-2 shadow-sm transition-all cursor-pointer min-h-[44px]"
+              >
+                <Mic size={18} className={isPermissionRequesting ? 'animate-spin' : 'animate-pulse'} />
+                <span>
+                  {isPermissionRequesting
+                    ? 'Meminta Izin Mikrofon...'
+                    : `Mulai Bicara (${speechLang === 'ar-SA' ? 'Bahasa Arab' : 'Bahasa Indonesia'})`}
+                </span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleStopListening}
+                className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs rounded-xl flex items-center gap-2 shadow-sm transition-all cursor-pointer animate-pulse min-h-[44px]"
+              >
+                <MicOff size={18} />
+                <span>Hentikan Rekaman</span>
+              </button>
+            )}
+
+            {isListening && (
+              <div className="flex items-center gap-2 text-xs font-bold text-purple-900 bg-purple-100 px-3 py-2 rounded-xl border border-purple-200">
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
+                <span>Mendengarkan... Silakan bicara ke HP Anda</span>
+              </div>
+            )}
           </div>
         )}
+
+        {/* Interim Text Preview during active listening */}
+        {interimText && (
+          <div className="p-2 bg-purple-50 border border-purple-200 rounded-xl text-xs italic text-purple-900">
+            Mendengar: {interimText}...
+          </div>
+        )}
+
+        {/* ALWAYS RENDER EDITABLE TEXT INPUT FALLBACK FOR ALL MOBILE / DESKTOP DEVICES */}
+        <div className="space-y-1 pt-1">
+          <div className="flex items-center justify-between gap-2">
+            <label className="text-[11px] font-extrabold text-slate-700 flex items-center gap-1">
+              <Keyboard size={14} className="text-purple-600" />
+              <span>Teks Jawaban Anda (Hasil Suara / Ketik Manual):</span>
+            </label>
+            <span className="text-[10px] text-slate-500 italic">Dapat diketik manual</span>
+          </div>
+
+          <div className="relative">
+            <input
+              type="text"
+              value={transcript}
+              onChange={(e) => handleTextChange(e.target.value)}
+              placeholder={placeholder}
+              className={`w-full px-3.5 py-2.5 bg-white border-2 rounded-xl text-xs font-extrabold text-slate-900 focus:outline-none transition-all ${
+                speechLang === 'ar-SA' ? 'font-arabic text-base dir-rtl' : ''
+              } ${transcript ? 'border-purple-500 bg-purple-50/20' : 'border-slate-300 focus:border-purple-600'}`}
+            />
+            {transcript && (
+              <button
+                type="button"
+                onClick={() => handleTextChange('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold px-1.5 py-0.5 rounded-md hover:bg-slate-100"
+                title="Hapus Teks"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
 
         {/* Pronunciation Score Feedback Visualizer */}
         {pronunciationEval && pronunciationEval.score > 0 && (
           <div className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-all ${pronunciationEval.badgeColor}`}>
             <div className="flex items-center gap-2">
-              <span className="p-1.5 bg-white/80 rounded-lg shadow-2xs text-purple-700">
+              <span className="p-1.5 bg-white/80 rounded-lg shadow-2xs text-purple-700 shrink-0">
                 <Award size={18} />
               </span>
               <div>
@@ -356,8 +445,8 @@ export const VoiceAnswerInput: React.FC<VoiceAnswerInputProps> = ({
 
         {/* Error message display */}
         {errorMessage && (
-          <div className="p-2 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs font-medium flex items-center gap-1.5">
-            <AlertCircle size={15} className="text-rose-500 shrink-0" />
+          <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs font-medium flex items-center gap-2">
+            <AlertCircle size={16} className="text-rose-500 shrink-0" />
             <span>{errorMessage}</span>
           </div>
         )}
@@ -365,3 +454,4 @@ export const VoiceAnswerInput: React.FC<VoiceAnswerInputProps> = ({
     </div>
   );
 };
+
