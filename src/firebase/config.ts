@@ -15,7 +15,7 @@ const firebaseConfig = {
 
 export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 export const auth = getAuth(app);
-export const db = getFirestore(app, appletConfig.firestoreDatabaseId || '(default)');
+export const db = getFirestore(app);
 
 // Set explicit Auth local persistence so login sessions persist across browser restarts & tabs
 setPersistence(auth, browserLocalPersistence)
