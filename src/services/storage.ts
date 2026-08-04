@@ -1,4 +1,4 @@
-import { Materi, Penilaian, Student, ActivityLog, Role, QuizAttempt, ForumPost, ForumReply } from '../types';
+import { Materi, Penilaian, Student, ActivityLog, Role, QuizAttempt, ForumPost, ForumReply, DetailedActivityLog } from '../types';
 import { INITIAL_MATERI, INITIAL_PENILAIAN, INITIAL_STUDENTS, INITIAL_LOGS, INITIAL_FORUM_POSTS } from '../data/initialData';
 import { db } from '../firebase/config';
 import { doc, collection, onSnapshot, setDoc, getDoc, getDocs, getDocFromServer } from 'firebase/firestore';
@@ -777,7 +777,7 @@ export const storageService = {
     localStorage.setItem(KEYS.CURRENT_STUDENT_ID, id);
   },
 
-  markMaterialComplete(studentId: string, materiId: string): void {
+  markMaterialComplete(studentId: string, materiId: string, sessionDurationSecs?: number): void {
     const students = JSON.parse(JSON.stringify(this.getStudents())) as Student[];
     const student = students.find(s => s.id === studentId);
     if (student) {
@@ -785,9 +785,28 @@ export const storageService = {
         student.completedMaterials.push(materiId);
         student.totalXP += 50;
         student.lastActive = new Date().toISOString();
-        this.saveStudents(students);
 
         const materi = this.getMateri().find(m => m.id === materiId);
+        const completedAt = new Date().toISOString();
+        const durationSeconds = sessionDurationSecs || (student.materialReadingTimeSeconds?.[materiId] || 60);
+        const startedAt = new Date(new Date(completedAt).getTime() - durationSeconds * 1000).toISOString();
+
+        student.detailedActivityLogs = student.detailedActivityLogs || [];
+        student.detailedActivityLogs.unshift({
+          id: `act-mat-${Date.now()}`,
+          studentId: student.id,
+          type: 'materi',
+          title: materi?.title || `Materi ID: ${materiId}`,
+          category: materi?.category,
+          startedAt,
+          completedAt,
+          durationSeconds,
+          earnedExp: 50,
+          details: `Menyelesaikan baca materi (${materi?.category || ''})`,
+        });
+
+        this.saveStudents(students);
+
         this.addLog({
           userName: student.name,
           userRole: 'siswa',
@@ -811,14 +830,45 @@ export const storageService = {
     }
   },
 
+  logMaterialReadingSession(studentId: string, materiId: string, durationSeconds: number, startedAtISO?: string): void {
+    if (!studentId || !materiId || durationSeconds <= 0) return;
+    const students = JSON.parse(JSON.stringify(this.getStudents())) as Student[];
+    const student = students.find(s => s.id === studentId);
+    if (student) {
+      const materi = this.getMateri().find(m => m.id === materiId);
+      const completedAt = new Date().toISOString();
+      const startedAt = startedAtISO || new Date(new Date(completedAt).getTime() - durationSeconds * 1000).toISOString();
+
+      student.detailedActivityLogs = student.detailedActivityLogs || [];
+      student.detailedActivityLogs.unshift({
+        id: `act-read-${Date.now()}`,
+        studentId: student.id,
+        type: 'materi',
+        title: materi?.title || `Materi ID: ${materiId}`,
+        category: materi?.category,
+        startedAt,
+        completedAt,
+        durationSeconds: Math.round(durationSeconds),
+        details: `Sesi Membaca Materi (${Math.round(durationSeconds)} detik)`,
+      });
+      student.lastActive = completedAt;
+      this.saveStudents(students);
+    }
+  },
+
   saveQuizAttempt(attempt: Omit<QuizAttempt, 'id' | 'completedAt'>): QuizAttempt {
     const students = JSON.parse(JSON.stringify(this.getStudents())) as Student[];
     const student = students.find(s => s.id === attempt.studentId);
     
+    const completedAt = new Date().toISOString();
+    const durationSecs = attempt.timeSpentSeconds || 0;
+    const startedAt = attempt.startedAt || attempt.accessedAt || new Date(new Date(completedAt).getTime() - durationSecs * 1000).toISOString();
+
     const newAttempt: QuizAttempt = {
       ...attempt,
       id: `att-${Date.now()}`,
-      completedAt: new Date().toISOString(),
+      startedAt,
+      completedAt,
     };
 
     if (student) {
@@ -828,7 +878,24 @@ export const storageService = {
       const expChange = attempt.earnedExp !== undefined ? attempt.earnedExp : (attempt.passed ? attempt.score : 0);
       student.totalXP = Math.max(0, student.totalXP + expChange);
 
-      student.lastActive = new Date().toISOString();
+      // Save detailed activity log
+      student.detailedActivityLogs = student.detailedActivityLogs || [];
+      student.detailedActivityLogs.unshift({
+        id: `act-quiz-${Date.now()}`,
+        studentId: student.id,
+        type: attempt.penilaianType === 'latihan' ? 'latihan' : 'kuis',
+        title: attempt.penilaianTitle,
+        category: attempt.category,
+        startedAt,
+        completedAt,
+        durationSeconds: durationSecs,
+        score: attempt.score,
+        passed: attempt.passed,
+        earnedExp: expChange,
+        details: `Meraih nilai ${attempt.score}/100 (${attempt.passed ? 'Lulus' : 'Belum Lulus'})`,
+      });
+
+      student.lastActive = completedAt;
       this.saveStudents(students);
 
       this.addLog({

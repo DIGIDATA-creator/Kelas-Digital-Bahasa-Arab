@@ -14,6 +14,8 @@ interface KosakataViewProps {
   isEditable?: boolean;
   teacherKosakataState?: Record<string, boolean>;
   selfKosakataState?: Record<string, boolean>;
+  quizKosakataState?: Record<string, boolean>;
+  quizKosakataStreaks?: Record<string, number>;
   onToggleSelfKosakata?: (vocabId: string) => void;
 }
 
@@ -27,6 +29,8 @@ export const KosakataView: React.FC<KosakataViewProps> = ({
   isEditable = true,
   teacherKosakataState,
   selfKosakataState,
+  quizKosakataState,
+  quizKosakataStreaks,
   onToggleSelfKosakata,
 }) => {
   const kosakataMateri = materiList.filter(m => m.category === 'kosakata');
@@ -362,6 +366,8 @@ export const KosakataView: React.FC<KosakataViewProps> = ({
                 isEditable={isEditable}
                 teacherKosakataState={teacherKosakataState}
                 selfKosakataState={selfKosakataState}
+                quizKosakataState={quizKosakataState}
+                quizKosakataStreaks={quizKosakataStreaks}
                 onToggleSelfKosakata={onToggleSelfKosakata}
               />
             ))

@@ -83,6 +83,7 @@ export interface Question {
   explanation: string;
   points: number;
   code?: string; // F.1.6 Kode Soal Unik (e.g. QW-BAB1-T1-102)
+  vocabId?: string; // Target Vocabulary ID if applicable
 }
 
 export interface Penilaian {
@@ -113,6 +114,7 @@ export interface QuizAttempt {
   penilaianId: string;
   penilaianTitle: string;
   penilaianType: AssessmentType;
+  category?: CategoryType | 'umum';
   studentId: string;
   studentName: string;
   score: number;
@@ -123,6 +125,7 @@ export interface QuizAttempt {
   answers: Record<string, string | number>;
   timeSpentSeconds: number;
   completedAt: string;
+  startedAt?: string; // Waktu Mulai Pengerjaan
   accessedAt?: string; // F.1.6 Tanggal & Waktu Akses
   questionCodes?: string[]; // F.1.6 Kode Soal Unik yang diakses
   seenQuestionIds?: string[]; // F.1.7 Tracking untuk rotasi soal belum pernah muncul
@@ -148,6 +151,23 @@ export interface StudentHafalanProgress {
   mahfudzotChecklist?: Record<string, MahfudzotChecklist>; // mahfudzotId -> MahfudzotChecklist (Verified by Teacher)
   selfKosakataIds?: Record<string, boolean>; // vocabId -> boolean (Marked as memorized by Student - 0 XP)
   selfMahfudzotIds?: Record<string, boolean>; // mahfudzotId -> boolean (Marked as memorized by Student - 0 XP)
+  quizVerifiedKosakataIds?: Record<string, boolean>; // vocabId -> boolean (Verified via Kuis - 3x Consecutive Correct)
+  quizKosakataStreaks?: Record<string, number>; // vocabId -> streak count
+}
+
+export interface DetailedActivityLog {
+  id: string;
+  studentId: string;
+  type: 'materi' | 'kuis' | 'latihan' | 'hafalan' | 'duel';
+  title: string;
+  category?: string;
+  startedAt: string; // ISO date string
+  completedAt: string; // ISO date string
+  durationSeconds: number; // Durasi pengerjaan / membaca dalam detik
+  score?: number;
+  passed?: boolean;
+  earnedExp?: number;
+  details?: string;
 }
 
 export interface Student {
@@ -174,6 +194,7 @@ export interface Student {
   streakCount?: number; // Consecutive active days
   lastStreakDate?: string; // YYYY-MM-DD of last active streak day
   materialReadingTimeSeconds?: Record<string, number>; // materiId -> accumulated seconds spent reading
+  detailedActivityLogs?: DetailedActivityLog[];
 }
 
 export interface ActivityLog {

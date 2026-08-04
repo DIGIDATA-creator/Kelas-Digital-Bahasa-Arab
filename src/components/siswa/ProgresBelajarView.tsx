@@ -2,6 +2,7 @@ import React from 'react';
 import { Student, Materi, Penilaian, MahfudzotChecklist } from '../../types';
 import { BookOpen, Award, CheckCircle2, TrendingUp, BarChart3, Clock } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { DetailedActivityLogView } from '../common/DetailedActivityLogView';
 
 interface ProgresBelajarViewProps {
   currentStudent: Student;
@@ -196,49 +197,8 @@ export const ProgresBelajarView: React.FC<ProgresBelajarViewProps> = ({
         </div>
       </div>
 
-      {/* Quiz Attempt History Table */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
-        <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-          <Award size={18} className="text-amber-500" /> Riwayat Nilai & Hasil Evaluasi Kuis
-        </h3>
-
-        {currentStudent.attempts.length === 0 ? (
-          <p className="text-xs text-slate-400 py-6 text-center">Anda belum mengerjakan kuis atau latihan.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-600">
-              <thead className="bg-slate-50 text-slate-700 uppercase tracking-wider font-semibold border-b">
-                <tr>
-                  <th className="py-3 px-3">Judul Penilaian</th>
-                  <th className="py-3 px-3">Tipe</th>
-                  <th className="py-3 px-3">Tanggal Selesai</th>
-                  <th className="py-3 px-3 text-center">Nilai</th>
-                  <th className="py-3 px-3 text-center">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {currentStudent.attempts.map((att) => (
-                  <tr key={att.id} className="hover:bg-slate-50">
-                    <td className="py-3 px-3 font-bold text-slate-900">{att.penilaianTitle}</td>
-                    <td className="py-3 px-3 uppercase text-[10px] font-bold">{att.penilaianType}</td>
-                    <td className="py-3 px-3">{new Date(att.completedAt).toLocaleDateString('id-ID')}</td>
-                    <td className="py-3 px-3 text-center font-bold text-sm">
-                      <span className={att.score >= 75 ? 'text-emerald-600' : 'text-rose-600'}>
-                        {att.score}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 text-center">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${att.passed ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
-                        {att.passed ? 'LULUS' : 'REMEDIAL'}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      {/* Detailed Activity & Duration Log Section */}
+      <DetailedActivityLogView student={currentStudent} materiList={materiList} />
 
     </div>
   );

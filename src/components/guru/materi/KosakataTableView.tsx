@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { VocabularyItem } from '../../../types';
 import { toArabicNumber } from '../../common/ArabicUtils';
 import { AudioPlayerButton } from '../../common/AudioPlayerButton';
-import { Eye, EyeOff, Layers, ChevronDown, ChevronUp, Edit3, Trash2, Plus, FileSpreadsheet, Play, LayoutGrid, CheckCircle2, Bookmark, Check, Award, Crown } from 'lucide-react';
+import { Eye, EyeOff, Layers, ChevronDown, ChevronUp, Edit3, Trash2, Plus, FileSpreadsheet, Play, LayoutGrid, CheckCircle2, Bookmark, Check, Award, Crown, Target, X } from 'lucide-react';
 
 interface KosakataTableViewProps {
   title: string;
@@ -17,6 +17,8 @@ interface KosakataTableViewProps {
   isEditable?: boolean;
   teacherKosakataState?: Record<string, boolean>;
   selfKosakataState?: Record<string, boolean>;
+  quizKosakataState?: Record<string, boolean>;
+  quizKosakataStreaks?: Record<string, number>;
   onToggleSelfKosakata?: (vocabId: string) => void;
 }
 
@@ -33,6 +35,8 @@ export const KosakataTableView: React.FC<KosakataTableViewProps> = ({
   isEditable = true,
   teacherKosakataState,
   selfKosakataState,
+  quizKosakataState,
+  quizKosakataStreaks,
   onToggleSelfKosakata,
 }) => {
   const [isMinimized, setIsMinimized] = useState(true);
@@ -319,13 +323,17 @@ export const KosakataTableView: React.FC<KosakataTableViewProps> = ({
                           const globalNum = globalOffset + idx + 1;
                           const arabicNum = toArabicNumber(globalNum);
                           const isTeacherVerified = !!teacherKosakataState?.[item.id];
+                          const isQuizVerified = !!quizKosakataState?.[item.id];
                           const isSelfMarked = !!selfKosakataState?.[item.id];
+                          const streakCount = quizKosakataStreaks?.[item.id] || 0;
 
                           // Row style based on verification and self-marking status
                           const rowBgClass = isTeacherVerified
-                            ? 'bg-amber-50/50 hover:bg-amber-50 text-slate-900 font-medium'
+                            ? 'bg-amber-50/40 hover:bg-amber-50 text-slate-900 font-medium'
+                            : isQuizVerified
+                            ? 'bg-emerald-50/40 hover:bg-emerald-50 text-slate-900 font-medium'
                             : isSelfMarked
-                            ? 'bg-sky-50/50 hover:bg-sky-50 text-slate-900 font-medium'
+                            ? 'bg-sky-50/40 hover:bg-sky-50 text-slate-900 font-medium'
                             : 'hover:bg-slate-50 transition-colors';
 
                           return (
@@ -334,6 +342,8 @@ export const KosakataTableView: React.FC<KosakataTableViewProps> = ({
                               <td className={`py-1.5 px-2.5 text-center font-arabic font-bold text-xs border-r border-slate-100 ${
                                 isTeacherVerified
                                   ? 'bg-amber-100/60 text-amber-900'
+                                  : isQuizVerified
+                                  ? 'bg-emerald-100/60 text-emerald-900'
                                   : isSelfMarked
                                   ? 'bg-sky-100/60 text-sky-900'
                                   : 'bg-slate-50 text-slate-600'
@@ -386,41 +396,77 @@ export const KosakataTableView: React.FC<KosakataTableViewProps> = ({
                                 )}
                               </td>
 
-                              {/* Status / Self-Marking Column */}
-                              {(onToggleSelfKosakata || teacherKosakataState || selfKosakataState) && (
+                              {/* Minimalist Icon-Only Verification & Status Column */}
+                              {(onToggleSelfKosakata || teacherKosakataState || selfKosakataState || quizKosakataState) && (
                                 <td className="py-1.5 px-2 text-center border-l border-slate-100">
                                   <div className="flex items-center justify-center gap-1 dir-ltr">
-                                    {isTeacherVerified ? (
-                                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-100 text-amber-900 font-extrabold text-[10px] rounded border border-amber-300" title="Diverifikasi Guru (+5 XP)">
-                                        <Crown size={11} className="fill-amber-500 text-amber-600" /> Verified
+                                    {/* 1. Teacher Verification Badge (Icon Only) */}
+                                    {isTeacherVerified && (
+                                      <span
+                                        className="p-1 bg-amber-100 text-amber-900 rounded-md border border-amber-300 shadow-2xs inline-flex items-center justify-center cursor-help transition-transform hover:scale-110"
+                                        title="Diverifikasi Guru (+5 XP)"
+                                      >
+                                        <Crown size={12} className="fill-amber-500 text-amber-600" />
                                       </span>
-                                    ) : isSelfMarked ? (
+                                    )}
+
+                                    {/* 2. Quiz Verification Badge (Icon Only - Distinct Badge for Quiz) */}
+                                    {isQuizVerified && (
+                                      <span
+                                        className="p-1 bg-emerald-100 text-emerald-900 rounded-md border border-emerald-300 shadow-2xs inline-flex items-center justify-center cursor-help transition-transform hover:scale-110"
+                                        title={`Verified Kuis (${streakCount >= 3 ? streakCount : 3}x Consecutive Benar)`}
+                                      >
+                                        <Award size={12} className="fill-emerald-600 text-emerald-700" />
+                                      </span>
+                                    )}
+
+                                    {/* 3. Quiz Streak Progress Indicator (If streak > 0 but < 3) */}
+                                    {!isQuizVerified && streakCount > 0 && (
+                                      <span
+                                        className="px-1 py-0.5 bg-purple-50 text-purple-700 font-extrabold text-[9px] rounded border border-purple-200 inline-flex items-center gap-0.5 cursor-help"
+                                        title={`Progres Kuis: ${streakCount}/3 Kali Berturut-turut Benar`}
+                                      >
+                                        <Target size={10} className="text-purple-600" />
+                                        <span>{streakCount}/3</span>
+                                      </span>
+                                    )}
+
+                                    {/* 4. Self-Marked Badge (Icon Only) */}
+                                    {isSelfMarked && !isTeacherVerified && !isQuizVerified && (
                                       <div className="flex items-center gap-1">
-                                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-sky-100 text-sky-900 font-extrabold text-[10px] rounded border border-sky-300" title="Tanda Hafal Mandiri">
-                                          <Check size={11} className="text-sky-600 stroke-[3]" /> Hafal
+                                        <span
+                                          className="p-1 bg-sky-100 text-sky-900 rounded-md border border-sky-300 inline-flex items-center justify-center cursor-help transition-transform hover:scale-110"
+                                          title="Tanda Hafal Mandiri"
+                                        >
+                                          <Check size={12} className="text-sky-600 stroke-[3]" />
                                         </span>
                                         {onToggleSelfKosakata && (
                                           <button
                                             type="button"
                                             onClick={() => onToggleSelfKosakata(item.id)}
-                                            className="px-1 py-0.5 text-[9px] text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded font-semibold cursor-pointer transition-colors"
-                                            title="Batalkan Tanda Hafal"
+                                            className="p-0.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                                            title="Batalkan Tanda Hafal Mandiri"
                                           >
-                                            Batal
+                                            <X size={10} />
                                           </button>
                                         )}
                                       </div>
-                                    ) : onToggleSelfKosakata ? (
-                                      <button
-                                        type="button"
-                                        onClick={() => onToggleSelfKosakata(item.id)}
-                                        className="px-1.5 py-0.5 bg-white hover:bg-sky-50 text-slate-600 hover:text-sky-700 border border-slate-200 hover:border-sky-300 font-semibold text-[10px] rounded cursor-pointer transition-all flex items-center gap-1"
-                                        title="Tandai Sudah Hafal (Siswa)"
-                                      >
-                                        <Bookmark size={10} className="text-slate-400" /> + Hafal
-                                      </button>
-                                    ) : (
-                                      <span className="text-[10px] text-slate-400 font-medium">-</span>
+                                    )}
+
+                                    {/* 5. Unmarked State -> Action to mark self */}
+                                    {!isTeacherVerified && !isQuizVerified && !isSelfMarked && streakCount === 0 && (
+                                      onToggleSelfKosakata ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => onToggleSelfKosakata(item.id)}
+                                          className="p-1 text-slate-400 hover:text-sky-600 hover:bg-sky-50 rounded border border-dashed border-slate-300 hover:border-sky-400 transition-all cursor-pointer inline-flex items-center justify-center"
+                                          title="Tandai Hafal Mandiri"
+                                        >
+                                          <Bookmark size={11} />
+                                        </button>
+                                      ) : (
+                                        <span className="text-[10px] text-slate-400 font-medium">-</span>
+                                      )
                                     )}
                                   </div>
                                 </td>

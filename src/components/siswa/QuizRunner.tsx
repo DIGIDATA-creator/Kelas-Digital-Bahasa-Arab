@@ -275,6 +275,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
       wrongCount,
       answers: userAnswers,
       timeSpentSeconds: Math.max(10, timeSpent),
+      startedAt: accessedAt,
       accessedAt,
       seenQuestionIds: questions.map(q => q.id),
       pendingManualGrading: isManualGrading,

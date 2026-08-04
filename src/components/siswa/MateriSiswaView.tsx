@@ -10,6 +10,7 @@ import { MahfudzotView } from '../guru/materi/MahfudzotView';
 import { FlashcardModal, FlashcardItem } from '../common/FlashcardModal';
 import { LatihanBicaraHiwarModal } from './LatihanBicaraHiwarModal';
 import { storageService } from '../../services/storage';
+import { calculateStudentVocabStreaks } from '../../utils/vocabStreakUtils';
 
 interface MateriSiswaViewProps {
   materiList: Materi[];
@@ -30,6 +31,10 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
   const [activeMateriId, setActiveMateriId] = useState<string>(
     selectedMateriId || materiList[0]?.id || ''
   );
+
+  // Compute vocabulary verification streaks from student's quiz attempts
+  const penilaianList = storageService.getPenilaian();
+  const vocabStreakResult = calculateStudentVocabStreaks(currentStudent, materiList, penilaianList);
 
   // Self-marking handlers for Kosakata and Mahfudzot (0 XP)
   const handleToggleSelfKosakata = (vocabId: string) => {
@@ -104,11 +109,14 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
 
   // Material Reading Timer State
   const [readingTimeSecs, setReadingTimeSecs] = useState<number>(0);
+  const [sessionStartTime, setSessionStartTime] = useState<string>(new Date().toISOString());
 
   // Start reading timer when a material is open
   useEffect(() => {
     if (!activeMateriId) return;
     setReadingTimeSecs(0);
+    const nowIso = new Date().toISOString();
+    setSessionStartTime(nowIso);
 
     const interval = setInterval(() => {
       setReadingTimeSecs(prev => prev + 1);
@@ -124,6 +132,15 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
     if (!activeMateriId || readingTimeSecs <= 0 || readingTimeSecs % 10 !== 0) return;
     storageService.updateMaterialReadingTime(currentStudent.id, activeMateriId, 10);
   }, [readingTimeSecs, activeMateriId, currentStudent.id]);
+
+  // Log material activity session on material switch or unmount
+  useEffect(() => {
+    return () => {
+      if (activeMateriId && readingTimeSecs >= 10) {
+        storageService.logMaterialReadingSession(currentStudent.id, activeMateriId, readingTimeSecs, sessionStartTime);
+      }
+    };
+  }, [activeMateriId, readingTimeSecs, sessionStartTime, currentStudent.id]);
 
   // Flashcard Modal State
   const [flashcardModalState, setFlashcardModalState] = useState<{
@@ -629,6 +646,8 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
                     isEditable={false}
                     teacherKosakataState={currentStudent.hafalanProgress?.kosakataIds || {}}
                     selfKosakataState={currentStudent.hafalanProgress?.selfKosakataIds || {}}
+                    quizKosakataState={vocabStreakResult.quizVerifiedKosakata}
+                    quizKosakataStreaks={vocabStreakResult.quizKosakataStreaks}
                     onToggleSelfKosakata={handleToggleSelfKosakata}
                   />
                 </div>
@@ -859,6 +878,11 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
                     arabicTitle={currentMateri.arabicTitle}
                     babNumber={currentMateri.babNumber}
                     vocabularies={currentMateri.vocabularies || []}
+                    teacherKosakataState={currentStudent.hafalanProgress?.kosakataIds}
+                    selfKosakataState={currentStudent.hafalanProgress?.selfKosakataIds}
+                    quizKosakataState={vocabStreakResult.quizVerifiedKosakata}
+                    quizKosakataStreaks={vocabStreakResult.quizKosakataStreaks}
+                    onToggleSelfKosakata={handleToggleSelfKosakata}
                     onLaunchFlashcard={() => {
                       const vocabs = currentMateri.vocabularies || [];
                       const items: FlashcardItem[] = vocabs.map(v => ({

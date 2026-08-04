@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Student, Materi, MahfudzotChecklist } from '../../types';
 import { notificationService } from '../../services/notificationService';
+import { storageService } from '../../services/storage';
+import { calculateStudentVocabStreaks } from '../../utils/vocabStreakUtils';
 import {
   X,
   Search,
@@ -86,6 +88,13 @@ export const CeklisHafalanModal: React.FC<CeklisHafalanModalProps> = ({
 
   // 3.1b.2 Minimization state for Kosakata Bab
   const [collapsedKosakataBabs, setCollapsedKosakataBabs] = useState<Record<string, boolean>>({});
+
+  // Calculate student quiz streaks for Kosakata
+  const quizStreakResult = useMemo(() => {
+    if (!student) return { quizVerifiedKosakata: {}, quizKosakataStreaks: {} };
+    const penilaianList = storageService.getPenilaian();
+    return calculateStudentVocabStreaks(student, materiList, penilaianList);
+  }, [student, materiList, isOpen]);
 
   useEffect(() => {
     if (student) {
@@ -825,6 +834,14 @@ export const CeklisHafalanModal: React.FC<CeklisHafalanModalProps> = ({
                                 </div>
 
                                 <div className="flex items-center gap-1.5 shrink-0">
+                                  {quizStreakResult.quizVerifiedKosakata[vocab.id] && (
+                                    <span
+                                      className="p-1 bg-emerald-100 text-emerald-900 rounded-md border border-emerald-300 shadow-2xs inline-flex items-center justify-center cursor-help"
+                                      title={`Verified Kuis (${quizStreakResult.quizKosakataStreaks[vocab.id] || 3}x Consecutive Benar)`}
+                                    >
+                                      <Award size={12} className="fill-emerald-600 text-emerald-700" />
+                                    </span>
+                                  )}
                                   <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/60 px-1.5 py-0.5 rounded">
                                     +5 XP
                                   </span>
