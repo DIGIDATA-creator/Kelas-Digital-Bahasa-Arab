@@ -42,6 +42,11 @@ export const ProgresBelajarView: React.FC<ProgresBelajarViewProps> = ({
   const totalCompleted = currentStudent.completedMaterials.length;
   const overallPct = Math.round((totalCompleted / totalMaterials) * 100);
 
+  // Reading time calculations
+  const readingTimeRecords = currentStudent.materialReadingTimeSeconds || {};
+  const totalReadingSeconds = (Object.values(readingTimeRecords) as number[]).reduce((sum, sec) => sum + (sec || 0), 0);
+  const totalReadingMinutes = Math.floor(totalReadingSeconds / 60);
+
   return (
     <div className="space-y-6">
       
@@ -49,7 +54,7 @@ export const ProgresBelajarView: React.FC<ProgresBelajarViewProps> = ({
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-slate-900">Pelacakan Progres Belajar Digital</h2>
-          <p className="text-xs text-slate-500">Statistik lengkap capaian modul dan hasil ujian Bahasa Arab</p>
+          <p className="text-xs text-slate-500">Statistik lengkap capaian modul, durasi baca, dan hasil ujian Bahasa Arab</p>
         </div>
 
         <div className="flex items-center gap-4">
@@ -61,6 +66,47 @@ export const ProgresBelajarView: React.FC<ProgresBelajarViewProps> = ({
             {totalCompleted}/{totalMaterials}
           </div>
         </div>
+      </div>
+
+      {/* Reading Time Tracking Card */}
+      <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent p-6 rounded-2xl border border-amber-200 shadow-xs space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+            <Clock size={18} className="text-amber-600" /> Statistik Durasi Belajar & Membaca Materi
+          </h3>
+          <span className="px-3 py-1 bg-amber-100 text-amber-900 border border-amber-300 rounded-full text-xs font-black">
+            Total Waktu: {totalReadingMinutes} Menit ({totalReadingSeconds} Detik)
+          </span>
+        </div>
+
+        {Object.keys(readingTimeRecords).length === 0 ? (
+          <p className="text-xs text-slate-500 py-2">
+            Belum ada durasi baca tercatat. Buka dan pelajari modul materi di menu "Materi" untuk mulai melacak durasi belajar Anda secara otomatis.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-1">
+            {materiList
+              .filter(m => (readingTimeRecords[m.id] || 0) > 0)
+              .map(materi => {
+                const secs = readingTimeRecords[materi.id] || 0;
+                const mins = Math.floor(secs / 60);
+                const remSecs = secs % 60;
+                return (
+                  <div key={materi.id} className="p-3 bg-white rounded-xl border border-amber-200 shadow-2xs space-y-1">
+                    <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider block truncate">
+                      {materi.category}
+                    </span>
+                    <h4 className="text-xs font-bold text-slate-900 truncate" title={materi.title}>
+                      {materi.title}
+                    </h4>
+                    <p className="text-sm font-extrabold text-amber-700 font-mono">
+                      ⏱️ {mins > 0 ? `${mins}m ` : ''}{remSecs}s
+                    </p>
+                  </div>
+                );
+              })}
+          </div>
+        )}
       </div>
 
       {/* Progress per Category Breakdown */}

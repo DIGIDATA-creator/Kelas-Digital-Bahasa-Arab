@@ -173,6 +173,7 @@ export interface Student {
   visitCount?: number; // Total visit counter
   streakCount?: number; // Consecutive active days
   lastStreakDate?: string; // YYYY-MM-DD of last active streak day
+  materialReadingTimeSeconds?: Record<string, number>; // materiId -> accumulated seconds spent reading
 }
 
 export interface ActivityLog {

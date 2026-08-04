@@ -250,6 +250,65 @@ export const storageService = {
     return cachedStudents;
   },
 
+  async addStudent(newStudent: Student): Promise<{ success: boolean; student?: Student; message?: string }> {
+    try {
+      // Fetch latest student data directly from Firestore first
+      const latestStudents = await this.fetchLatestStudentsData();
+
+      // Check for duplicate email (case insensitive)
+      const isDuplicate = latestStudents.some(
+        s => s.email && s.email.toLowerCase().trim() === newStudent.email.toLowerCase().trim()
+      );
+
+      if (isDuplicate) {
+        return {
+          success: false,
+          message: `Email "${newStudent.email}" sudah terdaftar. Silakan gunakan email lain atau masuk dengan akun Anda.`
+        };
+      }
+
+      // Merge new student with latest list from Firestore
+      const updatedList = [newStudent, ...latestStudents.filter(s => s.id !== newStudent.id)];
+
+      cachedStudents = updatedList;
+      saveLocal(KEYS.STUDENTS, updatedList);
+      await setDoc(docStudents, sanitizeForFirestore({ items: updatedList }));
+
+      notifyListeners();
+
+      this.addLog({
+        userName: newStudent.name,
+        userRole: 'siswa',
+        action: 'Pendaftaran Siswa Baru',
+        details: `Mengirimkan berkas pendaftaran akun siswa (${newStudent.schoolName || 'Umum'} - ${newStudent.className || 'Umum'}) - Status: MENUNGGU ACC`,
+      });
+
+      return { success: true, student: newStudent };
+    } catch (err: any) {
+      console.error('Error in addStudent:', err);
+      return {
+        success: false,
+        message: err.message || 'Gagal menyimpan pendaftaran ke server database.'
+      };
+    }
+  },
+
+  async syncAndSaveStudents(updater: (currentRemoteList: Student[]) => Student[]): Promise<Student[]> {
+    try {
+      const latestStudents = await this.fetchLatestStudentsData();
+      const updatedList = updater(latestStudents);
+      cachedStudents = updatedList;
+      saveLocal(KEYS.STUDENTS, updatedList);
+      await setDoc(docStudents, sanitizeForFirestore({ items: updatedList }));
+      notifyListeners();
+      return updatedList;
+    } catch (err) {
+      console.error('Error in syncAndSaveStudents:', err);
+      this.saveStudents(cachedStudents);
+      return cachedStudents;
+    }
+  },
+
   getGuruProfile() {
     return cachedGuruProfile;
   },
@@ -342,9 +401,20 @@ export const storageService = {
   },
 
   saveStudents(list: Student[]): void {
-    cachedStudents = list;
-    saveLocal(KEYS.STUDENTS, list);
-    setDoc(docStudents, sanitizeForFirestore({ items: list })).catch(err => console.error('Error syncing Students to Firestore:', err));
+    // Merge list with cachedStudents so newly registered students are never accidentally deleted by stale local state
+    const existingIds = new Set(list.map(s => s.id));
+    const merged = [...list];
+    if (cachedStudents && Array.isArray(cachedStudents)) {
+      for (const cached of cachedStudents) {
+        if (!existingIds.has(cached.id)) {
+          merged.push(cached);
+          existingIds.add(cached.id);
+        }
+      }
+    }
+    cachedStudents = merged;
+    saveLocal(KEYS.STUDENTS, merged);
+    setDoc(docStudents, sanitizeForFirestore({ items: merged })).catch(err => console.error('Error syncing Students to Firestore:', err));
 
     // Also update cached forum posts authorAvatar and authorName if any student profile changed
     let forumUpdated = false;
@@ -629,6 +699,19 @@ export const storageService = {
           details: `Menyelesaikan materi: ${materi?.title || materiId} (+50 XP)`,
         });
       }
+    }
+  },
+
+  updateMaterialReadingTime(studentId: string, materiId: string, elapsedSeconds: number): void {
+    if (!studentId || !materiId || elapsedSeconds <= 0) return;
+    const students = JSON.parse(JSON.stringify(this.getStudents())) as Student[];
+    const student = students.find(s => s.id === studentId);
+    if (student) {
+      student.materialReadingTimeSeconds = student.materialReadingTimeSeconds || {};
+      const currentSecs = student.materialReadingTimeSeconds[materiId] || 0;
+      student.materialReadingTimeSeconds[materiId] = currentSecs + Math.round(elapsedSeconds);
+      student.lastActive = new Date().toISOString();
+      this.saveStudents(students);
     }
   },
 

@@ -28,7 +28,8 @@ import {
   CheckSquare,
   LayoutGrid,
   Quote,
-  Activity
+  Activity,
+  RefreshCw
 } from 'lucide-react';
 import { PendaftaranSiswaForm } from '../auth/PendaftaranSiswaForm';
 import { CeklisHafalanModal } from './CeklisHafalanModal';
@@ -292,19 +293,51 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
     }
   };
 
-  const handleApproveAllPending = () => {
-    if (confirm(`Setujui (ACC) seluruh ${pendingStudents.length} siswa pendaftar baru?`)) {
-      const updated = students.map(s => {
-        if (s.status === 'pending') {
-          return { ...s, status: 'disetujui' as const };
-        }
-        return s;
-      });
-      onSaveStudents(updated);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncNotice, setSyncNotice] = useState<string | null>(null);
+
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    setSyncNotice(null);
+    try {
+      const fresh = await storageService.fetchLatestStudentsData();
+      onSaveStudents(fresh);
+      const pendingCount = fresh.filter(s => s.status === 'pending').length;
+      setSyncNotice(`✅ Data berhasil disinkronkan dari server Firestore! (${fresh.length} siswa, ${pendingCount} pendaftaran pending)`);
+      setTimeout(() => setSyncNotice(null), 4000);
+    } catch (err: any) {
+      console.error('Error syncing student data:', err);
+      setSyncNotice('❌ Gagal menyinkronkan data dari server.');
+      setTimeout(() => setSyncNotice(null), 4000);
+    } finally {
+      setIsSyncing(false);
     }
   };
 
-  const handleSaveStudentFromForm = (data: {
+  const handleApproveAllPending = async () => {
+    if (confirm(`Setujui (ACC) seluruh ${pendingStudents.length} siswa pendaftar baru?`)) {
+      setIsSyncing(true);
+      try {
+        const updated = await storageService.syncAndSaveStudents((currentRemote) => {
+          return currentRemote.map(s => {
+            if (s.status === 'pending') {
+              return { ...s, status: 'disetujui' as const };
+            }
+            return s;
+          });
+        });
+        onSaveStudents(updated);
+        setSyncNotice(`✅ Seluruh pendaftaran berhasil disetujui!`);
+        setTimeout(() => setSyncNotice(null), 3000);
+      } catch (err) {
+        console.error('Error approving students:', err);
+      } finally {
+        setIsSyncing(false);
+      }
+    }
+  };
+
+  const handleSaveStudentFromForm = async (data: {
     name: string;
     email: string;
     password?: string;
@@ -314,48 +347,61 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
     className: string;
     rombelName: string;
   }) => {
-    if (editingStudent) {
-      // Edit student
-      const updated = students.map(s => {
-        if (s.id === editingStudent.id) {
-          return {
-            ...s,
-            name: data.name,
-            email: data.email,
-            password: data.password || s.password,
-            gender: data.gender,
-            tingkat: data.tingkat,
-            schoolName: data.schoolName,
-            className: data.className,
-            rombelName: data.rombelName,
-          };
+    setIsSyncing(true);
+    try {
+      if (editingStudent) {
+        // Edit student with remote sync
+        const updated = await storageService.syncAndSaveStudents((currentRemote) => {
+          return currentRemote.map(s => {
+            if (s.id === editingStudent.id) {
+              return {
+                ...s,
+                name: data.name,
+                email: data.email,
+                password: data.password || s.password,
+                gender: data.gender,
+                tingkat: data.tingkat,
+                schoolName: data.schoolName,
+                className: data.className,
+                rombelName: data.rombelName,
+              };
+            }
+            return s;
+          });
+        });
+        onSaveStudents(updated);
+      } else {
+        // Add new student (directly active since added by Guru)
+        const newStudent: Student = {
+          id: `std-${Date.now()}`,
+          name: data.name,
+          email: data.email,
+          password: data.password || '123456',
+          nisn: `2026${Math.floor(1000 + Math.random() * 9000)}`,
+          gender: data.gender,
+          tingkat: data.tingkat,
+          schoolName: data.schoolName,
+          className: data.className,
+          rombelName: data.rombelName,
+          avatar: `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80`,
+          totalXP: 0,
+          completedMaterials: [],
+          attempts: [],
+          status: 'aktif',
+          lastActive: new Date().toISOString(),
+        };
+        const res = await storageService.addStudent(newStudent);
+        if (res.success) {
+          const fresh = storageService.getStudents();
+          onSaveStudents(fresh);
         }
-        return s;
-      });
-      onSaveStudents(updated);
-    } else {
-      // Add new student (directly active since added by Guru)
-      const newStudent: Student = {
-        id: `std-${Date.now()}`,
-        name: data.name,
-        email: data.email,
-        password: data.password || '123456',
-        nisn: `2026${Math.floor(1000 + Math.random() * 9000)}`,
-        gender: data.gender,
-        tingkat: data.tingkat,
-        schoolName: data.schoolName,
-        className: data.className,
-        rombelName: data.rombelName,
-        avatar: `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80`,
-        totalXP: 0,
-        completedMaterials: [],
-        attempts: [],
-        status: 'aktif',
-        lastActive: new Date().toISOString(),
-      };
-      onSaveStudents([newStudent, ...students]);
+      }
+    } catch (err) {
+      console.error('Error saving student from form:', err);
+    } finally {
+      setIsSyncing(false);
+      setIsModalOpen(false);
     }
-    setIsModalOpen(false);
   };
 
   // Build Hierarchy for Grouped View (Sekolah -> Tingkat -> Kelas/Rombel)
@@ -398,6 +444,15 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
 
         <div className="flex items-center gap-2 flex-wrap">
           <button
+            onClick={handleManualSync}
+            disabled={isSyncing}
+            className="px-3.5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer"
+            title="Sinkronkan data siswa terbaru dari server Firestore"
+          >
+            <RefreshCw size={16} className={isSyncing ? 'animate-spin' : ''} /> {isSyncing ? 'Menyinkronkan...' : 'Sync Realtime'}
+          </button>
+
+          <button
             onClick={() => setShowLogsVisitsModal(true)}
             className="px-3.5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition-all cursor-pointer"
           >
@@ -421,6 +476,13 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
           </button>
         </div>
       </div>
+
+      {syncNotice && (
+        <div className="p-3.5 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/80 rounded-2xl text-blue-900 dark:text-blue-200 text-xs font-bold flex items-center justify-between">
+          <span>{syncNotice}</span>
+          <button onClick={() => setSyncNotice(null)} className="text-blue-500 hover:text-blue-700 font-bold ml-2">✕</button>
+        </div>
+      )}
 
       {/* Primary Column Menu Navigation: ACC Siswa vs Siswa Aktif */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">

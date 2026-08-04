@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Materi, CategoryType, Student } from '../../types';
-import { BookOpen, MessageSquare, List, Quote, FileText, CheckCircle2, Play, Volume2, Search, Sparkles, RefreshCw, ChevronRight, HardDriveDownload, WifiOff, Check, Maximize2, Minimize2, Eye, X, ZoomIn, ZoomOut, Video, Award, Crown, Target } from 'lucide-react';
+import { BookOpen, MessageSquare, List, Quote, FileText, CheckCircle2, Play, Volume2, Search, Sparkles, RefreshCw, ChevronRight, HardDriveDownload, WifiOff, Check, Maximize2, Minimize2, Eye, X, ZoomIn, ZoomOut, Video, Award, Crown, Target, Clock, Mic } from 'lucide-react';
 import { AudioPlayerButton } from '../common/AudioPlayerButton';
 import { PdfViewerModal } from '../common/PdfViewerModal';
 import { HiwarView } from '../guru/materi/HiwarView';
@@ -8,6 +8,7 @@ import { KosakataTableView } from '../guru/materi/KosakataTableView';
 import { KosakataView } from '../guru/materi/KosakataView';
 import { MahfudzotView } from '../guru/materi/MahfudzotView';
 import { FlashcardModal, FlashcardItem } from '../common/FlashcardModal';
+import { LatihanBicaraHiwarModal } from './LatihanBicaraHiwarModal';
 import { storageService } from '../../services/storage';
 
 interface MateriSiswaViewProps {
@@ -97,6 +98,32 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
   useEffect(() => {
     setCachedIds(storageService.getOfflineCachedMateriIds());
   }, [activeMateriId]);
+
+  // AI Speech Practice Modal State
+  const [isLatihanBicaraOpen, setIsLatihanBicaraOpen] = useState(false);
+
+  // Material Reading Timer State
+  const [readingTimeSecs, setReadingTimeSecs] = useState<number>(0);
+
+  // Start reading timer when a material is open
+  useEffect(() => {
+    if (!activeMateriId) return;
+    setReadingTimeSecs(0);
+
+    const interval = setInterval(() => {
+      setReadingTimeSecs(prev => prev + 1);
+    }, 1000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [activeMateriId]);
+
+  // Sync reading duration to storage every 10 seconds
+  useEffect(() => {
+    if (!activeMateriId || readingTimeSecs <= 0 || readingTimeSecs % 10 !== 0) return;
+    storageService.updateMaterialReadingTime(currentStudent.id, activeMateriId, 10);
+  }, [readingTimeSecs, activeMateriId, currentStudent.id]);
 
   // Flashcard Modal State
   const [flashcardModalState, setFlashcardModalState] = useState<{
@@ -321,6 +348,22 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
 
                 <div className="flex flex-col items-end gap-2">
                   <div className="flex flex-wrap items-center gap-2">
+                    {/* Live Reading Timer Badge */}
+                    <div className="px-3 py-1.5 bg-amber-50 text-amber-900 border border-amber-300 rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-2xs">
+                      <Clock size={14} className="text-amber-600 animate-spin" />
+                      <span>Durasi Baca: {Math.floor(readingTimeSecs / 60)}m {readingTimeSecs % 60}s</span>
+                    </div>
+
+                    {/* AI Speaking Practice Button */}
+                    <button
+                      onClick={() => setIsLatihanBicaraOpen(true)}
+                      className="px-3 py-1.5 bg-gradient-to-r from-emerald-800 to-teal-800 hover:from-emerald-900 hover:to-teal-900 text-white rounded-xl text-xs font-extrabold transition-all flex items-center gap-1.5 shadow-md cursor-pointer active:scale-95"
+                      title="Mulai Praktik Percakapan Bahasa Arab Interaktif dengan Ustaz AI"
+                    >
+                      <Mic size={14} className="text-amber-300 animate-pulse" />
+                      <span>Latihan Bicara AI</span>
+                    </button>
+
                     {/* Mode Fokus Button */}
                     <button
                       onClick={() => setIsFocusMode(true)}
@@ -901,6 +944,13 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
         </div>
       )}
 
+    {/* Modal Latihan Bicara Percakapan Hiwar AI */}
+      <LatihanBicaraHiwarModal
+        isOpen={isLatihanBicaraOpen}
+        onClose={() => setIsLatihanBicaraOpen(false)}
+        currentStudent={currentStudent}
+        materiList={materiList}
+      />
     </div>
   );
 };

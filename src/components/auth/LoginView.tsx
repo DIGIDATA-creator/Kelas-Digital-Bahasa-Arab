@@ -656,6 +656,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
                       id: `std-${Date.now()}`,
                       name: data.name,
                       email: data.email,
+                      password: data.password || '123456',
                       nisn: `2026${Math.floor(1000 + Math.random() * 9000)}`,
                       gender: data.gender,
                       tingkat: data.tingkat,
@@ -673,12 +674,13 @@ export const LoginView: React.FC<LoginViewProps> = ({
                       registeredAt: new Date().toISOString(),
                     };
 
-                    const currentList = storageService.getStudents();
-                    const updatedList = [newStudent, ...currentList];
-                    storageService.saveStudents(updatedList);
-
-                    setSuccessMsg('Pendaftaran siswa baru berhasil dikirim! Menunggu persetujuan (ACC) dari Guru.');
-                    setTimeout(() => setActiveTab('login'), 2000);
+                    const result = await storageService.addStudent(newStudent);
+                    if (result.success) {
+                      setSuccessMsg('Pendaftaran siswa baru berhasil dikirim! Menunggu persetujuan (ACC) dari Guru.');
+                      setTimeout(() => setActiveTab('login'), 2000);
+                    } else {
+                      setErrorMsg(result.message || 'Gagal mendaftar. Silakan coba beberapa saat lagi.');
+                    }
                   } catch (err: any) {
                     setErrorMsg(err.message || 'Gagal mendaftar. Silakan coba beberapa saat lagi.');
                   }

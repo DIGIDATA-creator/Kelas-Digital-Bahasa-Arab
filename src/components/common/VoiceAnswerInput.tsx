@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mic, MicOff, Volume2, Globe, Sparkles, Check, AlertCircle, RefreshCw } from 'lucide-react';
+import { Mic, MicOff, Volume2, Globe, Sparkles, Check, AlertCircle, RefreshCw, Award, Trophy } from 'lucide-react';
+import { evaluatePronunciationScore, PronunciationEvaluation } from '../../utils/pronunciationEvaluator';
 
 interface VoiceAnswerInputProps {
   onTranscript: (text: string) => void;
@@ -32,6 +33,7 @@ export const VoiceAnswerInput: React.FC<VoiceAnswerInputProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSpeakingQuestion, setIsSpeakingQuestion] = useState(false);
   const [matchFoundNotice, setMatchFoundNotice] = useState<string | null>(null);
+  const [pronunciationEval, setPronunciationEval] = useState<PronunciationEvaluation | null>(null);
 
   const recognitionRef = useRef<any>(null);
 
@@ -94,6 +96,11 @@ export const VoiceAnswerInput: React.FC<VoiceAnswerInputProps> = ({
           const cleanFinal = finalResultText.trim();
           setTranscript(cleanFinal);
           onTranscript(cleanFinal);
+
+          // Evaluate pronunciation accuracy score against question text/arabic or expected option
+          const targetAnswer = questionArabic || questionText || (options && options.length > 0 ? options[0] : '');
+          const evalRes = evaluatePronunciationScore(cleanFinal, targetAnswer);
+          setPronunciationEval(evalRes);
 
           // If mode is multiple choice or options exist, attempt to match option
           if (options && options.length > 0 && onOptionSelect) {
@@ -304,6 +311,38 @@ export const VoiceAnswerInput: React.FC<VoiceAnswerInputProps> = ({
                 <span>{transcript}</span>
               )}
             </p>
+          </div>
+        )}
+
+        {/* Pronunciation Score Feedback Visualizer */}
+        {pronunciationEval && pronunciationEval.score > 0 && (
+          <div className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-all ${pronunciationEval.badgeColor}`}>
+            <div className="flex items-center gap-2">
+              <span className="p-1.5 bg-white/80 rounded-lg shadow-2xs text-purple-700">
+                <Award size={18} />
+              </span>
+              <div>
+                <span className="text-xs font-black block leading-tight">
+                  {pronunciationEval.label}
+                </span>
+                <span className="text-[11px] font-arabic font-bold opacity-80 block">
+                  {pronunciationEval.arabicLabel}
+                </span>
+              </div>
+            </div>
+
+            {/* Score progress gauge bar */}
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="w-28 sm:w-32 bg-slate-200/80 rounded-full h-2.5 overflow-hidden p-0.5 border border-slate-300">
+                <div
+                  className="bg-purple-700 h-full rounded-full transition-all duration-500 shadow-2xs"
+                  style={{ width: `${pronunciationEval.score}%` }}
+                />
+              </div>
+              <span className="text-xs font-black font-mono px-2 py-0.5 bg-white rounded-md border border-slate-200 text-purple-950">
+                {pronunciationEval.score}%
+              </span>
+            </div>
           </div>
         )}
 
