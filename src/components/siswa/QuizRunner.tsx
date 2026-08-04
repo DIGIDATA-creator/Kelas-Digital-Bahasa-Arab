@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Penilaian, Student, QuizAttempt, Question } from '../../types';
-import { Clock, CheckCircle2, XCircle, Award, ArrowRight, ArrowLeft, RefreshCw, Sparkles, AlertTriangle, Hash, Calendar, Mic } from 'lucide-react';
+import { Clock, CheckCircle2, XCircle, Award, ArrowRight, ArrowLeft, RefreshCw, Sparkles, AlertTriangle, Hash, Calendar, Mic, Volume2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { VoiceAnswerInput } from '../common/VoiceAnswerInput';
 
@@ -24,6 +24,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
   const [isPassed, setIsPassed] = useState(false);
+  const [isSpeakingQuestion, setIsSpeakingQuestion] = useState(false);
 
   // F.1.6 Accessed At Timestamp
   const [accessedAt] = useState<string>(new Date().toISOString());
@@ -266,6 +267,8 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
       penilaianId: penilaian.id,
       penilaianTitle: penilaian.title,
       penilaianType: penilaian.type,
+      category: penilaian.category,
+      mode: penilaian.mode,
       studentId: student.id,
       studentName: student.name,
       score: isManualGrading ? 0 : calculatedScore,
@@ -288,6 +291,24 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
         origin: { y: 0.6 }
       });
     }
+  };
+
+  const handleReadQuestion = (questionArabic?: string, questionText?: string) => {
+    if (!('speechSynthesis' in window)) return;
+
+    window.speechSynthesis.cancel();
+    const textToRead = questionArabic || questionText || '';
+    if (!textToRead) return;
+
+    const utterance = new SpeechSynthesisUtterance(textToRead);
+    utterance.lang = questionArabic || (questionText && questionText.toLowerCase().includes('arab')) ? 'ar-SA' : 'id-ID';
+    utterance.rate = 0.85;
+
+    utterance.onstart = () => setIsSpeakingQuestion(true);
+    utterance.onend = () => setIsSpeakingQuestion(false);
+    utterance.onerror = () => setIsSpeakingQuestion(false);
+
+    window.speechSynthesis.speak(utterance);
   };
 
   const minutes = Math.floor(timeLeftSeconds / 60);
@@ -368,87 +389,143 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
             {/* Current Question Display */}
             {currentQ && (
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <h4 className="text-base sm:text-lg font-bold text-slate-900 leading-snug">
-                    {currentQ.questionText}
-                  </h4>
+                {/* Question Header & Dengar Soal (Audio TTS) Button */}
+                <div className="space-y-2 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                  <div className="flex items-start justify-between gap-3">
+                    <h4 className="text-base sm:text-lg font-bold text-slate-900 leading-snug">
+                      {currentQ.questionText}
+                    </h4>
+
+                    {('speechSynthesis' in window) && (
+                      <button
+                        type="button"
+                        onClick={() => handleReadQuestion(currentQ.questionArabic, currentQ.questionText)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition-all cursor-pointer shrink-0 ${
+                          isSpeakingQuestion
+                            ? 'bg-purple-600 text-white border-purple-600 animate-pulse shadow-md'
+                            : 'bg-white text-purple-900 border-purple-200 hover:bg-purple-50 shadow-xs'
+                        }`}
+                        title="Dengarkan pengucapan soal"
+                      >
+                        <Volume2 size={16} />
+                        <span>{isSpeakingQuestion ? 'Memutar...' : 'Dengar Soal'}</span>
+                      </button>
+                    )}
+                  </div>
+
                   {currentQ.questionArabic && (
-                    <p className="font-arabic text-2xl text-purple-900 leading-relaxed text-right p-3 bg-purple-50/50 rounded-xl border border-purple-100">
-                      {currentQ.questionArabic}
-                    </p>
+                    <div className="flex items-center justify-between gap-3 pt-2">
+                      <p className="font-arabic text-2xl text-purple-900 leading-relaxed text-right w-full p-3 bg-purple-50/60 rounded-xl border border-purple-100">
+                        {currentQ.questionArabic}
+                      </p>
+                    </div>
                   )}
                 </div>
 
-                {/* Multiple Choice Options */}
-                {currentQ.options && currentQ.options.length > 0 && (
-                  <div className="space-y-2.5 pt-2">
-                    {currentQ.options.map((opt, optIdx) => {
-                      const isSelected = userAnswers[currentQ.id] === optIdx;
-                      const optionLetter = String.fromCharCode(65 + optIdx); // A, B, C, D
+                {/* MODE 1: Voice Quiz Mode */}
+                {penilaian.mode === 'voice' ? (
+                  <div className="space-y-3 pt-1">
+                    <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-900 flex items-center gap-2">
+                      <Mic size={16} className="text-rose-600 shrink-0" />
+                      <div>
+                        <span className="font-bold block">Mode Kuis Suara (Lisan / Hafalan):</span>
+                        <span>Ucapkan jawaban Anda secara langsung melalui mikrofon di bawah ini.</span>
+                      </div>
+                    </div>
 
-                      return (
-                        <button
-                          key={optIdx}
-                          onClick={() => handleSelectAnswer(optIdx)}
-                          className={`w-full text-left p-3.5 sm:p-4 rounded-xl border-2 transition-all text-xs sm:text-sm font-medium flex items-center justify-between cursor-pointer ${
-                            isSelected
-                              ? 'bg-purple-50 border-purple-600 text-purple-900 font-bold shadow-xs'
-                              : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-800'
-                          }`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <span className={`w-6 h-6 rounded-lg text-xs font-black flex items-center justify-center shrink-0 ${
-                              isSelected ? 'bg-purple-600 text-white' : 'bg-slate-100 text-slate-600 border border-slate-200'
-                            }`}>
-                              {optionLetter}
-                            </span>
-                            <span>{opt}</span>
-                          </div>
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center text-xs font-bold shrink-0 ${
-                            isSelected ? 'border-purple-600 bg-purple-600 text-white' : 'border-slate-300'
-                          }`}>
-                            {isSelected && '✓'}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Essay / Fill in Blank Input */}
-                {(!currentQ.options || currentQ.options.length === 0 || currentQ.type === 'essay' || currentQ.type === 'fill_in_blank') && (
-                  <div className="pt-2 space-y-2">
-                    <label className="block text-xs font-semibold text-slate-600">
-                      Tuliskan Jawaban Isian / Essay Anda:
-                    </label>
-                    <textarea
-                      rows={4}
-                      value={String(userAnswers[currentQ.id] || '')}
-                      onChange={(e) => handleSelectAnswer(e.target.value)}
-                      placeholder="Tuliskan jawaban Anda secara lengkap di sini..."
-                      className="w-full p-4 border-2 border-slate-300 rounded-xl font-sans text-sm focus:border-purple-500 focus:outline-hidden"
+                    <VoiceAnswerInput
+                      onTranscript={(text) => {
+                        handleSelectAnswer(text);
+                      }}
+                      onOptionSelect={(optIdx) => {
+                        handleSelectAnswer(optIdx);
+                      }}
+                      options={currentQ.options}
+                      currentValue={String(userAnswers[currentQ.id] || '')}
+                      questionArabic={currentQ.questionArabic}
+                      questionText={currentQ.questionText}
+                      defaultLanguage={
+                        currentQ.questionArabic || penilaian.category === 'hiwar' || (currentQ.questionText && currentQ.questionText.toLowerCase().includes('arab'))
+                          ? 'ar-SA'
+                          : 'id-ID'
+                      }
+                      mode="essay"
                     />
                   </div>
-                )}
+                ) : (
+                  /* MODE 2: Multiple Choice Mode (Input Suara Dihilangkan, hanya tombol Dengar Soal) */
+                  <>
+                    {currentQ.options && currentQ.options.length > 0 && (
+                      <div className="space-y-2.5 pt-2">
+                        {currentQ.options.map((opt, optIdx) => {
+                          const isSelected = userAnswers[currentQ.id] === optIdx;
+                          const optionLetter = String.fromCharCode(65 + optIdx); // A, B, C, D
 
-                {/* Web Speech API Voice Answer Widget */}
-                <VoiceAnswerInput
-                  onTranscript={(text) => {
-                    // For essay/fill in blank or typed input, set user answer text
-                    if (!currentQ.options || currentQ.options.length === 0 || currentQ.type === 'essay' || currentQ.type === 'fill_in_blank') {
-                      handleSelectAnswer(text);
-                    }
-                  }}
-                  onOptionSelect={(optIdx) => {
-                    handleSelectAnswer(optIdx);
-                  }}
-                  options={currentQ.options}
-                  currentValue={String(userAnswers[currentQ.id] || '')}
-                  questionArabic={currentQ.questionArabic}
-                  questionText={currentQ.questionText}
-                  defaultLanguage={currentQ.questionArabic || penilaian.category === 'hiwar' || (currentQ.questionText && currentQ.questionText.toLowerCase().includes('arab')) ? 'ar-SA' : 'id-ID'}
-                  mode={currentQ.options && currentQ.options.length > 0 ? 'multiple_choice' : 'essay'}
-                />
+                          return (
+                            <button
+                              key={optIdx}
+                              onClick={() => handleSelectAnswer(optIdx)}
+                              className={`w-full text-left p-3.5 sm:p-4 rounded-xl border-2 transition-all text-xs sm:text-sm font-medium flex items-center justify-between cursor-pointer ${
+                                isSelected
+                                  ? 'bg-purple-50 border-purple-600 text-purple-900 font-bold shadow-xs'
+                                  : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-800'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <span className={`w-6 h-6 rounded-lg text-xs font-black flex items-center justify-center shrink-0 ${
+                                  isSelected ? 'bg-purple-600 text-white' : 'bg-slate-100 text-slate-600 border border-slate-200'
+                                }`}>
+                                  {optionLetter}
+                                </span>
+                                <span>{opt}</span>
+                              </div>
+                              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center text-xs font-bold shrink-0 ${
+                                isSelected ? 'border-purple-600 bg-purple-600 text-white' : 'border-slate-300'
+                              }`}>
+                                {isSelected && '✓'}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* MODE 3: Essay / Fill in Blank (Non-multiple choice) */}
+                    {(!currentQ.options || currentQ.options.length === 0 || currentQ.type === 'essay' || currentQ.type === 'fill_in_blank') && (
+                      <div className="pt-2 space-y-3">
+                        <label className="block text-xs font-semibold text-slate-600">
+                          Tuliskan atau Ucapkan Jawaban Isian / Essay Anda:
+                        </label>
+                        <textarea
+                          rows={4}
+                          value={String(userAnswers[currentQ.id] || '')}
+                          onChange={(e) => handleSelectAnswer(e.target.value)}
+                          placeholder="Tuliskan jawaban Anda secara lengkap di sini..."
+                          className="w-full p-4 border-2 border-slate-300 rounded-xl font-sans text-sm focus:border-purple-500 focus:outline-hidden"
+                        />
+
+                        <VoiceAnswerInput
+                          onTranscript={(text) => {
+                            handleSelectAnswer(text);
+                          }}
+                          onOptionSelect={(optIdx) => {
+                            handleSelectAnswer(optIdx);
+                          }}
+                          options={currentQ.options}
+                          currentValue={String(userAnswers[currentQ.id] || '')}
+                          questionArabic={currentQ.questionArabic}
+                          questionText={currentQ.questionText}
+                          defaultLanguage={
+                            currentQ.questionArabic || penilaian.category === 'hiwar' || (currentQ.questionText && currentQ.questionText.toLowerCase().includes('arab'))
+                              ? 'ar-SA'
+                              : 'id-ID'
+                          }
+                          mode="essay"
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             )}
 

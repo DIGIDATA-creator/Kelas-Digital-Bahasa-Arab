@@ -115,6 +115,9 @@ export function calculateStudentVocabStreaks(
   const streakMap: Record<string, number> = {};
 
   sortedAttempts.forEach(attempt => {
+    const isVoiceQuiz = attempt.mode === 'voice' || (attempt.penilaianTitle && attempt.penilaianTitle.toLowerCase().includes('suara'));
+    const targetStreakThreshold = isVoiceQuiz ? 2 : 3;
+
     // Find matching penilaian or use attempt seen questions
     const penilaian = penilaianList.find(p => p.id === attempt.penilaianId || p.title === attempt.penilaianTitle);
     const questions: Question[] = penilaian?.questions || [];
@@ -136,7 +139,7 @@ export function calculateStudentVocabStreaks(
       if (correct) {
         const currentStreak = (streakMap[vocabId] || 0) + 1;
         streakMap[vocabId] = currentStreak;
-        if (currentStreak >= 3) {
+        if (currentStreak >= targetStreakThreshold) {
           quizVerifiedKosakata[vocabId] = true;
         }
       } else {

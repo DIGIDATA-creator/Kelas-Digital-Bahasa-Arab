@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Penilaian, Student, QuizAttempt, AssessmentType, CategoryType, Materi } from '../../types';
-import { Clock, Play, CheckCircle2, Award, FileCheck2, AlertCircle, Sparkles, BookOpen, Layers, MessageSquare, Quote, ArrowRight, Zap, RefreshCw, Settings2 } from 'lucide-react';
+import { Clock, Play, CheckCircle2, Award, FileCheck2, AlertCircle, Sparkles, BookOpen, Layers, MessageSquare, Quote, ArrowRight, Zap, RefreshCw, Settings2, Mic, Volume2 } from 'lucide-react';
 import { QuizRunner } from './QuizRunner';
 import { generateDynamicKosakataQuiz, KosakataQuizConfig } from './KosakataQuizGenerator';
 import { generateDynamicMahfudzotQuiz, MahfudzotQuizConfig } from './MahfudzotQuizGenerator';
@@ -199,11 +199,58 @@ export const PenilaianSiswaView: React.FC<PenilaianSiswaViewProps> = ({
                   Generator Kuis Kosakata Otomatis
                 </h3>
                 <p className="text-xs text-emerald-100/80">
-                  Sistem membuat soal acak dari database mufrodat (1 jawaban benar, 1 salah sama bab, 2 salah bab beda).
+                  {kosakataConfig.quizMode === 'voice'
+                    ? 'Mode Kuis Suara: Siswa menjawab soal kosakata secara lisan menggunakan mikrofon (Web Speech API).'
+                    : 'Mode Pilihan Ganda: Soal acak dengan 1 jawaban benar, 2 jawaban salah bab/rentang sama, dan 1 jawaban salah bab lain.'}
                 </p>
               </div>
             </div>
+
+            {/* Mode Selection Tabs (Pilihan Ganda vs Kuis Suara) */}
+            <div className="flex items-center bg-black/40 p-1 rounded-2xl border border-white/15 self-start sm:self-auto shrink-0">
+              <button
+                type="button"
+                onClick={() => setKosakataConfig({ ...kosakataConfig, quizMode: 'multiple_choice' })}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  kosakataConfig.quizMode !== 'voice'
+                    ? 'bg-amber-400 text-slate-950 shadow-md font-extrabold'
+                    : 'text-white/80 hover:text-white'
+                }`}
+              >
+                <Layers size={14} />
+                <span>Pilihan Ganda</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setKosakataConfig({ ...kosakataConfig, quizMode: 'voice' })}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  kosakataConfig.quizMode === 'voice'
+                    ? 'bg-amber-400 text-slate-950 shadow-md font-extrabold'
+                    : 'text-white/80 hover:text-white'
+                }`}
+              >
+                <Mic size={14} className="text-rose-600 animate-pulse" />
+                <span>Kuis Suara (Web Speech)</span>
+              </button>
+            </div>
           </div>
+
+          {/* Voice Quiz Verification Banner */}
+          {kosakataConfig.quizMode === 'voice' && (
+            <div className="p-3 bg-emerald-500/20 border border-emerald-400/40 rounded-2xl text-xs text-emerald-200 flex items-center gap-2.5 relative z-10">
+              <div className="p-1.5 bg-emerald-400 text-slate-950 rounded-xl font-bold shrink-0">
+                <Mic size={16} />
+              </div>
+              <div>
+                <span className="font-extrabold text-amber-300 block">
+                  ✨ Mode Verifikasi Hafalan Suara
+                </span>
+                <span>
+                  Apabila siswa dapat menjawab dengan benar <strong>2 kali berturut-turut</strong> pada kuis suara ini, siswa otomatis mendapat <strong>Verifikasi Hafalan</strong>!
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Configuration Form Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs relative z-10">

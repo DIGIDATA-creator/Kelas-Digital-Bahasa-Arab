@@ -7,6 +7,7 @@ export interface KosakataQuizConfig {
   rangeEndBab: number;
   direction: 'arab_indo' | 'indo_arab';
   questionCount: 10 | 20 | 30 | 40 | 50;
+  quizMode?: 'multiple_choice' | 'voice';
 }
 
 interface VocabFlatItem {
@@ -19,6 +20,8 @@ export function generateDynamicKosakataQuiz(
   materiList: Materi[],
   config: KosakataQuizConfig
 ): Penilaian {
+  const isVoiceMode = config.quizMode === 'voice';
+
   // 1. Gather all vocabularies from materi of category === 'kosakata'
   const kosakataMateri = materiList.filter(m => m.category === 'kosakata');
 
@@ -49,7 +52,7 @@ export function generateDynamicKosakataQuiz(
     candidatePool = [...allFlatVocabs];
   }
 
-  // 3. Randomize order of candidate pool (Rule 2.1d: Kosakata pada nomor soal beda)
+  // 3. Randomize order of candidate pool
   const shuffledCandidates = [...candidatePool].sort(() => Math.random() - 0.5);
 
   // Take up to requested questionCount
@@ -65,37 +68,96 @@ export function generateDynamicKosakataQuiz(
     }
   }
 
-  // 4. Generate 4 choices for each question (Rule 2.1a):
-  // 1 correct answer, 1 distractor from SAME BAB, 2 distractors from DIFFERENT BABS
+  // 4. Generate questions according to mode
   const questions: Question[] = selectedTargets.map((target, idx) => {
     const targetBab = target.babNumber;
     const targetVocab = target.vocab;
-
     const isArabIndo = config.direction === 'arab_indo';
+
     const correctAnswerText = isArabIndo ? targetVocab.meaning : targetVocab.word;
+    const questionArabic = isArabIndo ? targetVocab.word : targetVocab.meaning;
 
-    // Distractor 1: Same Bab (excluding target)
-    const sameBabCandidates = allFlatVocabs.filter(
-      v => v.babNumber === targetBab && v.vocab.id !== targetVocab.id
-    );
-    let distractorSame: string | null = null;
-    if (sameBabCandidates.length > 0) {
-      const randomSame = sameBabCandidates[Math.floor(Math.random() * sameBabCandidates.length)];
-      distractorSame = isArabIndo ? randomSame.vocab.meaning : randomSame.vocab.word;
+    if (isVoiceMode) {
+      // VOICE QUIZ MODE (Web Speech API)
+      const questionText = isArabIndo
+        ? `Ucapkan terjemahan Bahasa Indonesia dari mufradat "${targetVocab.word}" ke mikrofon:`
+        : `Ucapkan mufradat Bahasa Arab untuk kata "${targetVocab.meaning}" ke mikrofon:`;
+
+      return {
+        id: `q-dyn-kos-v-${Date.now()}-${idx}`,
+        code: `KOS-V-BAB${targetBab}-${idx + 1}`,
+        type: 'essay',
+        questionText,
+        questionArabic,
+        correctAnswer: correctAnswerText,
+        explanation: `Kosakata "${targetVocab.word}" (${targetVocab.latin || ''}) bermakna "${targetVocab.meaning}". (Bab ${targetBab}: ${target.babTitle}).`,
+        points: Math.round(100 / config.questionCount),
+        vocabId: targetVocab.id,
+        options: [correctAnswerText],
+      };
     }
 
-    // Distractor 2 & 3: Different Babs
-    const diffBabCandidates = allFlatVocabs.filter(v => v.babNumber !== targetBab);
-    let distractorDiff1: string | null = null;
-    let distractorDiff2: string | null = null;
+    // MULTIPLE CHOICE MODE (Rule 1 & Rule 2 Fix):
+    // - Jika siswa hanya memilih 1 bab (specificBab / 1 bab scope): 2 jawaban salah dari bab yang sama, 1 jawaban salah dari bab yang lain.
+    // - Jika siswa memilih rentang bab (rangeStartBab - rangeEndBab): 2 jawaban salah dari rentang bab yang dipilih, 1 jawaban salah dari bab yang tidak dipilih.
+    // - Jika memilih semua bab: 2 jawaban salah dari bab yang sama, 1 jawaban salah dari bab yang lain.
 
-    if (diffBabCandidates.length >= 2) {
-      const shuffledDiff = [...diffBabCandidates].sort(() => Math.random() - 0.5);
-      distractorDiff1 = isArabIndo ? shuffledDiff[0].vocab.meaning : shuffledDiff[0].vocab.word;
-      distractorDiff2 = isArabIndo ? shuffledDiff[1].vocab.meaning : shuffledDiff[1].vocab.word;
-    } else if (diffBabCandidates.length === 1) {
-      distractorDiff1 = isArabIndo ? diffBabCandidates[0].vocab.meaning : diffBabCandidates[0].vocab.word;
+    let sameOrInRangeCandidates: VocabFlatItem[] = [];
+    let diffOrOutRangeCandidates: VocabFlatItem[] = [];
+
+    if (config.scopeType === 'specific') {
+      sameOrInRangeCandidates = allFlatVocabs.filter(
+        v => v.babNumber === targetBab && v.vocab.id !== targetVocab.id
+      );
+      diffOrOutRangeCandidates = allFlatVocabs.filter(
+        v => v.babNumber !== targetBab
+      );
+    } else if (config.scopeType === 'range') {
+      sameOrInRangeCandidates = allFlatVocabs.filter(
+        v => v.babNumber >= config.rangeStartBab && v.babNumber <= config.rangeEndBab && v.vocab.id !== targetVocab.id
+      );
+      diffOrOutRangeCandidates = allFlatVocabs.filter(
+        v => (v.babNumber < config.rangeStartBab || v.babNumber > config.rangeEndBab)
+      );
+    } else {
+      // 'all'
+      sameOrInRangeCandidates = allFlatVocabs.filter(
+        v => v.babNumber === targetBab && v.vocab.id !== targetVocab.id
+      );
+      diffOrOutRangeCandidates = allFlatVocabs.filter(
+        v => v.babNumber !== targetBab
+      );
     }
+
+    // 2 Distractors from same/in-range candidates
+    const shuffledSameOrIn = [...sameOrInRangeCandidates].sort(() => Math.random() - 0.5);
+    const sameOrInDistractors: string[] = [];
+    shuffledSameOrIn.forEach(v => {
+      const txt = isArabIndo ? v.vocab.meaning : v.vocab.word;
+      if (txt !== correctAnswerText && !sameOrInDistractors.includes(txt)) {
+        if (sameOrInDistractors.length < 2) {
+          sameOrInDistractors.push(txt);
+        }
+      }
+    });
+
+    // 1 Distractor from diff/out-of-range candidates
+    const shuffledDiffOrOut = [...diffOrOutRangeCandidates].sort(() => Math.random() - 0.5);
+    const diffOrOutDistractors: string[] = [];
+    shuffledDiffOrOut.forEach(v => {
+      const txt = isArabIndo ? v.vocab.meaning : v.vocab.word;
+      if (txt !== correctAnswerText && !sameOrInDistractors.includes(txt) && !diffOrOutDistractors.includes(txt)) {
+        if (diffOrOutDistractors.length < 1) {
+          diffOrOutDistractors.push(txt);
+        }
+      }
+    });
+
+    // Assemble option set
+    const optionSet = new Set<string>();
+    optionSet.add(correctAnswerText);
+    sameOrInDistractors.forEach(d => optionSet.add(d));
+    diffOrOutDistractors.forEach(d => optionSet.add(d));
 
     // Backup pool of any words to ensure we ALWAYS have 4 unique options
     const fallbackOptionsPool = allFlatVocabs
@@ -103,29 +165,15 @@ export function generateDynamicKosakataQuiz(
       .map(v => (isArabIndo ? v.vocab.meaning : v.vocab.word));
     const shuffledFallback = [...fallbackOptionsPool].sort(() => Math.random() - 0.5);
 
-    const optionSet = new Set<string>();
-    optionSet.add(correctAnswerText);
-
-    if (distractorSame && distractorSame !== correctAnswerText) {
-      optionSet.add(distractorSame);
-    }
-
-    if (distractorDiff1 && !optionSet.has(distractorDiff1)) {
-      optionSet.add(distractorDiff1);
-    }
-
-    if (distractorDiff2 && !optionSet.has(distractorDiff2)) {
-      optionSet.add(distractorDiff2);
-    }
-
-    // Fill remaining up to 4 options from fallback pool
     let fallbackIdx = 0;
     while (optionSet.size < 4 && fallbackIdx < shuffledFallback.length) {
-      optionSet.add(shuffledFallback[fallbackIdx]);
+      if (shuffledFallback[fallbackIdx] !== correctAnswerText) {
+        optionSet.add(shuffledFallback[fallbackIdx]);
+      }
       fallbackIdx++;
     }
 
-    // If still less than 4 (e.g. database has very few total words), add generic fallback options
+    // Generic fallbacks if database has very few words
     const genericFallbacks = isArabIndo
       ? ['Pintu Belajar', 'Halaman Sekolah', 'Jendela Kelas', 'Lampu Penerang']
       : ['مَلْعَبٌ', 'مَكْتَبَةٌ', 'مُدَرِّسٌ', 'مَدْرَسَةٌ'];
@@ -138,16 +186,13 @@ export function generateDynamicKosakataQuiz(
 
     const optionsList = Array.from(optionSet);
 
-    // Shuffle options randomly (Rule 2.1d: Posisi jawaban benar antar siswa beda)
+    // Shuffle options randomly
     const shuffledOptions = [...optionsList].sort(() => Math.random() - 0.5);
     const correctIndex = shuffledOptions.indexOf(correctAnswerText);
 
-    // Question texts
     const questionText = isArabIndo
       ? `Apakah terjemahan Bahasa Indonesia yang tepat dari mufradat "${targetVocab.word}"?`
       : `Manakah mufradat Bahasa Arab yang tepat untuk kata "${targetVocab.meaning}"?`;
-
-    const questionArabic = isArabIndo ? targetVocab.word : targetVocab.meaning;
 
     return {
       id: `q-dyn-kos-${Date.now()}-${idx}`,
@@ -159,11 +204,11 @@ export function generateDynamicKosakataQuiz(
       correctAnswer: correctIndex,
       explanation: `Kosakata "${targetVocab.word}" (${targetVocab.latin || ''}) bermakna "${targetVocab.meaning}". (Bab ${targetBab}: ${target.babTitle}).`,
       points: Math.round(100 / config.questionCount),
+      vocabId: targetVocab.id,
     };
   });
 
-  // Calculate timer in minutes (Rule 2.1e)
-  // 10 -> 5 mins, 20 -> 10 mins, 30 -> 15 mins, 40 -> 20 mins, 50 -> 25 mins
+  // Calculate timer in minutes
   const timerMinutesMap: Record<number, number> = {
     10: 5,
     20: 10,
@@ -181,8 +226,9 @@ export function generateDynamicKosakataQuiz(
       : 'Semua Bab';
 
   const dirLabel = config.direction === 'arab_indo' ? 'Arab ➔ Indonesia' : 'Indonesia ➔ Arab';
+  const modeLabel = isVoiceMode ? 'Kuis Suara (Web Speech API)' : 'Pilihan Ganda';
 
-  // Bonus EXP calculations (Requirements 4 & 5)
+  // Bonus EXP calculations
   const questionCountExpMap: Record<number, number> = {
     10: 15,
     20: 25,
@@ -202,11 +248,12 @@ export function generateDynamicKosakataQuiz(
   const bonusExpForBabs = extraBabCount * 15;
 
   return {
-    id: `kuis-kosakata-dyn-${Date.now()}`,
-    code: `KIZ-KOS-${config.questionCount}Q`,
-    title: `Kuis Kosakata: ${dirLabel} (${config.questionCount} Soal - ${scopeLabel})`,
+    id: isVoiceMode ? `kuis-kosakata-voice-${Date.now()}` : `kuis-kosakata-dyn-${Date.now()}`,
+    code: isVoiceMode ? `KIZ-KOS-V-${config.questionCount}Q` : `KIZ-KOS-${config.questionCount}Q`,
+    title: `Kuis ${isVoiceMode ? 'Suara ' : ''}Kosakata: ${dirLabel} (${config.questionCount} Soal - ${scopeLabel})`,
     type: 'kuis',
     category: 'kosakata',
+    mode: isVoiceMode ? 'voice' : 'multiple_choice',
     babNumber: config.scopeType === 'specific' ? config.specificBab : 1,
     durationMinutes,
     passingGrade: 75,

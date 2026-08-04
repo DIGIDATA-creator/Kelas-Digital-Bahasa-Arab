@@ -92,6 +92,7 @@ export interface Penilaian {
   title: string;
   type: AssessmentType; // 'latihan' | 'kuis' | 'ujian'
   category: CategoryType | 'umum';
+  mode?: 'multiple_choice' | 'voice';
   babNumber?: number; // F.1.1 Bab number
   learningTarget?: string; // F.1.10 Target materi dari bab
   displayQuestionCount?: number; // F.1.4 Jumlah soal yang muncul di akun siswa
@@ -115,6 +116,7 @@ export interface QuizAttempt {
   penilaianTitle: string;
   penilaianType: AssessmentType;
   category?: CategoryType | 'umum';
+  mode?: 'multiple_choice' | 'voice';
   studentId: string;
   studentName: string;
   score: number;
