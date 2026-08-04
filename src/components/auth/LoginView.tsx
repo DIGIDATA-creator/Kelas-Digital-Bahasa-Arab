@@ -39,6 +39,17 @@ export const LoginView: React.FC<LoginViewProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [liveStudents, setLiveStudents] = useState<Student[]>(students);
+
+  React.useEffect(() => {
+    setLiveStudents(students);
+  }, [students]);
+
+  React.useEffect(() => {
+    storageService.fetchLatestStudentsData().then(fresh => {
+      if (fresh && fresh.length > 0) setLiveStudents(fresh);
+    });
+  }, [activeTab]);
 
   // Handle Form Submit
   const handleLoginSubmit = async (e: React.FormEvent) => {
@@ -641,7 +652,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
               </div>
 
               <PendaftaranSiswaForm
-                existingStudents={students}
+                existingStudents={liveStudents}
                 isLoading={isLoading}
                 onRegisterSubmit={async (data) => {
                   setIsLoading(true);
