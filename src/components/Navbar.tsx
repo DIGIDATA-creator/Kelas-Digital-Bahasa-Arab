@@ -252,26 +252,35 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* Navigation Tabs Bar (Visible ONLY when logged in) */}
-        {userSession && (
-          <nav className="flex items-center gap-1 overflow-x-auto py-1 sm:py-2 no-scrollbar">
-            {activeNavTabs.map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => onTabChange(tab.id)}
-                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-all cursor-pointer ${
-                    isActive
-                      ? 'bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/30'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
-          </nav>
-        )}
+        {userSession && (() => {
+          const pendingCount = currentRole === 'guru' ? students.filter(s => s.status === 'pending').length : 0;
+          return (
+            <nav className="flex items-center gap-1 overflow-x-auto py-1 sm:py-2 no-scrollbar">
+              {activeNavTabs.map((tab) => {
+                const isActive = activeTab === tab.id;
+                const showBadge = tab.id === 'siswa' && currentRole === 'guru' && pendingCount > 0;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => onTabChange(tab.id)}
+                    className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                      isActive
+                        ? 'bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/30'
+                        : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                    }`}
+                  >
+                    <span>{tab.label}</span>
+                    {showBadge && (
+                      <span className="px-1.5 py-0.5 bg-rose-500 text-white font-black text-[10px] rounded-full shadow-md animate-pulse shrink-0">
+                        {pendingCount}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+          );
+        })()}
       </div>
     </header>
   );

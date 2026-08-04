@@ -84,13 +84,13 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({
           <div className="flex flex-wrap gap-3 pt-2">
             <button
               onClick={() => onNavigate('materi')}
-              className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-lg flex items-center gap-2"
+              className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-lg flex items-center gap-2 cursor-pointer"
             >
               <FileUp size={16} /> Unggah Materi PDF / Baru
             </button>
             <button
               onClick={() => onNavigate('penilaian')}
-              className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs sm:text-sm font-bold transition-all backdrop-blur-xs flex items-center gap-2 border border-white/20"
+              className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs sm:text-sm font-bold transition-all backdrop-blur-xs flex items-center gap-2 border border-white/20 cursor-pointer"
             >
               <Plus size={16} /> Buat Kuis / Ujian
             </button>
@@ -106,6 +106,36 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({
           عربي
         </div>
       </div>
+
+      {/* Pending Student Registration Verification Notification Alert Banner */}
+      {students.filter(s => s.status === 'pending').length > 0 && (
+        <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 text-slate-950 p-4 sm:p-5 rounded-2xl shadow-lg border border-amber-400 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-slate-950 text-amber-400 rounded-xl font-bold shrink-0 shadow-xs">
+              <UserCheck size={22} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-extrabold text-sm sm:text-base text-slate-950">
+                  Pemberitahuan Pendaftaran Siswa Baru
+                </h3>
+                <span className="px-2 py-0.5 bg-rose-600 text-white font-black text-xs rounded-full shadow-xs">
+                  {students.filter(s => s.status === 'pending').length} Siswa
+                </span>
+              </div>
+              <p className="text-xs text-amber-950 font-medium mt-0.5">
+                Ada <span className="font-black">{students.filter(s => s.status === 'pending').length} pendaftaran siswa baru</span> yang butuh verifikasi (ACC) sebelum dapat mengakses portal LMS.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => onNavigate('siswa')}
+            className="px-4 py-2.5 bg-slate-950 hover:bg-slate-900 text-amber-300 font-extrabold text-xs sm:text-sm rounded-xl shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer shrink-0"
+          >
+            <UserCheck size={16} /> Verifikasi & ACC Sekarang ({students.filter(s => s.status === 'pending').length})
+          </button>
+        </div>
+      )}
 
       {/* Quick Predictive Student Search Bar on Beranda Guru */}
       <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-2 relative">
