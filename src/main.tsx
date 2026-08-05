@@ -2,6 +2,10 @@ import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+import { registerServiceWorker } from './utils/registerServiceWorker';
+
+// Register Service Worker for offline PWA & materi caching
+registerServiceWorker();
 
 // Polyfills for legacy webviews & older Android browsers (e.g. Samsung Galaxy J7)
 if (typeof window !== 'undefined') {

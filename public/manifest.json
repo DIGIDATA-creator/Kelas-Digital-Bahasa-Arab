@@ -1,0 +1,21 @@
+{
+  "short_name": "Kelas Arab",
+  "name": "Kelas Digital Bahasa Arab",
+  "icons": [
+    {
+      "src": "https://images.unsplash.com/photo-1542831371-29b0f74f9713?w=192&auto=format&fit=crop&q=80",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://images.unsplash.com/photo-1542831371-29b0f74f9713?w=512&auto=format&fit=crop&q=80",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0f172a",
+  "theme_color": "#6d28d9",
+  "display": "standalone",
+  "orientation": "portrait"
+}

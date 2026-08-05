@@ -237,12 +237,12 @@ export function generateDynamicMahfudzotQuiz(
 
     if (isVoiceMode) {
       return {
-        id: `q-dyn-mahf-v-${Date.now()}-${idx}`,
+        id: `q-dyn-mahf-v-${idx + 1}-${Math.random().toString(36).substring(2, 7)}`,
         code: `MFZ-V-${target.number}-${idx + 1}`,
         type: 'essay',
         questionText,
         questionArabic,
-        options: [correctAnswerText],
+        options: [],
         correctAnswer: correctAnswerText,
         explanation: explanationText,
         points: Math.round(100 / config.questionCount),
@@ -256,7 +256,7 @@ export function generateDynamicMahfudzotQuiz(
     const correctIndex = shuffledOptions.indexOf(correctAnswerText);
 
     return {
-      id: `q-dyn-mahf-${Date.now()}-${idx}`,
+      id: `q-dyn-mahf-${idx + 1}-${Math.random().toString(36).substring(2, 7)}`,
       code: `MFZ-${target.number}-${idx + 1}`,
       type: 'multiple_choice',
       questionText,

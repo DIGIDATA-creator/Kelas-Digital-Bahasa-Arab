@@ -2,6 +2,7 @@ import { Materi, Penilaian, Student, ActivityLog, Role, QuizAttempt, ForumPost, 
 import { INITIAL_MATERI, INITIAL_PENILAIAN, INITIAL_STUDENTS, INITIAL_LOGS, INITIAL_FORUM_POSTS } from '../data/initialData';
 import { db } from '../firebase/config';
 import { doc, collection, onSnapshot, setDoc, getDoc, getDocs, getDocFromServer } from 'firebase/firestore';
+import { offlineCacheService } from './offlineCacheService';
 
 // Helper function to merge student lists across devices without data loss
 function mergeStudentLists(...lists: Student[][]): Student[] {
@@ -199,6 +200,7 @@ export const storageService = {
       if (docSnap.exists() && docSnap.data().items) {
         cachedMateri = docSnap.data().items;
         saveLocal(KEYS.MATERI, cachedMateri);
+        offlineCacheService.cacheAllMateriAndKosakata(cachedMateri).catch(console.warn);
         notifyListeners();
       } else {
         setDoc(docMateri, sanitizeForFirestore({ items: cachedMateri })).catch(console.error);
@@ -322,12 +324,7 @@ export const storageService = {
 
   async fetchLatestStudentsData() {
     try {
-      let docSnap;
-      try {
-        docSnap = await getDocFromServer(docStudents);
-      } catch {
-        docSnap = await getDoc(docStudents);
-      }
+      const docSnap = await getDoc(docStudents);
 
       let remoteDocStudents: Student[] = [];
       if (docSnap.exists() && docSnap.data()?.items) {
@@ -365,12 +362,12 @@ export const storageService = {
 
   async addStudent(newStudent: Student): Promise<{ success: boolean; student?: Student; message?: string }> {
     try {
-      // 1. Fetch latest student data directly from Firestore server first
-      const latestStudents = await this.fetchLatestStudentsData();
+      // 1. Use cached real-time student data instead of forcing a blocking network request
+      const latestStudents = this.getStudents();
 
       // Check for duplicate email (case insensitive)
       const isDuplicate = latestStudents.some(
-        s => s.email && s.email.toLowerCase().trim() === newStudent.email.toLowerCase().trim()
+        s => s.email && s.email.toLowerCase().trim() === newStudent.email.toLowerCase().trim() && (s.status === 'aktif' || s.status === 'disetujui' || s.status === 'pending')
       );
 
       if (isDuplicate) {
@@ -412,7 +409,7 @@ export const storageService = {
 
   async syncAndSaveStudents(updater: (currentRemoteList: Student[]) => Student[]): Promise<Student[]> {
     try {
-      const latestStudents = await this.fetchLatestStudentsData();
+      const latestStudents = this.getStudents();
       const updatedList = updater(latestStudents);
       const merged = mergeStudentLists(updatedList, latestStudents);
       cachedStudents = merged;
@@ -461,6 +458,7 @@ export const storageService = {
   saveMateri(list: Materi[]): void {
     cachedMateri = list;
     saveLocal(KEYS.MATERI, list);
+    offlineCacheService.cacheAllMateriAndKosakata(list).catch(console.warn);
     setDoc(docMateri, sanitizeForFirestore({ items: list })).catch(err => console.error('Error syncing Materi to Firestore:', err));
     notifyListeners();
   },

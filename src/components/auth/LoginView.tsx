@@ -77,10 +77,9 @@ export const LoginView: React.FC<LoginViewProps> = ({
       const inputStr = identifier.trim().toLowerCase();
       const inputPass = password.trim();
 
-      // Fetch fresh data directly from Firestore before validation to support multi-device logins
-      console.log('📡 [AUTH DEBUG] Fetching real-time credentials & student records from Firestore...');
-      const freshGuru = await storageService.fetchLatestGuruData();
-      const freshStudents = await storageService.fetchLatestStudentsData();
+      // Try cached data first to make login fast
+      let freshGuru = { profile: storageService.getGuruProfile(), credentials: storageService.getGuruCredentials() };
+      let freshStudents = storageService.getStudents();
 
       console.log('📦 [AUTH DEBUG] Firestore Guru Profile:', freshGuru.profile);
       console.log('📦 [AUTH DEBUG] Firestore Guru Credentials:', freshGuru.credentials);
@@ -299,9 +298,9 @@ export const LoginView: React.FC<LoginViewProps> = ({
         displayName: user.displayName,
       });
 
-      // Fetch latest students from Firestore
-      const freshStudents = await storageService.fetchLatestStudentsData();
-      const freshGuru = await storageService.fetchLatestGuruData();
+      // Use cached students from Firestore
+      const freshStudents = storageService.getStudents();
+      const freshGuru = { profile: storageService.getGuruProfile(), credentials: storageService.getGuruCredentials() };
 
       const guruEmail = (freshGuru.profile?.email || 'ahmad.dahlan@sekolah.sch.id').toLowerCase().trim();
       const isTeacher = userEmail.includes('guru') || userEmail.includes('admin') || userEmail === 'ruangk106@gmail.com' || userEmail === guruEmail;

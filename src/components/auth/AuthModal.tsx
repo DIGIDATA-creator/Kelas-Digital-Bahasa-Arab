@@ -191,7 +191,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     // Double check duplicate email in database
     const currentStudents = storageService.getStudents();
     const isDuplicate = currentStudents.some(
-      s => s.email.toLowerCase().trim() === data.email.toLowerCase().trim()
+      s => s.email.toLowerCase().trim() === data.email.toLowerCase().trim() && (s.status === 'aktif' || s.status === 'disetujui' || s.status === 'pending')
     );
     if (isDuplicate) {
       setErrorMsg('Email sudah terdaftar. Silakan masuk dengan akun Anda atau gunakan email lain.');

@@ -369,7 +369,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
 
                   return (
                     <button
-                      key={q.id || idx}
+                      key={`q-tab-${q.id}-${idx}`}
                       onClick={() => setCurrentQuestionIdx(idx)}
                       className={`w-7 h-7 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                         isCurrent
@@ -467,7 +467,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
                 ) : (
                   /* MODE 2: Multiple Choice Mode (Input Suara Dihilangkan, hanya tombol Dengar Soal) */
                   <>
-                    {currentQ.options && currentQ.options.length > 0 && (
+                    {currentQ.type !== 'essay' && currentQ.type !== 'fill_in_blank' && currentQ.options && currentQ.options.length > 0 && (
                       <div className="space-y-2.5 pt-2">
                         {currentQ.options.map((opt, optIdx) => {
                           const isSelected = userAnswers[currentQ.id] === optIdx;
@@ -715,7 +715,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
                 const { selectedText, correctText, isCorrect } = getAnswerAnalysis(q, uAns);
 
                 return (
-                  <div key={q.id || idx} className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-xs space-y-2">
+                  <div key={`q-sum-${q.id}-${idx}`} className="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-xs space-y-2">
                     <div className="flex items-start justify-between gap-2 font-bold">
                       <span className="text-slate-800 leading-snug">{idx + 1}. {q.questionText} ({q.code || `Q-${idx+1}`})</span>
                       {penilaian.gradingMethod === 'manual' ? (

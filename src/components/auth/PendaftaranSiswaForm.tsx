@@ -46,7 +46,9 @@ export const PendaftaranSiswaForm: React.FC<PendaftaranSiswaFormProps> = ({
     const trimmed = emailToCheck.toLowerCase().trim();
     if (!trimmed) return false;
     return existingStudents.some(
-      s => s.email.toLowerCase().trim() === trimmed && s.id !== editingStudentId
+      s => s.email.toLowerCase().trim() === trimmed && 
+           s.id !== editingStudentId && 
+           (s.status === 'aktif' || s.status === 'disetujui' || s.status === 'pending')
     );
   };
 

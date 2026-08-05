@@ -9,6 +9,7 @@ import { KosakataView } from '../guru/materi/KosakataView';
 import { MahfudzotView } from '../guru/materi/MahfudzotView';
 import { FlashcardModal, FlashcardItem } from '../common/FlashcardModal';
 import { LatihanBicaraHiwarModal } from './LatihanBicaraHiwarModal';
+import { OfflineCacheStatusWidget } from '../common/OfflineCacheStatusWidget';
 import { storageService } from '../../services/storage';
 import { calculateStudentVocabStreaks } from '../../utils/vocabStreakUtils';
 
@@ -224,6 +225,9 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
   return (
     <div className="space-y-6">
       
+      {/* Offline Caching & PWA Status Widget */}
+      <OfflineCacheStatusWidget materiList={materiList} />
+
       {/* Category Tabs Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs">
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar w-full sm:w-auto">

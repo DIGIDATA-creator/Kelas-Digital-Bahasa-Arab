@@ -6,6 +6,7 @@ import { SiswaDashboardSkeleton } from '../common/Skeleton';
 import { MahfudzotOfTheDayCard } from '../common/MahfudzotOfTheDayCard';
 import { ToastNotificationContainer, ToastItem } from '../common/ToastNotification';
 import { LearningStreakWidget } from './LearningStreakWidget';
+import { OfflineCacheStatusWidget } from '../common/OfflineCacheStatusWidget';
 
 interface SiswaDashboardProps {
   currentStudent: Student;
@@ -193,6 +194,9 @@ export const SiswaDashboard: React.FC<SiswaDashboardProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Offline PWA & Materi Caching Quick Widget */}
+      <OfflineCacheStatusWidget materiList={materiList} compact={true} />
 
       {/* Progress & Quick Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
