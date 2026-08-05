@@ -16,6 +16,26 @@ interface AuthModalProps {
   onRoleChange?: (role: Role) => void;
 }
 
+const retryWithBackoff = async <T,>(
+  operation: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelay: number = 500
+): Promise<T> => {
+  let attempt = 0;
+  while (attempt < maxRetries) {
+    try {
+      return await operation();
+    } catch (err: any) {
+      attempt++;
+      if (attempt >= maxRetries) throw err;
+      const delay = baseDelay * Math.pow(2, attempt - 1);
+      console.warn(`[RETRY] Operation failed (attempt ${attempt}/${maxRetries}). Retrying in ${delay}ms...`, err?.message);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  throw new Error("Maximum retries reached");
+};
+
 export const AuthModal: React.FC<AuthModalProps> = ({
   isOpen,
   onClose,
@@ -145,7 +165,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
       // Try Firebase authentication
       try {
-        const user = await loginUser(email, password);
+        const user = await retryWithBackoff(() => loginUser(email, password));
         if (user) {
           if (studentMatch && (studentMatch.status === 'disetujui' || studentMatch.status === 'aktif')) {
             if (onSelectStudent) onSelectStudent(studentMatch.id);
@@ -203,7 +223,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     try {
       if (data.password) {
         try {
-          await registerUser(data.email, data.password, data.name);
+          await retryWithBackoff(() => registerUser(data.email, data.password!, data.name));
         } catch (fbErr: any) {
           console.warn("Firebase register skipped/handled:", fbErr);
         }
@@ -229,7 +249,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         registeredAt: new Date().toISOString(),
       };
 
-      const result = await storageService.addStudent(newStudent);
+      const result = await retryWithBackoff(() => storageService.addStudent(newStudent));
       if (result.success) {
         if (onAddNewStudent) onAddNewStudent(newStudent);
         setSuccessMsg(`Pendaftaran siswa baru berhasil! Status: MENUNGGU ACC (Persetujuan) dari Guru.`);

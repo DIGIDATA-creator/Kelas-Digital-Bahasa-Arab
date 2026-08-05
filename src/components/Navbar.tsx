@@ -13,6 +13,9 @@ import {
   Compass,
   Sparkles,
   BookOpen,
+  Cloud,
+  CloudOff,
+  RefreshCw,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -30,6 +33,7 @@ interface NavbarProps {
   onSwitchToStudentSession?: (student: Student) => void;
   onOpenTour?: () => void;
   onOpenGlossary?: () => void;
+  isSyncing?: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -45,6 +49,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSwitchToStudentSession,
   onOpenTour,
   onOpenGlossary,
+  isSyncing,
 }) => {
   const currentStudent = students.find(s => s.id === currentStudentId) || students[0];
 
@@ -231,6 +236,20 @@ export const Navbar: React.FC<NavbarProps> = ({
               <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800/90 border border-amber-500/30 rounded-xl text-xs text-amber-300 font-bold">
                 <Lock size={14} className="text-amber-400 shrink-0" />
                 <span>Akses Terkunci • Silakan Log In</span>
+              </div>
+            )}
+            
+            {/* Sync Status Indicator */}
+            {userSession && typeof isSyncing === 'boolean' && (
+              <div 
+                className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800/50 rounded-xl border border-slate-700/50"
+                title={isSyncing ? "Menyinkronkan dengan Cloud..." : "Tersinkronisasi dengan Cloud"}
+              >
+                {isSyncing ? (
+                  <RefreshCw size={14} className="text-amber-400 animate-spin" />
+                ) : (
+                  <Cloud size={14} className="text-emerald-400" />
+                )}
               </div>
             )}
 

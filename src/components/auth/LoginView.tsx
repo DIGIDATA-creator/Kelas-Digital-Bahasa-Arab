@@ -27,6 +27,26 @@ interface LoginViewProps {
   onLoginSuccess: (session: UserSession) => void;
 }
 
+const retryWithBackoff = async <T,>(
+  operation: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelay: number = 500
+): Promise<T> => {
+  let attempt = 0;
+  while (attempt < maxRetries) {
+    try {
+      return await operation();
+    } catch (err: any) {
+      attempt++;
+      if (attempt >= maxRetries) throw err;
+      const delay = baseDelay * Math.pow(2, attempt - 1);
+      console.warn(`[RETRY] Operation failed (attempt ${attempt}/${maxRetries}). Retrying in ${delay}ms...`, err?.message);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  throw new Error("Maximum retries reached");
+};
+
 export const LoginView: React.FC<LoginViewProps> = ({
   students,
   onLoginSuccess,
@@ -249,7 +269,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
         // Background Firebase Auth Email sign-in attempt to keep Firebase Auth token in sync
         if (finalSession.userEmail && inputPass) {
           console.log(`🔥 [AUTH DEBUG] Attempting background Firebase Auth sign-in for ${finalSession.userEmail}...`);
-          loginUser(finalSession.userEmail, inputPass)
+          retryWithBackoff(() => loginUser(finalSession.userEmail, inputPass))
             .then(user => {
               if (user) {
                 console.log('🔥 [AUTH DEBUG] Firebase Auth sign-in succeeded! UID:', user.uid);
@@ -657,10 +677,21 @@ export const LoginView: React.FC<LoginViewProps> = ({
                   setIsLoading(true);
                   setErrorMsg('');
                   setSuccessMsg('');
+
+                  // Double check duplicate email in database before sending to Firebase
+                  const isDuplicate = liveStudents.some(
+                    s => s.email.toLowerCase().trim() === data.email.toLowerCase().trim() && (s.status === 'aktif' || s.status === 'disetujui' || s.status === 'pending')
+                  );
+                  if (isDuplicate) {
+                    setErrorMsg('Email sudah terdaftar atau menunggu verifikasi guru. Silakan masuk atau gunakan email lain.');
+                    setIsLoading(false);
+                    return;
+                  }
+
                   try {
                     if (data.password) {
                       try {
-                        await registerUser(data.email, data.password, data.name);
+                        await retryWithBackoff(() => registerUser(data.email, data.password!, data.name));
                       } catch (fbErr: any) {
                         console.warn("Firebase register handled:", fbErr?.message || fbErr);
                       }
@@ -688,7 +719,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
                       registeredAt: new Date().toISOString(),
                     };
 
-                    const result = await storageService.addStudent(newStudent);
+                    const result = await retryWithBackoff(() => storageService.addStudent(newStudent));
                     if (result.success) {
                       setSuccessMsg('Pendaftaran siswa baru berhasil dikirim ke database cloud Firestore! Menunggu persetujuan (ACC) dari Guru.');
                       setTimeout(() => setActiveTab('login'), 2200);

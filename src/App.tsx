@@ -150,7 +150,7 @@ export default function App() {
         }
 
         try {
-          const freshGuru = await storageService.fetchLatestGuruData();
+          const freshGuru = { profile: storageService.getGuruProfile(), credentials: storageService.getGuruCredentials() };
           const guruEmail = (freshGuru.profile?.email || 'ahmad.dahlan@sekolah.sch.id').toLowerCase().trim();
 
           if (userEmail === guruEmail || userEmail.includes('guru') || userEmail.includes('admin') || userEmail === 'ruangk106@gmail.com') {
@@ -166,7 +166,7 @@ export default function App() {
             setUserSession(newSession);
             setCurrentRole('guru');
           } else {
-            const freshStudents = await storageService.fetchLatestStudentsData();
+            const freshStudents = storageService.getStudents();
             const student = freshStudents.find(s => s.email.toLowerCase().trim() === userEmail);
             if (student && student.status === 'aktif') {
               const newSession: UserSession = {
@@ -336,6 +336,7 @@ export default function App() {
         onSwitchToStudentSession={handleSwitchToStudentSession}
         onOpenTour={() => setIsTourOpen(true)}
         onOpenGlossary={() => setIsGlossaryOpen(true)}
+        isSyncing={isLoadingData}
       />
 
       {/* Main Content Area */}
