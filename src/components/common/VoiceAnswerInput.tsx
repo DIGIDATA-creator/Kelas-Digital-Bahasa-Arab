@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Mic, MicOff, Volume2, Globe, Sparkles, Check, AlertCircle, RefreshCw, Award, Trophy, Edit3, Keyboard, Info, ShieldCheck, ShieldAlert, ChevronDown, ChevronUp, Activity, HelpCircle } from 'lucide-react';
 import { evaluatePronunciationScore, normalizeArabicSpeechText, analyzePronunciationError, PronunciationEvaluation, LevenshteinAnalysisResult } from '../../utils/pronunciationEvaluator';
+import { playAudio } from '../../utils/audioSpeech';
+import { checkAudioCapabilities } from '../../utils/audioDiagnostics';
 
 interface VoiceAnswerInputProps {
   onTranscript: (text: string) => void;
@@ -330,21 +332,19 @@ export const VoiceAnswerInput: React.FC<VoiceAnswerInputProps> = ({
   };
 
   const handleReadQuestion = () => {
-    if (!('speechSynthesis' in window)) return;
-
-    window.speechSynthesis.cancel();
     const textToRead = questionArabic || questionText || '';
     if (!textToRead) return;
 
-    const utterance = new SpeechSynthesisUtterance(textToRead);
-    utterance.lang = questionArabic ? 'ar-SA' : 'id-ID';
-    utterance.rate = 0.85;
+    const isArabicText = !!questionArabic || /[\u0600-\u06FF]/.test(textToRead) || (questionText ? questionText.toLowerCase().includes('arab') : false);
+    const langCode = isArabicText ? 'ar' : 'id';
 
-    utterance.onstart = () => setIsSpeakingQuestion(true);
-    utterance.onend = () => setIsSpeakingQuestion(false);
-    utterance.onerror = () => setIsSpeakingQuestion(false);
-
-    window.speechSynthesis.speak(utterance);
+    playAudio(
+      textToRead,
+      langCode,
+      () => setIsSpeakingQuestion(true),
+      () => setIsSpeakingQuestion(false),
+      () => setIsSpeakingQuestion(false)
+    );
   };
 
   // Compute Levenshtein distance analysis when transcript & target answer exist
@@ -393,7 +393,7 @@ export const VoiceAnswerInput: React.FC<VoiceAnswerInputProps> = ({
           )}
 
           {/* Read Question Audio Button */}
-          {(questionArabic || questionText) && typeof window !== 'undefined' && 'speechSynthesis' in window && (
+          {(questionArabic || questionText) && checkAudioCapabilities().hasHtml5Audio && (
             <button
               type="button"
               onClick={handleReadQuestion}

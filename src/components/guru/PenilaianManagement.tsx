@@ -1,20 +1,24 @@
 import React, { useState } from 'react';
-import { Penilaian, Question, AssessmentType, CategoryType } from '../../types';
+import { Penilaian, Question, AssessmentType, CategoryType, Student } from '../../types';
 import { Plus, Edit3, Trash2, Clock, Award, FileCheck2, CheckCircle2, HelpCircle, X, Sparkles, AlertCircle, FileSpreadsheet, Upload, Shuffle, Eye, Calendar, Layers, Hash } from 'lucide-react';
 import { notificationService } from '../../services/notificationService';
+import { ExportNilaiModal } from './ExportNilaiModal';
 
 interface PenilaianManagementProps {
   penilaianList: Penilaian[];
+  students?: Student[];
   onSavePenilaian: (updated: Penilaian[]) => void;
 }
 
 export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
   penilaianList,
+  students = [],
   onSavePenilaian,
 }) => {
   const [activeType, setActiveType] = useState<AssessmentType>('latihan');
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<string>('all');
   const [selectedBabFilter, setSelectedBabFilter] = useState<number | 'all'>('all');
+  const [showExportModal, setShowExportModal] = useState(false);
 
   // Form Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -269,12 +273,21 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
             Buat tamrin per bab, unggah bank soal secara massal dari sheet, dan atur alur penilaian (Digital / Manual).
           </p>
         </div>
-        <button
-          onClick={() => handleOpenAddModal()}
-          className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-md flex items-center gap-2"
-        >
-          <Plus size={18} /> Tambah Tamrin Baru
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowExportModal(true)}
+            className="px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-2xs flex items-center gap-2 cursor-pointer"
+          >
+            <FileSpreadsheet size={18} className="text-emerald-700" /> Ekspor Nilai Siswa (CSV/Excel)
+          </button>
+          <button
+            onClick={() => handleOpenAddModal()}
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer"
+          >
+            <Plus size={18} /> Tambah Tamrin Baru
+          </button>
+        </div>
       </div>
 
       {/* Type Switcher Tabs + Filter Bar */}
@@ -795,6 +808,14 @@ Arti kata masjid | مَا مَعْنَى الْمَسْجِدِ؟ | Rumah | Masj
           </div>
         </div>
       )}
+
+      {/* Export Nilai Modal */}
+      <ExportNilaiModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        students={students}
+        penilaianList={penilaianList}
+      />
 
     </div>
   );

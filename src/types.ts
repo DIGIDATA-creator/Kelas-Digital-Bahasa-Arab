@@ -153,6 +153,8 @@ export interface StudentHafalanProgress {
   mahfudzotChecklist?: Record<string, MahfudzotChecklist>; // mahfudzotId -> MahfudzotChecklist (Verified by Teacher)
   selfKosakataIds?: Record<string, boolean>; // vocabId -> boolean (Marked as memorized by Student - 0 XP)
   selfMahfudzotIds?: Record<string, boolean>; // mahfudzotId -> boolean (Marked as memorized by Student - 0 XP)
+  selfQowaidIds?: Record<string, boolean>; // materiId or target ID -> boolean (Marked as understood by Student - 0 XP)
+  selfHiwarIds?: Record<string, boolean>; // materiId -> boolean (Marked as understood/learned by Student - 0 XP)
   quizVerifiedKosakataIds?: Record<string, boolean>; // vocabId -> boolean (Verified via Kuis - 3x Consecutive Correct)
   quizKosakataStreaks?: Record<string, number>; // vocabId -> streak count
 }

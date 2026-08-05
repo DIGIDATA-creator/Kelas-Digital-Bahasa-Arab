@@ -21,6 +21,34 @@ function mergeStudentLists(...lists: Student[][]): Student[] {
         const merged: Student = {
           ...existing,
           ...student,
+          hafalanProgress: {
+            ...existing.hafalanProgress,
+            ...student.hafalanProgress,
+            kosakataIds: {
+              ...(existing.hafalanProgress?.kosakataIds || {}),
+              ...(student.hafalanProgress?.kosakataIds || {}),
+            },
+            selfKosakataIds: {
+              ...(existing.hafalanProgress?.selfKosakataIds || {}),
+              ...(student.hafalanProgress?.selfKosakataIds || {}),
+            },
+            selfMahfudzotIds: {
+              ...(existing.hafalanProgress?.selfMahfudzotIds || {}),
+              ...(student.hafalanProgress?.selfMahfudzotIds || {}),
+            },
+            selfQowaidIds: {
+              ...(existing.hafalanProgress?.selfQowaidIds || {}),
+              ...(student.hafalanProgress?.selfQowaidIds || {}),
+            },
+            selfHiwarIds: {
+              ...(existing.hafalanProgress?.selfHiwarIds || {}),
+              ...(student.hafalanProgress?.selfHiwarIds || {}),
+            },
+            mahfudzotChecklist: {
+              ...(existing.hafalanProgress?.mahfudzotChecklist || {}),
+              ...(student.hafalanProgress?.mahfudzotChecklist || {}),
+            },
+          },
           status: (existing.status === 'aktif' || student.status === 'aktif')
             ? 'aktif'
             : (existing.status === 'ditolak' || student.status === 'ditolak')

@@ -50,6 +50,7 @@ export const PenilaianSiswaView: React.FC<PenilaianSiswaViewProps> = ({
     rangeEndNum: 25,
     questionMode: 'arab_indo',
     questionCount: 10,
+    quizMode: 'multiple_choice',
   });
 
   // Helper to format Bab Label with Material Title
@@ -528,9 +529,58 @@ export const PenilaianSiswaView: React.FC<PenilaianSiswaViewProps> = ({
                   Generator Kuis Mahfudzot Otomatis
                 </h3>
                 <p className="text-xs text-purple-200/80">
-                  Kuis interaktif dengan 4 pilihan jawaban acak. Pilih cakupan nomor, bentuk soal, dan jumlah soal.
+                  Pilih mode kuis (Pilihan Ganda atau Suara Lisan Web Speech), cakupan nomor, bentuk soal, dan jumlah soal.
                 </p>
               </div>
+            </div>
+          </div>
+
+          {/* Mode Selector Card */}
+          <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/15 space-y-3 relative z-10">
+            <label className="font-extrabold text-amber-300 block text-xs flex items-center justify-between">
+              <span className="flex items-center gap-1.5"><Sparkles size={14} /> Mode Pelaksanaan Kuis Mahfudzot</span>
+              <span className="text-[10px] text-purple-200 font-normal">Pilih metode menjawab</span>
+            </label>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setMahfudzotConfig({ ...mahfudzotConfig, quizMode: 'multiple_choice' })}
+                className={`p-3.5 rounded-2xl text-left border transition-all cursor-pointer flex items-start gap-3 ${
+                  mahfudzotConfig.quizMode !== 'voice'
+                    ? 'bg-purple-600/90 text-white border-purple-300 shadow-lg ring-2 ring-purple-400/40'
+                    : 'bg-slate-900/60 text-slate-300 border-white/15 hover:bg-slate-900'
+                }`}
+              >
+                <div className={`p-2 rounded-xl shrink-0 ${mahfudzotConfig.quizMode !== 'voice' ? 'bg-amber-400 text-slate-950' : 'bg-white/10 text-white'}`}>
+                  <Layers size={18} />
+                </div>
+                <div>
+                  <div className="font-extrabold text-xs">Pilihan Ganda (A / B / C / D)</div>
+                  <div className="text-[10px] text-purple-200/90 mt-0.5">Soal interaktif dengan 4 opsi jawaban acak.</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setMahfudzotConfig({ ...mahfudzotConfig, quizMode: 'voice' })}
+                className={`p-3.5 rounded-2xl text-left border transition-all cursor-pointer flex items-start gap-3 relative overflow-hidden ${
+                  mahfudzotConfig.quizMode === 'voice'
+                    ? 'bg-rose-600/90 text-white border-rose-300 shadow-lg ring-2 ring-rose-400/40'
+                    : 'bg-slate-900/60 text-slate-300 border-white/15 hover:bg-slate-900'
+                }`}
+              >
+                <div className={`p-2 rounded-xl shrink-0 ${mahfudzotConfig.quizMode === 'voice' ? 'bg-amber-400 text-slate-950' : 'bg-white/10 text-white'}`}>
+                  <Mic size={18} />
+                </div>
+                <div>
+                  <div className="font-extrabold text-xs flex items-center gap-1.5">
+                    <span>Kuis Suara Lisan (Web Speech API)</span>
+                    <span className="px-1.5 py-0.2 bg-amber-400 text-slate-950 text-[9px] font-black rounded-full uppercase">Baru</span>
+                  </div>
+                  <div className="text-[10px] text-rose-100/90 mt-0.5">Ucapkan bait/terjemahan Mahfudzot langsung via mikrofon.</div>
+                </div>
+              </button>
             </div>
           </div>
 
@@ -702,16 +752,30 @@ export const PenilaianSiswaView: React.FC<PenilaianSiswaViewProps> = ({
           {/* Action Trigger Button */}
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-white/10 relative z-10">
             <div className="text-xs text-purple-200/90 font-medium">
-              ✨ Urutan soal & 4 pilihan jawaban A/B/C/D diacak otomatis untuk mencegah kebiasaan menyontek.
+              {mahfudzotConfig.quizMode === 'voice'
+                ? '🎤 Pengenalan suara otomatis dengan penilaian skor kelancaran makhraj & terjemahan.'
+                : '✨ Urutan soal & 4 pilihan jawaban A/B/C/D diacak otomatis untuk mencegah kebiasaan menyontek.'}
             </div>
 
             <button
               type="button"
               onClick={handleLaunchDynamicMahfudzotQuiz}
-              className="w-full sm:w-auto px-6 py-3.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm rounded-2xl shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-2 cursor-pointer group"
+              className={`w-full sm:w-auto px-6 py-3.5 font-black text-sm rounded-2xl shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-2 cursor-pointer group ${
+                mahfudzotConfig.quizMode === 'voice'
+                  ? 'bg-rose-400 hover:bg-rose-300 text-slate-950 ring-2 ring-rose-200/50'
+                  : 'bg-amber-400 hover:bg-amber-300 text-slate-950'
+              }`}
             >
-              <Play size={18} className="fill-slate-950 group-hover:scale-110 transition-transform" />
-              <span>Mulai Kuis Mahfudzot Interaktif Sekarang</span>
+              {mahfudzotConfig.quizMode === 'voice' ? (
+                <Mic size={18} className="text-slate-950 group-hover:scale-110 transition-transform" />
+              ) : (
+                <Play size={18} className="fill-slate-950 group-hover:scale-110 transition-transform" />
+              )}
+              <span>
+                {mahfudzotConfig.quizMode === 'voice'
+                  ? `Mulai Kuis Suara Mahfudzot (${mahfudzotConfig.questionCount} Soal - Web Speech)`
+                  : `Mulai Kuis Pilihan Ganda (${mahfudzotConfig.questionCount} Soal)`}
+              </span>
             </button>
           </div>
         </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Materi, CategoryType, Student } from '../../types';
-import { BookOpen, MessageSquare, List, Quote, FileText, CheckCircle2, Play, Volume2, Search, Sparkles, RefreshCw, ChevronRight, HardDriveDownload, WifiOff, Check, Maximize2, Minimize2, Eye, X, ZoomIn, ZoomOut, Video, Award, Crown, Target, Clock, Mic } from 'lucide-react';
+import { BookOpen, MessageSquare, List, Quote, FileText, CheckCircle2, Play, Volume2, Search, Sparkles, RefreshCw, ChevronRight, HardDriveDownload, WifiOff, Check, Maximize2, Minimize2, Eye, X, ZoomIn, ZoomOut, Video, Award, Crown, Target, Clock, Mic, Bookmark } from 'lucide-react';
 import { AudioPlayerButton } from '../common/AudioPlayerButton';
 import { PdfViewerModal } from '../common/PdfViewerModal';
 import { HiwarView } from '../guru/materi/HiwarView';
@@ -67,6 +67,48 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
       hafalanProgress: {
         ...currentStudent.hafalanProgress,
         selfMahfudzotIds: updatedSelf,
+      },
+    };
+
+    if (onUpdateStudent) {
+      onUpdateStudent(updatedStudent);
+    } else {
+      const allStudents = storageService.getStudents();
+      const updatedList = allStudents.map(s => s.id === updatedStudent.id ? updatedStudent : s);
+      storageService.saveStudents(updatedList);
+    }
+  };
+
+  const handleToggleSelfQowaid = (materiId: string) => {
+    const currentSelf = currentStudent.hafalanProgress?.selfQowaidIds || {};
+    const updatedSelf = { ...currentSelf, [materiId]: !currentSelf[materiId] };
+
+    const updatedStudent: Student = {
+      ...currentStudent,
+      hafalanProgress: {
+        ...currentStudent.hafalanProgress,
+        selfQowaidIds: updatedSelf,
+      },
+    };
+
+    if (onUpdateStudent) {
+      onUpdateStudent(updatedStudent);
+    } else {
+      const allStudents = storageService.getStudents();
+      const updatedList = allStudents.map(s => s.id === updatedStudent.id ? updatedStudent : s);
+      storageService.saveStudents(updatedList);
+    }
+  };
+
+  const handleToggleSelfHiwar = (materiId: string) => {
+    const currentSelf = currentStudent.hafalanProgress?.selfHiwarIds || {};
+    const updatedSelf = { ...currentSelf, [materiId]: !currentSelf[materiId] };
+
+    const updatedStudent: Student = {
+      ...currentStudent,
+      hafalanProgress: {
+        ...currentStudent.hafalanProgress,
+        selfHiwarIds: updatedSelf,
       },
     };
 
@@ -564,12 +606,20 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
                     </div>
 
                     <div className="flex items-center gap-2">
-                      {isSelfMarked && (
-                        <span className="px-2.5 py-1 bg-indigo-700 text-white font-extrabold text-[11px] rounded-xl shadow-2xs">
-                          Hafal (Siswa)
-                        </span>
-                      )}
-                      <span className="px-2.5 py-1 bg-purple-700 text-white font-extrabold text-[11px] rounded-xl shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleSelfMahfudzot(currentMateri.id)}
+                        className={`px-3 py-1.5 rounded-xl font-extrabold text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs border ${
+                          isSelfMarked
+                            ? 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-500'
+                            : 'bg-indigo-500 hover:bg-indigo-600 text-white border-indigo-400'
+                        }`}
+                        title="Tandai Sudah Hafal (Siswa)"
+                      >
+                        <Bookmark size={14} className={isSelfMarked ? 'fill-white' : ''} />
+                        <span>{isSelfMarked ? '✓ Hafal (Batal)' : 'Tandai Hafal'}</span>
+                      </button>
+                      <span className="px-2.5 py-1.5 bg-purple-700 text-white font-extrabold text-[11px] rounded-xl shadow-2xs">
                         {checkedCount}/4 Diceklis Guru
                       </span>
                     </div>
@@ -580,6 +630,60 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
               {/* CATEGORY 1: QOWAID / THEORETICAL EXPLANATION */}
               {currentMateri.category === 'qowaid' && (
                 <div className="space-y-4">
+                  {/* Status Pemahaman Self-Marking Control for Student */}
+                  {(() => {
+                    const isQowaidUnderstood = !!currentStudent.hafalanProgress?.selfQowaidIds?.[currentMateri.id];
+                    return (
+                      <div className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs ${
+                        isQowaidUnderstood
+                          ? 'bg-emerald-50 border-emerald-300 text-emerald-950'
+                          : 'bg-amber-50/80 border-amber-200 text-amber-950'
+                      }`}>
+                        <div className="flex items-start gap-3">
+                          <div className={`p-2 rounded-xl shrink-0 mt-0.5 ${
+                            isQowaidUnderstood ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-white'
+                          }`}>
+                            <BookOpen size={18} />
+                          </div>
+                          <div className="space-y-0.5">
+                            <span className="font-extrabold text-xs block">
+                              {isQowaidUnderstood
+                                ? '🔖 Status: Telah Anda Tandai "Sudah Dipahami"'
+                                : '⏳ Tandai Pemahaman Materi Qowaid Ini'}
+                            </span>
+                            <p className="text-[11px] opacity-90 leading-relaxed">
+                              {isQowaidUnderstood
+                                ? 'Anda telah menandai materi Qowaid ini sebagai sudah dipahami. *Catatan: Verifikasi resmi ketuntasan materi adalah melalui latihan dan kuis Qowaid.'
+                                : 'Klik tombol di samping jika Anda telah membaca & memahami teori tata bahasa Qowaid ini.'}
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleToggleSelfQowaid(currentMateri.id)}
+                          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                            isQowaidUnderstood
+                              ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                              : 'bg-amber-500 hover:bg-amber-600 text-slate-950 font-black'
+                          }`}
+                        >
+                          {isQowaidUnderstood ? (
+                            <>
+                              <CheckCircle2 size={16} />
+                              <span>Sudah Dipahami</span>
+                            </>
+                          ) : (
+                            <>
+                              <BookOpen size={16} />
+                              <span>Tandai Sudah Dipahami</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    );
+                  })()}
+
                   {/* Target Pembelajaran / Capaian Qowaid */}
                   {currentMateri.learningTargets && currentMateri.learningTargets.length > 0 && (
                     <div className="p-4 sm:p-5 bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 rounded-2xl border border-emerald-200/80 space-y-3 shadow-2xs">
@@ -630,6 +734,58 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
               {/* CATEGORY 2: HIWAR / DIALOGUE PLAYER */}
               {currentMateri.category === 'hiwar' && (
                 <div className="space-y-4">
+                  {/* Status Pemahaman Self-Marking Control for Hiwar */}
+                  {(() => {
+                    const isHiwarUnderstood = !!currentStudent.hafalanProgress?.selfHiwarIds?.[currentMateri.id];
+                    return (
+                      <div className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs ${
+                        isHiwarUnderstood
+                          ? 'bg-sky-50 border-sky-300 text-sky-950'
+                          : 'bg-slate-50 border-slate-200 text-slate-800'
+                      }`}>
+                        <div className="flex items-start gap-3">
+                          <div className={`p-2 rounded-xl shrink-0 mt-0.5 ${
+                            isHiwarUnderstood ? 'bg-sky-600 text-white' : 'bg-slate-400 text-white'
+                          }`}>
+                            <MessageSquare size={18} />
+                          </div>
+                          <div className="space-y-0.5">
+                            <span className="font-extrabold text-xs block">
+                              {isHiwarUnderstood
+                                ? '🔖 Status: Telah Anda Tandai "Sudah Dipahami / Dipelajari"'
+                                : '⏳ Tandai Percakapan Hiwar Ini'}
+                            </span>
+                            <p className="text-[11px] opacity-90 leading-relaxed">
+                              Tandai jika Anda telah mempraktikkan dialog percakapan dan memahami struktur kalimatnya.
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleToggleSelfHiwar(currentMateri.id)}
+                          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                            isHiwarUnderstood
+                              ? 'bg-sky-600 hover:bg-sky-700 text-white'
+                              : 'bg-sky-500 hover:bg-sky-600 text-white font-bold'
+                          }`}
+                        >
+                          {isHiwarUnderstood ? (
+                            <>
+                              <CheckCircle2 size={16} />
+                              <span>Sudah Dipahami</span>
+                            </>
+                          ) : (
+                            <>
+                              <MessageSquare size={16} />
+                              <span>Tandai Sudah Dipahami</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    );
+                  })()}
+
                   <HiwarView
                     materiList={materiList}
                     isEditable={false}

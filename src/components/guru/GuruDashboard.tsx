@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { Materi, Penilaian, Student, ActivityLog } from '../../types';
-import { Users, BookOpen, FileCheck2, Award, Plus, FileUp, Sparkles, TrendingUp, Clock, CheckCircle2, UserCheck, GraduationCap, ArrowRight, Search, X, Eye, Activity } from 'lucide-react';
+import { Users, BookOpen, FileCheck2, Award, Plus, FileUp, Sparkles, TrendingUp, Clock, CheckCircle2, UserCheck, GraduationCap, ArrowRight, Search, X, Eye, Activity, FileSpreadsheet } from 'lucide-react';
 import { DistribusiKemahiranChart } from './DistribusiKemahiranChart';
 import { GuruDashboardSkeleton } from '../common/Skeleton';
 import { MahfudzotOfTheDayCard } from '../common/MahfudzotOfTheDayCard';
 import { SiswaActivityVisitsView } from './SiswaActivityVisitsView';
+import { ExportNilaiModal } from './ExportNilaiModal';
 
 interface GuruDashboardProps {
   materiList: Materi[];
@@ -30,6 +31,7 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({
   const [studentSearchTerm, setStudentSearchTerm] = useState('');
   const [showPredictions, setShowPredictions] = useState(false);
   const [showLogsVisitsModal, setShowLogsVisitsModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   // Predictive student lookup
   const studentPredictions = useMemo(() => {
@@ -93,6 +95,12 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({
               className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs sm:text-sm font-bold transition-all backdrop-blur-xs flex items-center gap-2 border border-white/20 cursor-pointer"
             >
               <Plus size={16} /> Buat Kuis / Ujian
+            </button>
+            <button
+              onClick={() => setShowExportModal(true)}
+              className="px-4 py-2.5 bg-emerald-400 hover:bg-emerald-300 text-slate-950 rounded-xl text-xs sm:text-sm font-black transition-all shadow-md flex items-center gap-2 cursor-pointer"
+            >
+              <FileSpreadsheet size={16} className="text-slate-950" /> Ekspor Nilai Siswa (CSV/Excel)
             </button>
             <button
               onClick={() => setShowLogsVisitsModal(true)}
@@ -412,14 +420,23 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-base font-bold text-slate-900">Hasil Pengerjaan Kuis Terbaru</h3>
-                <p className="text-xs text-slate-500">Daftar siswa yang telah menyelesaikan kuis & ujian</p>
+                <p className="text-xs text-slate-500">Daftar siswa yang telah menyelesaikan kuis &amp; ujian</p>
               </div>
-              <button
-                onClick={() => onNavigate('siswa')}
-                className="text-xs font-bold text-emerald-600 hover:text-emerald-700 hover:underline"
-              >
-                Lihat Semua Siswa →
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowExportModal(true)}
+                  className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                >
+                  <FileSpreadsheet size={14} className="text-emerald-700" /> Ekspor CSV/Excel
+                </button>
+                <button
+                  onClick={() => onNavigate('siswa')}
+                  className="text-xs font-bold text-emerald-600 hover:text-emerald-700 hover:underline"
+                >
+                  Lihat Semua Siswa →
+                </button>
+              </div>
             </div>
 
             {allAttempts.length === 0 ? (
@@ -539,6 +556,14 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({
           </div>
         </div>
       )}
+
+      {/* MODAL OVERLAY: Export Nilai Siswa */}
+      <ExportNilaiModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        students={students}
+        penilaianList={penilaianList}
+      />
 
     </div>
   );

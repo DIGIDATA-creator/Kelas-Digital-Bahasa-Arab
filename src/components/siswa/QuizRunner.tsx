@@ -5,6 +5,8 @@ import { Clock, CheckCircle2, XCircle, Award, ArrowRight, ArrowLeft, RefreshCw, 
 import confetti from 'canvas-confetti';
 import { VoiceAnswerInput } from '../common/VoiceAnswerInput';
 import { normalizeArabicSpeechText } from '../../utils/pronunciationEvaluator';
+import { playAudio } from '../../utils/audioSpeech';
+import { checkAudioCapabilities } from '../../utils/audioDiagnostics';
 
 interface QuizRunnerProps {
   penilaian: Penilaian;
@@ -294,21 +296,19 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
   };
 
   const handleReadQuestion = (questionArabic?: string, questionText?: string) => {
-    if (!('speechSynthesis' in window)) return;
-
-    window.speechSynthesis.cancel();
     const textToRead = questionArabic || questionText || '';
     if (!textToRead) return;
 
-    const utterance = new SpeechSynthesisUtterance(textToRead);
-    utterance.lang = questionArabic || (questionText && questionText.toLowerCase().includes('arab')) ? 'ar-SA' : 'id-ID';
-    utterance.rate = 0.85;
+    const isArabicText = !!questionArabic || (questionText ? /[\u0600-\u06FF]/.test(questionText) || questionText.toLowerCase().includes('arab') : false);
+    const langCode = isArabicText ? 'ar' : 'id';
 
-    utterance.onstart = () => setIsSpeakingQuestion(true);
-    utterance.onend = () => setIsSpeakingQuestion(false);
-    utterance.onerror = () => setIsSpeakingQuestion(false);
-
-    window.speechSynthesis.speak(utterance);
+    playAudio(
+      textToRead,
+      langCode,
+      () => setIsSpeakingQuestion(true),
+      () => setIsSpeakingQuestion(false),
+      () => setIsSpeakingQuestion(false)
+    );
   };
 
   const minutes = Math.floor(timeLeftSeconds / 60);
@@ -396,7 +396,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
                       {currentQ.questionText}
                     </h4>
 
-                    {('speechSynthesis' in window) && (
+                    {checkAudioCapabilities().hasHtml5Audio && (
                       <button
                         type="button"
                         onClick={() => handleReadQuestion(currentQ.questionArabic, currentQ.questionText)}
@@ -412,6 +412,13 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
                       </button>
                     )}
                   </div>
+
+                  {checkAudioCapabilities().warningMessage && (
+                    <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-800 flex items-center gap-2 mt-1">
+                      <AlertTriangle size={14} className="text-amber-600 shrink-0" />
+                      <span>{checkAudioCapabilities().warningMessage}</span>
+                    </div>
+                  )}
 
                   {currentQ.questionArabic && (
                     <div className="flex items-center justify-between gap-3 pt-2">

@@ -390,6 +390,7 @@ export default function App() {
                   {activeTab === 'materi' && (
                     <MateriManagement
                       materiList={materiList}
+                      students={students}
                       onSaveMateri={handleSaveMateri}
                     />
                   )}
@@ -397,6 +398,7 @@ export default function App() {
                   {activeTab === 'penilaian' && (
                     <PenilaianManagement
                       penilaianList={penilaianList}
+                      students={students}
                       onSavePenilaian={handleSavePenilaian}
                     />
                   )}

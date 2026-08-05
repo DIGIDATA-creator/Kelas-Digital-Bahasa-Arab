@@ -7,6 +7,7 @@ export interface MahfudzotQuizConfig {
   rangeEndNum: number;
   questionMode: 'arab_indo' | 'indo_arab' | 'fill_blank';
   questionCount: 10 | 20 | 30 | 40 | 50;
+  quizMode?: 'multiple_choice' | 'voice';
 }
 
 export interface MahfudzotItemUnified {
@@ -94,6 +95,8 @@ export function generateDynamicMahfudzotQuiz(
     globalArabicWords.push(...words);
   });
 
+  const isVoiceMode = config.quizMode === 'voice';
+
   // 4. Generate Questions based on mode
   const questions: Question[] = selectedTargets.map((target, idx) => {
     let questionText = '';
@@ -103,66 +106,78 @@ export function generateDynamicMahfudzotQuiz(
 
     if (config.questionMode === 'arab_indo') {
       // Mode 1: Arab -> Indonesia
-      questionText = `Apakah terjemahan Bahasa Indonesia yang tepat untuk Mahfudzot No. ${target.number}?`;
-      questionArabic = target.arabic;
-      correctAnswerText = target.translation;
-      optionSet.add(correctAnswerText);
+      if (isVoiceMode) {
+        questionText = `Ucapkan terjemahan Bahasa Indonesia dari Mahfudzot No. ${target.number} ("${target.arabic}") ke mikrofon:`;
+        questionArabic = target.arabic;
+        correctAnswerText = target.translation;
+      } else {
+        questionText = `Apakah terjemahan Bahasa Indonesia yang tepat untuk Mahfudzot No. ${target.number}?`;
+        questionArabic = target.arabic;
+        correctAnswerText = target.translation;
+        optionSet.add(correctAnswerText);
 
-      // Wrong options from other mahfudzot translations
-      const otherTranslations = allItems
-        .filter((i) => i.number !== target.number)
-        .map((i) => i.translation);
-      const shuffledOthers = [...otherTranslations].sort(() => Math.random() - 0.5);
+        // Wrong options from other mahfudzot translations
+        const otherTranslations = allItems
+          .filter((i) => i.number !== target.number)
+          .map((i) => i.translation);
+        const shuffledOthers = [...otherTranslations].sort(() => Math.random() - 0.5);
 
-      for (const trans of shuffledOthers) {
-        if (optionSet.size >= 4) break;
-        if (!optionSet.has(trans)) {
-          optionSet.add(trans);
+        for (const trans of shuffledOthers) {
+          if (optionSet.size >= 4) break;
+          if (!optionSet.has(trans)) {
+            optionSet.add(trans);
+          }
         }
-      }
 
-      // Generic fallback if options < 4
-      const genericFallbacks = [
-        'Kebersihan adalah sebagian dari iman.',
-        'Waktu lebih berharga daripada emas.',
-        'Menuntut ilmu wajib bagi setiap muslim.',
-        'Barangsiapa bersabar maka dia beruntung.',
-      ];
-      let gIdx = 0;
-      while (optionSet.size < 4) {
-        optionSet.add(genericFallbacks[gIdx % genericFallbacks.length]);
-        gIdx++;
+        // Generic fallback if options < 4
+        const genericFallbacks = [
+          'Kebersihan adalah sebagian dari iman.',
+          'Waktu lebih berharga daripada emas.',
+          'Menuntut ilmu wajib bagi setiap muslim.',
+          'Barangsiapa bersabar maka dia beruntung.',
+        ];
+        let gIdx = 0;
+        while (optionSet.size < 4) {
+          optionSet.add(genericFallbacks[gIdx % genericFallbacks.length]);
+          gIdx++;
+        }
       }
     } else if (config.questionMode === 'indo_arab') {
       // Mode 2: Indonesia -> Arab
-      questionText = `Manakah bait Mahfudzot Bahasa Arab yang tepat untuk terjemahan berikut?`;
-      questionArabic = target.translation; // Displays Indonesian in arabic placeholder or subtitle
-      correctAnswerText = target.arabic;
-      optionSet.add(correctAnswerText);
+      if (isVoiceMode) {
+        questionText = `Lafalkan/Ucapkan bait Mahfudzot Bahasa Arab untuk terjemahan berikut ke mikrofon:`;
+        questionArabic = target.translation;
+        correctAnswerText = target.arabic;
+      } else {
+        questionText = `Manakah bait Mahfudzot Bahasa Arab yang tepat untuk terjemahan berikut?`;
+        questionArabic = target.translation; // Displays Indonesian in arabic placeholder or subtitle
+        correctAnswerText = target.arabic;
+        optionSet.add(correctAnswerText);
 
-      // Wrong options from other mahfudzot arabics
-      const otherArabics = allItems
-        .filter((i) => i.number !== target.number)
-        .map((i) => i.arabic);
-      const shuffledOthers = [...otherArabics].sort(() => Math.random() - 0.5);
+        // Wrong options from other mahfudzot arabics
+        const otherArabics = allItems
+          .filter((i) => i.number !== target.number)
+          .map((i) => i.arabic);
+        const shuffledOthers = [...otherArabics].sort(() => Math.random() - 0.5);
 
-      for (const ar of shuffledOthers) {
-        if (optionSet.size >= 4) break;
-        if (!optionSet.has(ar)) {
-          optionSet.add(ar);
+        for (const ar of shuffledOthers) {
+          if (optionSet.size >= 4) break;
+          if (!optionSet.has(ar)) {
+            optionSet.add(ar);
+          }
         }
-      }
 
-      const genericFallbacks = [
-        'العِلْمُ نُورٌ وَالْجَهْلُ عَارٌ',
-        'النَّظَافَةُ مِنَ الإِيمَانِ',
-        'الوَقْتُ أَثْمَنُ مِنَ الذَّهَبِ',
-        'الصَّبْرُ يُعِينُ عَلَى كُلِّ عَمَلٍ',
-      ];
-      let gIdx = 0;
-      while (optionSet.size < 4) {
-        optionSet.add(genericFallbacks[gIdx % genericFallbacks.length]);
-        gIdx++;
+        const genericFallbacks = [
+          'العِلْمُ نُورٌ وَالْجَهْلُ عَارٌ',
+          'النَّظَافَةُ مِنَ الإِيمَانِ',
+          'الوَقْتُ أَثْمَنُ مِنَ الذَّهَبِ',
+          'الصَّبْرُ يُعِينُ عَلَى كُلِّ عَمَلٍ',
+        ];
+        let gIdx = 0;
+        while (optionSet.size < 4) {
+          optionSet.add(genericFallbacks[gIdx % genericFallbacks.length]);
+          gIdx++;
+        }
       }
     } else {
       // Mode 3: fill_blank (Melengkapi kata yang hilang)
@@ -184,29 +199,54 @@ export function generateDynamicMahfudzotQuiz(
       blankedWords[chosenWordIdx] = '( ... )';
       const blankedSentence = blankedWords.join(' ');
 
-      questionText = `Lengkapilah bagian kata yang hilang ( ... ) pada Mahfudzot berikut:`;
-      questionArabic = blankedSentence;
-      correctAnswerText = targetWord;
-      optionSet.add(correctAnswerText);
+      if (isVoiceMode) {
+        questionText = `Ucapkan kata Bahasa Arab yang hilang ( ... ) pada Mahfudzot No. ${target.number} berikut ke mikrofon:`;
+        questionArabic = blankedSentence;
+        correctAnswerText = targetWord;
+      } else {
+        questionText = `Lengkapilah bagian kata yang hilang ( ... ) pada Mahfudzot berikut:`;
+        questionArabic = blankedSentence;
+        correctAnswerText = targetWord;
+        optionSet.add(correctAnswerText);
 
-      // Distractors: words from OTHER mahfudzot
-      const otherWords = globalArabicWords.filter((w) => w !== targetWord);
-      const shuffledWords = [...otherWords].sort(() => Math.random() - 0.5);
+        // Distractors: words from OTHER mahfudzot
+        const otherWords = globalArabicWords.filter((w) => w !== targetWord);
+        const shuffledWords = [...otherWords].sort(() => Math.random() - 0.5);
 
-      for (const w of shuffledWords) {
-        if (optionSet.size >= 4) break;
-        if (!optionSet.has(w)) {
-          optionSet.add(w);
+        for (const w of shuffledWords) {
+          if (optionSet.size >= 4) break;
+          if (!optionSet.has(w)) {
+            optionSet.add(w);
+          }
+        }
+
+        // Generic word fallbacks if < 4
+        const fallbackWords = ['الْعِلْمِ', 'الصَّبْرُ', 'الْعَمَلُ', 'الْخَيْرِ', 'الْحَقُّ'];
+        let fIdx = 0;
+        while (optionSet.size < 4) {
+          optionSet.add(fallbackWords[fIdx % fallbackWords.length]);
+          fIdx++;
         }
       }
+    }
 
-      // Generic word fallbacks if < 4
-      const fallbackWords = ['الْعِلْمِ', 'الصَّبْرُ', 'الْعَمَلُ', 'الْخَيْرِ', 'الْحَقُّ'];
-      let fIdx = 0;
-      while (optionSet.size < 4) {
-        optionSet.add(fallbackWords[fIdx % fallbackWords.length]);
-        fIdx++;
-      }
+    let explanationText = `Mahfudzot No. ${target.number}: "${target.arabic}"\nTerjemah: "${target.translation}"`;
+    if (target.latin) {
+      explanationText += `\nBacaan: (${target.latin})`;
+    }
+
+    if (isVoiceMode) {
+      return {
+        id: `q-dyn-mahf-v-${Date.now()}-${idx}`,
+        code: `MFZ-V-${target.number}-${idx + 1}`,
+        type: 'essay',
+        questionText,
+        questionArabic,
+        options: [correctAnswerText],
+        correctAnswer: correctAnswerText,
+        explanation: explanationText,
+        points: Math.round(100 / config.questionCount),
+      };
     }
 
     const optionsList = Array.from(optionSet);
@@ -214,11 +254,6 @@ export function generateDynamicMahfudzotQuiz(
     // Shuffle options randomly
     const shuffledOptions = [...optionsList].sort(() => Math.random() - 0.5);
     const correctIndex = shuffledOptions.indexOf(correctAnswerText);
-
-    let explanationText = `Mahfudzot No. ${target.number}: "${target.arabic}"\nTerjemah: "${target.translation}"`;
-    if (target.latin) {
-      explanationText += `\nBacaan: (${target.latin})`;
-    }
 
     return {
       id: `q-dyn-mahf-${Date.now()}-${idx}`,
@@ -264,11 +299,12 @@ export function generateDynamicMahfudzotQuiz(
   const bonusExpForQuestions = questionCountExpMap[config.questionCount] || 15;
 
   return {
-    id: `kuis-mahfudzot-dyn-${Date.now()}`,
-    code: `KIZ-MFZ-${config.questionCount}Q`,
-    title: `Kuis Mahfudzot: ${modeLabels[config.questionMode]} (${config.questionCount} Soal - ${scopeLabel})`,
+    id: isVoiceMode ? `kuis-mahfudzot-voice-${Date.now()}` : `kuis-mahfudzot-dyn-${Date.now()}`,
+    code: isVoiceMode ? `KIZ-MFZ-V-${config.questionCount}Q` : `KIZ-MFZ-${config.questionCount}Q`,
+    title: `Kuis ${isVoiceMode ? 'Suara ' : ''}Mahfudzot: ${modeLabels[config.questionMode]} (${config.questionCount} Soal - ${scopeLabel})`,
     type: 'kuis',
     category: 'mahfudzot',
+    mode: isVoiceMode ? 'voice' : 'multiple_choice',
     babNumber: config.scopeType === 'range' ? config.rangeStartNum : 1,
     durationMinutes,
     passingGrade: 75,

@@ -40,9 +40,31 @@ export const SiswaDashboard: React.FC<SiswaDashboardProps> = ({
   const totalMateri = materiList.length || 1;
   const overallProgressPct = Math.round((completedCount / totalMateri) * 100);
 
-  // 4.3 Hafalan Statistics Calculations
+  // 4.3 Hafalan Statistics & Self-Marked Calculations
   const mahfudzotState = currentStudent.hafalanProgress?.mahfudzotChecklist || {};
   const kosakataState = currentStudent.hafalanProgress?.kosakataIds || {};
+  const selfKosakataState = currentStudent.hafalanProgress?.selfKosakataIds || {};
+  const selfMahfudzotState = currentStudent.hafalanProgress?.selfMahfudzotIds || {};
+  const selfQowaidState = currentStudent.hafalanProgress?.selfQowaidIds || {};
+  const selfHiwarState = currentStudent.hafalanProgress?.selfHiwarIds || {};
+
+  const markedHafalMateriCount = materiList.filter(m => {
+    if (m.category === 'kosakata') {
+      return (m.vocabularies && m.vocabularies.some(v => selfKosakataState[v.id] || kosakataState[v.id])) || selfKosakataState[m.id];
+    }
+    if (m.category === 'mahfudzot') {
+      return !!selfMahfudzotState[m.id] || !!mahfudzotState[m.id]?.hafalanArab;
+    }
+    if (m.category === 'qowaid') {
+      return !!selfQowaidState[m.id];
+    }
+    if (m.category === 'hiwar') {
+      return !!selfHiwarState[m.id];
+    }
+    return false;
+  }).length;
+
+  const hafalProgressPct = Math.min(100, Math.round((markedHafalMateriCount / totalMateri) * 100));
 
   const memorizedVocabCount = Object.values(kosakataState).filter(Boolean).length;
   
@@ -173,11 +195,12 @@ export const SiswaDashboard: React.FC<SiswaDashboardProps> = ({
       </div>
 
       {/* Progress & Quick Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
+        {/* Progress Bar 1: Modul Selesai */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
           <div className="flex justify-between items-center text-xs font-semibold text-slate-500">
-            <span>Capaian Materi Belajar</span>
+            <span>Capaian Modul Dipelajari</span>
             <span className="text-emerald-700 font-bold">{overallProgressPct}%</span>
           </div>
           <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
@@ -187,7 +210,24 @@ export const SiswaDashboard: React.FC<SiswaDashboardProps> = ({
             />
           </div>
           <p className="text-xs text-slate-500">
-            {completedCount} dari {totalMateri} modul materi telah diselesaikan.
+            {completedCount} dari {totalMateri} modul telah diselesaikan.
+          </p>
+        </div>
+
+        {/* Progress Bar 2: Persentase Ditandai Hafal / Paham */}
+        <div className="bg-white p-5 rounded-2xl border border-purple-200 bg-purple-50/20 shadow-xs space-y-2">
+          <div className="flex justify-between items-center text-xs font-semibold text-purple-900">
+            <span className="flex items-center gap-1 font-extrabold"><CheckCircle2 size={14} className="text-purple-600" /> Progres Hafalan / Paham</span>
+            <span className="text-purple-700 font-black">{hafalProgressPct}%</span>
+          </div>
+          <div className="w-full h-3 bg-purple-100 rounded-full overflow-hidden">
+            <div
+              style={{ width: `${hafalProgressPct}%` }}
+              className="h-full bg-gradient-to-r from-purple-600 to-indigo-600 rounded-full transition-all duration-500 shadow-2xs"
+            />
+          </div>
+          <p className="text-xs text-purple-700 font-medium">
+            <strong>{markedHafalMateriCount}</strong> dari {totalMateri} materi ditandai hafal/paham.
           </p>
         </div>
 

@@ -29,11 +29,13 @@ import {
   LayoutGrid,
   Quote,
   Activity,
-  RefreshCw
+  RefreshCw,
+  FileSpreadsheet
 } from 'lucide-react';
 import { PendaftaranSiswaForm } from '../auth/PendaftaranSiswaForm';
 import { CeklisHafalanModal } from './CeklisHafalanModal';
 import { SiswaActivityVisitsView } from './SiswaActivityVisitsView';
+import { ExportNilaiModal } from './ExportNilaiModal';
 import { storageService } from '../../services/storage';
 
 export const getTingkatColorTheme = (tingkat?: TingkatType | string, className?: string) => {
@@ -120,6 +122,7 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
   const [statusTab, setStatusTab] = useState<'semua' | 'pending' | 'disetujui' | 'ditolak'>('pending');
   const [viewMode, setViewMode] = useState<'cards' | 'grouped' | 'flat'>('cards');
   const [showLogsVisitsModal, setShowLogsVisitsModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   const activeLogs = logs || storageService.getLogs();
 
@@ -443,6 +446,14 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setShowExportModal(true)}
+            className="px-3.5 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-extrabold text-xs rounded-xl shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer"
+          >
+            <FileSpreadsheet size={16} className="text-emerald-700" /> Ekspor Nilai (CSV/Excel)
+          </button>
+
           <button
             onClick={handleManualSync}
             disabled={isSyncing}
@@ -1705,6 +1716,13 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
             </div>
           </div>
         )}
+
+        {/* MODAL OVERLAY: Export Nilai Siswa */}
+        <ExportNilaiModal
+          isOpen={showExportModal}
+          onClose={() => setShowExportModal(false)}
+          students={students}
+        />
       </AnimatePresence>
     </div>
   );

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Materi, CategoryType, VocabularyItem } from '../../types';
-import { Plus, Edit3, Trash2, Eye, FileText, BookOpen, Quote, List, Sparkles, Play, Search, CheckCircle, MessageSquare, AlertTriangle, X, FileSpreadsheet } from 'lucide-react';
+import { Materi, CategoryType, VocabularyItem, Student } from '../../types';
+import { Plus, Edit3, Trash2, Eye, FileText, BookOpen, Quote, List, Sparkles, Play, Search, CheckCircle, MessageSquare, AlertTriangle, X, FileSpreadsheet, BarChart3 } from 'lucide-react';
 import { PdfViewerModal } from '../common/PdfViewerModal';
 import { notificationService } from '../../services/notificationService';
 import { QowaidFormModal } from './materi/QowaidFormModal';
@@ -13,18 +13,22 @@ import { KosakataTableView } from './materi/KosakataTableView';
 import { KosakataView } from './materi/KosakataView';
 import { MahfudzotView } from './materi/MahfudzotView';
 import { FlashcardModal, FlashcardItem } from '../common/FlashcardModal';
+import { MonitoringPemahamanView } from './materi/MonitoringPemahamanView';
 
 interface MateriManagementProps {
   materiList: Materi[];
+  students?: Student[];
   onSaveMateri: (updated: Materi[]) => void;
 }
 
 export const MateriManagement: React.FC<MateriManagementProps> = ({
   materiList,
+  students = [],
   onSaveMateri,
 }) => {
   const [activeCategory, setActiveCategory] = useState<CategoryType>('qowaid');
   const [searchTerm, setSearchTerm] = useState('');
+  const [viewSubMode, setViewSubMode] = useState<'materi' | 'monitoring'>('materi');
 
   // Modals
   const [previewPdfMateri, setPreviewPdfMateri] = useState<Materi | null>(null);
@@ -293,14 +297,26 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
       <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">Kelola Materi Pembelajaran</h2>
+            <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">Kelola &amp; Monitoring Materi Pembelajaran</h2>
             <p className="text-xs text-slate-500 font-medium">
-              Manajemen modul Qowaid, Kosakata, dan Mahfudzot digital
+              Manajemen modul Qowaid, Hiwar, Kosakata, Mahfudzot &amp; Rekapitulasi Pemahaman Siswa
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {activeCategory === 'mahfudzot' && (
+            <button
+              onClick={() => setViewSubMode(prev => prev === 'materi' ? 'monitoring' : 'materi')}
+              className={`px-3.5 py-2.5 rounded-xl text-xs font-extrabold flex items-center gap-2 transition-all cursor-pointer shadow-xs ${
+                viewSubMode === 'monitoring'
+                  ? 'bg-amber-500 text-slate-950 font-black ring-2 ring-amber-400'
+                  : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200'
+              }`}
+            >
+              <BarChart3 size={16} className={viewSubMode === 'monitoring' ? 'text-slate-950' : 'text-indigo-700'} />
+              <span>{viewSubMode === 'monitoring' ? '📚 Kembali ke Kelola Modul' : '📊 Monitoring Pemahaman Siswa'}</span>
+            </button>
+
+            {viewSubMode === 'materi' && activeCategory === 'mahfudzot' && (
               <button
                 onClick={handleOpenSheetModal}
                 className="px-3.5 py-2.5 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
@@ -308,74 +324,86 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
                 <FileSpreadsheet size={16} className="text-purple-700" /> Upload Sheet Massal
               </button>
             )}
-            <button
-              onClick={handleOpenAddModal}
-              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-900/10 flex items-center gap-2 transition-all cursor-pointer"
-            >
-              <Plus size={16} /> Tambah Materi {activeCategory.toUpperCase()}
-            </button>
+
+            {viewSubMode === 'materi' && (
+              <button
+                onClick={handleOpenAddModal}
+                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-900/10 flex items-center gap-2 transition-all cursor-pointer"
+              >
+                <Plus size={16} /> Tambah Materi {activeCategory.toUpperCase()}
+              </button>
+            )}
           </div>
         </div>
-
-        {/* Category Tabs */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-1.5 bg-slate-100/80 rounded-2xl border border-slate-200">
-          <button
-            onClick={() => setActiveCategory('qowaid')}
-            className={`py-3 px-3 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-              activeCategory === 'qowaid'
-                ? 'bg-emerald-700 text-white shadow-md'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <BookOpen size={16} /> Qowaid
-          </button>
-
-          <button
-            onClick={() => setActiveCategory('hiwar')}
-            className={`py-3 px-3 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-              activeCategory === 'hiwar'
-                ? 'bg-sky-700 text-white shadow-md'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <MessageSquare size={16} /> Hiwar (الحوار)
-          </button>
-
-          <button
-            onClick={() => setActiveCategory('kosakata')}
-            className={`py-3 px-3 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-              activeCategory === 'kosakata'
-                ? 'bg-teal-700 text-white shadow-md'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <List size={16} /> Kosakata (المفردات)
-          </button>
-
-          <button
-            onClick={() => setActiveCategory('mahfudzot')}
-            className={`py-3 px-3 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-              activeCategory === 'mahfudzot'
-                ? 'bg-purple-700 text-white shadow-md'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Quote size={16} /> Mahfudzot (الـمَحْفُوظَات)
-          </button>
-        </div>
       </div>
 
-      {/* Search Bar */}
-      <div className="relative">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-        <input
-          type="text"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder={`Cari materi ${activeCategory}...`}
-          className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:outline-hidden focus:border-emerald-500 shadow-2xs"
+      {/* Mode 1: Monitoring View */}
+      {viewSubMode === 'monitoring' ? (
+        <MonitoringPemahamanView
+          materiList={materiList}
+          students={students}
         />
-      </div>
+      ) : (
+        /* Mode 2: Standard Materi Management */
+        <div className="space-y-6">
+          {/* Category Tabs */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-1.5 bg-slate-100/80 rounded-2xl border border-slate-200">
+            <button
+              onClick={() => setActiveCategory('qowaid')}
+              className={`py-3 px-3 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                activeCategory === 'qowaid'
+                  ? 'bg-emerald-700 text-white shadow-md'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <BookOpen size={16} /> Qowaid
+            </button>
+
+            <button
+              onClick={() => setActiveCategory('hiwar')}
+              className={`py-3 px-3 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                activeCategory === 'hiwar'
+                  ? 'bg-sky-700 text-white shadow-md'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <MessageSquare size={16} /> Hiwar (الحوار)
+            </button>
+
+            <button
+              onClick={() => setActiveCategory('kosakata')}
+              className={`py-3 px-3 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                activeCategory === 'kosakata'
+                  ? 'bg-teal-700 text-white shadow-md'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <List size={16} /> Kosakata (المفردات)
+            </button>
+
+            <button
+              onClick={() => setActiveCategory('mahfudzot')}
+              className={`py-3 px-3 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                activeCategory === 'mahfudzot'
+                  ? 'bg-purple-700 text-white shadow-md'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Quote size={16} /> Mahfudzot (الـمَحْفُوظَات)
+            </button>
+          </div>
+
+        {/* Search Bar */}
+        <div className="relative">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder={`Cari materi ${activeCategory}...`}
+            className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:outline-hidden focus:border-emerald-500 shadow-2xs"
+          />
+        </div>
 
       {/* CATEGORY VIEW 1: QOWAID */}
       {activeCategory === 'qowaid' && (
@@ -569,6 +597,9 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
           pdfUrl={previewPdfMateri.pdfUrl || ''}
           title={`${previewPdfMateri.title} - File PDF`}
         />
+      )}
+
+        </div>
       )}
 
       {/* Custom Delete Confirmation Modal */}
