@@ -96,7 +96,7 @@ export const PendaftaranSiswaForm: React.FC<PendaftaranSiswaFormProps> = ({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !email.trim() || (!password && !isGuruAdminMode)) return;
 
@@ -106,7 +106,7 @@ export const PendaftaranSiswaForm: React.FC<PendaftaranSiswaFormProps> = ({
     }
 
     if (onRegisterSubmit) {
-      onRegisterSubmit({
+      await onRegisterSubmit({
         name: name.trim(),
         email: email.trim(),
         password,

@@ -284,8 +284,24 @@ export default function App() {
   };
 
   const handleUpdateStudentProfile = (updatedStudent: Student) => {
-    const updatedList = students.map(s => s.id === updatedStudent.id ? updatedStudent : s);
+    const freshStudents = storageService.getStudents();
+    const updatedList = freshStudents.map(s => s.id === updatedStudent.id ? updatedStudent : s);
+    if (!updatedList.some(s => s.id === updatedStudent.id)) {
+      updatedList.push(updatedStudent);
+    }
     handleSaveStudents(updatedList);
+
+    if (userSession && userSession.studentId === updatedStudent.id) {
+      const updatedSession: UserSession = {
+        ...userSession,
+        userName: updatedStudent.name,
+        userEmail: updatedStudent.email,
+        avatar: updatedStudent.avatar,
+      };
+      setUserSession(updatedSession);
+      localStorage.setItem('lms_user_session', JSON.stringify(updatedSession));
+      storageService.setUserSession(updatedSession);
+    }
   };
 
   const handleMarkMaterialComplete = (materiId: string) => {

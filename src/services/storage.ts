@@ -18,10 +18,10 @@ function mergeStudentLists(...lists: Student[][]): Student[] {
       if (!existing) {
         map.set(key, { ...student });
       } else {
-        // Merge student records intelligently
+        // Merge student records intelligently (existing takes precedence over student)
         const merged: Student = {
-          ...existing,
           ...student,
+          ...existing,
           hafalanProgress: {
             ...existing.hafalanProgress,
             ...student.hafalanProgress,
@@ -123,13 +123,13 @@ function notifyListeners() {
   syncListeners.forEach(cb => cb(data));
 }
 
-// Firestore collection documents
-const docMateri = doc(db, 'app_collections', 'materi');
-const docPenilaian = doc(db, 'app_collections', 'penilaian');
-const docStudents = doc(db, 'app_collections', 'students');
-const docLogs = doc(db, 'app_collections', 'logs');
-const docForum = doc(db, 'app_collections', 'forum');
-const docGuruProfile = doc(db, 'app_collections', 'guru_profile');
+// Firestore collection document getters (safe lazy getters)
+const getDocMateri = () => db ? doc(db, 'app_collections', 'materi') : null;
+const getDocPenilaian = () => db ? doc(db, 'app_collections', 'penilaian') : null;
+const getDocStudents = () => db ? doc(db, 'app_collections', 'students') : null;
+const getDocLogs = () => db ? doc(db, 'app_collections', 'logs') : null;
+const getDocForum = () => db ? doc(db, 'app_collections', 'forum') : null;
+const getDocGuruProfile = () => db ? doc(db, 'app_collections', 'guru_profile') : null;
 
 // Helper to strip undefined values before sending to Firestore
 function sanitizeForFirestore<T>(data: T): T {
@@ -195,125 +195,179 @@ export const storageService = {
       forumPosts: cachedForum,
     });
 
+    if (!db) {
+      console.warn('⚠️ [STORAGE] Firestore db is not available. Sync running in local mode.');
+      return () => {
+        syncListeners = syncListeners.filter(cb => cb !== onUpdate);
+      };
+    }
+
+    const unsubs: Array<() => void> = [];
+
     // 1. Listen to Materi
-    const unsubMateri = onSnapshot(docMateri, (docSnap) => {
-      if (docSnap.exists() && docSnap.data().items) {
-        cachedMateri = docSnap.data().items;
-        saveLocal(KEYS.MATERI, cachedMateri);
-        offlineCacheService.cacheAllMateriAndKosakata(cachedMateri).catch(console.warn);
-        notifyListeners();
-      } else {
-        setDoc(docMateri, sanitizeForFirestore({ items: cachedMateri })).catch(console.error);
+    try {
+      const dMateri = getDocMateri();
+      if (dMateri) {
+        unsubs.push(onSnapshot(dMateri, (docSnap) => {
+          if (docSnap.exists() && docSnap.data().items) {
+            cachedMateri = docSnap.data().items;
+            saveLocal(KEYS.MATERI, cachedMateri);
+            offlineCacheService.cacheAllMateriAndKosakata(cachedMateri).catch(console.warn);
+            notifyListeners();
+          } else {
+            setDoc(dMateri, sanitizeForFirestore({ items: cachedMateri })).catch(console.error);
+          }
+        }, (err) => console.warn('Materi snapshot warning:', err)));
       }
-    }, (err) => console.warn('Materi snapshot warning:', err));
+    } catch (err) {
+      console.warn('Materi snapshot init warning:', err);
+    }
 
     // 2. Listen to Penilaian
-    const unsubPenilaian = onSnapshot(docPenilaian, (docSnap) => {
-      if (docSnap.exists() && docSnap.data().items) {
-        const rawItems = docSnap.data().items as Penilaian[];
-        const filtered = rawItems.filter(p => !SYSTEM_SAMPLE_QUIZ_IDS.includes(p.id));
-        cachedPenilaian = filtered;
-        saveLocal(KEYS.PENILAIAN, cachedPenilaian);
-        notifyListeners();
+    try {
+      const dPenilaian = getDocPenilaian();
+      if (dPenilaian) {
+        unsubs.push(onSnapshot(dPenilaian, (docSnap) => {
+          if (docSnap.exists() && docSnap.data().items) {
+            const rawItems = docSnap.data().items as Penilaian[];
+            const filtered = rawItems.filter(p => !SYSTEM_SAMPLE_QUIZ_IDS.includes(p.id));
+            cachedPenilaian = filtered;
+            saveLocal(KEYS.PENILAIAN, cachedPenilaian);
+            notifyListeners();
 
-        // If database contained system sample quizzes, update database to remove them permanently
-        if (rawItems.length !== filtered.length) {
-          setDoc(docPenilaian, sanitizeForFirestore({ items: filtered })).catch(console.error);
-        }
-      } else {
-        setDoc(docPenilaian, sanitizeForFirestore({ items: cachedPenilaian })).catch(console.error);
+            if (rawItems.length !== filtered.length) {
+              setDoc(dPenilaian, sanitizeForFirestore({ items: filtered })).catch(console.error);
+            }
+          } else {
+            setDoc(dPenilaian, sanitizeForFirestore({ items: cachedPenilaian })).catch(console.error);
+          }
+        }, (err) => console.warn('Penilaian snapshot warning:', err)));
       }
-    }, (err) => console.warn('Penilaian snapshot warning:', err));
+    } catch (err) {
+      console.warn('Penilaian snapshot init warning:', err);
+    }
 
     // 3. Listen to Students master document
-    const unsubStudents = onSnapshot(docStudents, (docSnap) => {
-      if (docSnap.exists() && docSnap.data()?.items) {
-        const remoteItems = docSnap.data().items as Student[];
-        const merged = mergeStudentLists(remoteItems, cachedStudents);
-        cachedStudents = merged;
-        saveLocal(KEYS.STUDENTS, merged);
-        notifyListeners();
+    try {
+      const dStudents = getDocStudents();
+      if (dStudents) {
+        unsubs.push(onSnapshot(dStudents, (docSnap) => {
+          if (docSnap.exists() && docSnap.data()?.items) {
+            const remoteItems = docSnap.data().items as Student[];
+            const merged = mergeStudentLists(remoteItems, cachedStudents);
+            cachedStudents = merged;
+            saveLocal(KEYS.STUDENTS, merged);
+            notifyListeners();
+          }
+        }, (err) => console.warn('Students snapshot warning:', err)));
       }
-    }, (err) => console.warn('Students snapshot warning:', err));
+    } catch (err) {
+      console.warn('Students snapshot init warning:', err);
+    }
 
     // 3b. Listen to individual student registration records collection
-    const unsubStudentsCol = onSnapshot(collection(db, 'students_records'), (snap) => {
-      const colItems: Student[] = [];
-      snap.forEach(d => {
-        if (d.exists()) colItems.push(d.data() as Student);
-      });
-      if (colItems.length > 0) {
-        const merged = mergeStudentLists(colItems, cachedStudents);
-        cachedStudents = merged;
-        saveLocal(KEYS.STUDENTS, merged);
-        notifyListeners();
+    try {
+      if (db) {
+        unsubs.push(onSnapshot(collection(db, 'students_records'), (snap) => {
+          const colItems: Student[] = [];
+          snap.forEach(d => {
+            if (d.exists()) colItems.push(d.data() as Student);
+          });
+          if (colItems.length > 0) {
+            const merged = mergeStudentLists(colItems, cachedStudents);
+            cachedStudents = merged;
+            saveLocal(KEYS.STUDENTS, merged);
+            notifyListeners();
+          }
+        }, (err) => console.warn('Students collection snapshot warning:', err)));
       }
-    }, (err) => console.warn('Students collection snapshot warning:', err));
+    } catch (err) {
+      console.warn('Students collection snapshot init warning:', err);
+    }
 
     // 4. Listen to Logs
-    const unsubLogs = onSnapshot(docLogs, (docSnap) => {
-      if (docSnap.exists() && docSnap.data().items) {
-        cachedLogs = docSnap.data().items;
-        saveLocal(KEYS.LOGS, cachedLogs);
-        notifyListeners();
-      } else {
-        setDoc(docLogs, sanitizeForFirestore({ items: cachedLogs })).catch(console.error);
+    try {
+      const dLogs = getDocLogs();
+      if (dLogs) {
+        unsubs.push(onSnapshot(dLogs, (docSnap) => {
+          if (docSnap.exists() && docSnap.data().items) {
+            cachedLogs = docSnap.data().items;
+            saveLocal(KEYS.LOGS, cachedLogs);
+            notifyListeners();
+          } else {
+            setDoc(dLogs, sanitizeForFirestore({ items: cachedLogs })).catch(console.error);
+          }
+        }, (err) => console.warn('Logs snapshot warning:', err)));
       }
-    }, (err) => console.warn('Logs snapshot warning:', err));
+    } catch (err) {
+      console.warn('Logs snapshot init warning:', err);
+    }
 
     // 5. Listen to Forum Diskusi
-    const unsubForum = onSnapshot(docForum, (docSnap) => {
-      if (docSnap.exists() && docSnap.data().items) {
-        cachedForum = docSnap.data().items;
-        saveLocal(KEYS.FORUM, cachedForum);
-        notifyListeners();
-      } else {
-        setDoc(docForum, sanitizeForFirestore({ items: cachedForum })).catch(console.error);
+    try {
+      const dForum = getDocForum();
+      if (dForum) {
+        unsubs.push(onSnapshot(dForum, (docSnap) => {
+          if (docSnap.exists() && docSnap.data().items) {
+            cachedForum = docSnap.data().items;
+            saveLocal(KEYS.FORUM, cachedForum);
+            notifyListeners();
+          } else {
+            setDoc(dForum, sanitizeForFirestore({ items: cachedForum })).catch(console.error);
+          }
+        }, (err) => console.warn('Forum snapshot warning:', err)));
       }
-    }, (err) => console.warn('Forum snapshot warning:', err));
+    } catch (err) {
+      console.warn('Forum snapshot init warning:', err);
+    }
 
     // 6. Listen to Guru Profile & Credentials
-    const unsubGuruProfile = onSnapshot(docGuruProfile, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data.profile) {
-          cachedGuruProfile = data.profile;
-          saveLocal('lms_guru_profile', data.profile);
-        }
-        if (data.credentials) {
-          cachedGuruCredentials = data.credentials;
-          saveLocal('lms_guru_credentials', data.credentials);
-        }
-        notifyListeners();
-      } else {
-        setDoc(docGuruProfile, sanitizeForFirestore({ profile: cachedGuruProfile, credentials: cachedGuruCredentials })).catch(console.error);
+    try {
+      const dGuruProfile = getDocGuruProfile();
+      if (dGuruProfile) {
+        unsubs.push(onSnapshot(dGuruProfile, (docSnap) => {
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            if (data.profile) {
+              cachedGuruProfile = data.profile;
+              saveLocal('lms_guru_profile', data.profile);
+            }
+            if (data.credentials) {
+              cachedGuruCredentials = data.credentials;
+              saveLocal('lms_guru_credentials', data.credentials);
+            }
+            notifyListeners();
+          } else {
+            setDoc(dGuruProfile, sanitizeForFirestore({ profile: cachedGuruProfile, credentials: cachedGuruCredentials })).catch(console.error);
+          }
+        }, (err) => console.warn('Guru profile snapshot warning:', err)));
       }
-    }, (err) => console.warn('Guru profile snapshot warning:', err));
+    } catch (err) {
+      console.warn('Guru profile snapshot init warning:', err);
+    }
 
     return () => {
       syncListeners = syncListeners.filter(cb => cb !== onUpdate);
-      unsubMateri();
-      unsubPenilaian();
-      unsubStudents();
-      unsubStudentsCol();
-      unsubLogs();
-      unsubForum();
-      unsubGuruProfile();
+      unsubs.forEach(u => u());
     };
   },
 
   async fetchLatestGuruData() {
+    if (!db) return { profile: cachedGuruProfile, credentials: cachedGuruCredentials };
     try {
-      const docSnap = await getDoc(docGuruProfile);
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data.profile) {
-          cachedGuruProfile = { ...cachedGuruProfile, ...data.profile };
-          saveLocal('lms_guru_profile', cachedGuruProfile);
-        }
-        if (data.credentials) {
-          cachedGuruCredentials = { ...cachedGuruCredentials, ...data.credentials };
-          saveLocal('lms_guru_credentials', cachedGuruCredentials);
+      const dGuruProfile = getDocGuruProfile();
+      if (dGuruProfile) {
+        const docSnap = await getDoc(dGuruProfile);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.profile) {
+            cachedGuruProfile = { ...cachedGuruProfile, ...data.profile };
+            saveLocal('lms_guru_profile', cachedGuruProfile);
+          }
+          if (data.credentials) {
+            cachedGuruCredentials = { ...cachedGuruCredentials, ...data.credentials };
+            saveLocal('lms_guru_credentials', cachedGuruCredentials);
+          }
         }
       }
     } catch (err) {
@@ -323,12 +377,15 @@ export const storageService = {
   },
 
   async fetchLatestStudentsData() {
+    if (!db) return cachedStudents;
     try {
-      const docSnap = await getDoc(docStudents);
-
+      const dStudents = getDocStudents();
       let remoteDocStudents: Student[] = [];
-      if (docSnap.exists() && docSnap.data()?.items) {
-        remoteDocStudents = docSnap.data().items as Student[];
+      if (dStudents) {
+        const docSnap = await getDoc(dStudents);
+        if (docSnap.exists() && docSnap.data()?.items) {
+          remoteDocStudents = docSnap.data().items as Student[];
+        }
       }
 
       // Query individual student registration records collection from server
@@ -349,8 +406,8 @@ export const storageService = {
       saveLocal(KEYS.STUDENTS, merged);
 
       // Keep master document docStudents updated with all merged records
-      if (merged.length > remoteDocStudents.length) {
-        setDoc(docStudents, sanitizeForFirestore({ items: merged })).catch(console.error);
+      if (dStudents && merged.length > remoteDocStudents.length) {
+        setDoc(dStudents, sanitizeForFirestore({ items: merged })).catch(console.error);
       }
 
       return merged;
@@ -362,7 +419,7 @@ export const storageService = {
 
   async addStudent(newStudent: Student): Promise<{ success: boolean; student?: Student; message?: string }> {
     try {
-      // 1. Use cached real-time student data instead of forcing a blocking network request
+      // 1. Use cached real-time student data
       const latestStudents = this.getStudents();
 
       // Check for duplicate email (case insensitive)
@@ -377,18 +434,25 @@ export const storageService = {
         };
       }
 
-      // 2. Save individual student record to students_records collection
-      const studentDocRef = doc(db, 'students_records', newStudent.id);
-      await setDoc(studentDocRef, sanitizeForFirestore(newStudent));
-
-      // 3. Merge new student into master list and update docStudents
+      // 2. Merge new student into master list and update local cache first for instant feedback
       const updatedList = mergeStudentLists([newStudent], latestStudents);
-
       cachedStudents = updatedList;
       saveLocal(KEYS.STUDENTS, updatedList);
-      await setDoc(docStudents, sanitizeForFirestore({ items: updatedList }));
-
       notifyListeners();
+
+      // 3. Sync to Firestore in background with timeout protection
+      if (db) {
+        const studentDocRef = doc(db, 'students_records', newStudent.id);
+        const syncDocRecord = setDoc(studentDocRef, sanitizeForFirestore(newStudent)).catch(err => console.error('Error syncing student_record:', err));
+        const dStudents = getDocStudents();
+        const syncDocMaster = dStudents ? setDoc(dStudents, sanitizeForFirestore({ items: updatedList })).catch(err => console.error('Error syncing docStudents:', err)) : Promise.resolve();
+
+        // Wait up to 2 seconds for cloud sync, proceed anyway if network is slow/offline
+        await Promise.race([
+          Promise.all([syncDocRecord, syncDocMaster]),
+          new Promise(resolve => setTimeout(resolve, 2000))
+        ]);
+      }
 
       this.addLog({
         userName: newStudent.name,
@@ -414,14 +478,20 @@ export const storageService = {
       const merged = mergeStudentLists(updatedList, latestStudents);
       cachedStudents = merged;
       saveLocal(KEYS.STUDENTS, merged);
-      await setDoc(docStudents, sanitizeForFirestore({ items: merged }));
+      
+      const dStudents = getDocStudents();
+      if (dStudents) {
+        await setDoc(dStudents, sanitizeForFirestore({ items: merged }));
+      }
 
       // Also persist individual student updates to students_records collection
-      merged.forEach(s => {
-        if (s && s.id) {
-          setDoc(doc(db, 'students_records', s.id), sanitizeForFirestore(s)).catch(console.error);
-        }
-      });
+      if (db) {
+        merged.forEach(s => {
+          if (s && s.id) {
+            setDoc(doc(db, 'students_records', s.id), sanitizeForFirestore(s)).catch(console.error);
+          }
+        });
+      }
 
       notifyListeners();
       return merged;
@@ -441,13 +511,39 @@ export const storageService = {
   saveGuruProfile(profile: any) {
     cachedGuruProfile = { ...cachedGuruProfile, ...profile };
     saveLocal('lms_guru_profile', cachedGuruProfile);
-    setDoc(docGuruProfile, sanitizeForFirestore({ profile: cachedGuruProfile, credentials: cachedGuruCredentials }), { merge: true }).catch(console.error);
+    const dGuruProfile = getDocGuruProfile();
+    if (dGuruProfile) {
+      setDoc(dGuruProfile, sanitizeForFirestore({ profile: cachedGuruProfile, credentials: cachedGuruCredentials }), { merge: true }).catch(console.error);
+    }
+
+    // Synchronize session if logged in as guru
+    const savedSession = localStorage.getItem('lms_user_session');
+    if (savedSession) {
+      try {
+        const session = JSON.parse(savedSession);
+        if (session.role === 'guru') {
+          const updatedSession = {
+            ...session,
+            userName: cachedGuruProfile.name || session.userName,
+            userEmail: cachedGuruProfile.email || session.userEmail,
+            avatar: cachedGuruProfile.avatar || session.avatar,
+          };
+          localStorage.setItem('lms_user_session', JSON.stringify(updatedSession));
+        }
+      } catch (e) {
+        console.warn('Error updating session on guru profile save:', e);
+      }
+    }
+
     notifyListeners();
   },
   saveGuruCredentials(creds: any) {
     cachedGuruCredentials = { ...cachedGuruCredentials, ...creds };
     saveLocal('lms_guru_credentials', cachedGuruCredentials);
-    setDoc(docGuruProfile, sanitizeForFirestore({ profile: cachedGuruProfile, credentials: cachedGuruCredentials }), { merge: true }).catch(console.error);
+    const dGuruProfile = getDocGuruProfile();
+    if (dGuruProfile) {
+      setDoc(dGuruProfile, sanitizeForFirestore({ profile: cachedGuruProfile, credentials: cachedGuruCredentials }), { merge: true }).catch(console.error);
+    }
     notifyListeners();
   },
 
@@ -459,7 +555,10 @@ export const storageService = {
     cachedMateri = list;
     saveLocal(KEYS.MATERI, list);
     offlineCacheService.cacheAllMateriAndKosakata(list).catch(console.warn);
-    setDoc(docMateri, sanitizeForFirestore({ items: list })).catch(err => console.error('Error syncing Materi to Firestore:', err));
+    const dMateri = getDocMateri();
+    if (dMateri) {
+      setDoc(dMateri, sanitizeForFirestore({ items: list })).catch(err => console.error('Error syncing Materi to Firestore:', err));
+    }
     notifyListeners();
   },
 
@@ -470,7 +569,10 @@ export const storageService = {
   savePenilaian(list: Penilaian[]): void {
     cachedPenilaian = list;
     saveLocal(KEYS.PENILAIAN, list);
-    setDoc(docPenilaian, sanitizeForFirestore({ items: list })).catch(err => console.error('Error syncing Penilaian to Firestore:', err));
+    const dPenilaian = getDocPenilaian();
+    if (dPenilaian) {
+      setDoc(dPenilaian, sanitizeForFirestore({ items: list })).catch(err => console.error('Error syncing Penilaian to Firestore:', err));
+    }
     notifyListeners();
   },
 
@@ -529,14 +631,19 @@ export const storageService = {
     const merged = mergeStudentLists(list, cachedStudents);
     cachedStudents = merged;
     saveLocal(KEYS.STUDENTS, merged);
-    setDoc(docStudents, sanitizeForFirestore({ items: merged })).catch(err => console.error('Error syncing Students to Firestore:', err));
+    const dStudents = getDocStudents();
+    if (dStudents) {
+      setDoc(dStudents, sanitizeForFirestore({ items: merged })).catch(err => console.error('Error syncing Students to Firestore:', err));
+    }
 
     // Also sync to students_records collection
-    merged.forEach(s => {
-      if (s && s.id) {
-        setDoc(doc(db, 'students_records', s.id), sanitizeForFirestore(s)).catch(console.error);
-      }
-    });
+    if (db) {
+      merged.forEach(s => {
+        if (s && s.id) {
+          setDoc(doc(db, 'students_records', s.id), sanitizeForFirestore(s)).catch(console.error);
+        }
+      });
+    }
 
     // Also update cached forum posts authorAvatar and authorName if any student profile changed
     let forumUpdated = false;
@@ -594,7 +701,10 @@ export const storageService = {
     if (forumUpdated) {
       cachedForum = updatedForum;
       saveLocal(KEYS.FORUM, updatedForum);
-      setDoc(docForum, sanitizeForFirestore({ items: updatedForum })).catch(err => console.error('Error syncing updated Forum avatars to Firestore:', err));
+      const dForum = getDocForum();
+      if (dForum) {
+        setDoc(dForum, sanitizeForFirestore({ items: updatedForum })).catch(err => console.error('Error syncing updated Forum avatars to Firestore:', err));
+      }
     }
 
     notifyListeners();
@@ -613,7 +723,10 @@ export const storageService = {
     const updated = [newLog, ...cachedLogs].slice(0, 50);
     cachedLogs = updated;
     saveLocal(KEYS.LOGS, updated);
-    setDoc(docLogs, sanitizeForFirestore({ items: updated })).catch(err => console.error('Error syncing Logs to Firestore:', err));
+    const dLogs = getDocLogs();
+    if (dLogs) {
+      setDoc(dLogs, sanitizeForFirestore({ items: updated })).catch(err => console.error('Error syncing Logs to Firestore:', err));
+    }
     notifyListeners();
   },
 
@@ -625,7 +738,10 @@ export const storageService = {
   saveForumPosts(list: ForumPost[]): void {
     cachedForum = list;
     saveLocal(KEYS.FORUM, list);
-    setDoc(docForum, sanitizeForFirestore({ items: list })).catch(err => console.error('Error syncing Forum to Firestore:', err));
+    const dForum = getDocForum();
+    if (dForum) {
+      setDoc(dForum, sanitizeForFirestore({ items: list })).catch(err => console.error('Error syncing Forum to Firestore:', err));
+    }
     notifyListeners();
   },
 
@@ -948,11 +1064,17 @@ export const storageService = {
     saveLocal(KEYS.LOGS, INITIAL_LOGS);
     saveLocal(KEYS.FORUM, INITIAL_FORUM_POSTS);
 
-    setDoc(docMateri, sanitizeForFirestore({ items: INITIAL_MATERI })).catch(console.error);
-    setDoc(docPenilaian, sanitizeForFirestore({ items: INITIAL_PENILAIAN })).catch(console.error);
-    setDoc(docStudents, sanitizeForFirestore({ items: INITIAL_STUDENTS })).catch(console.error);
-    setDoc(docLogs, sanitizeForFirestore({ items: INITIAL_LOGS })).catch(console.error);
-    setDoc(docForum, sanitizeForFirestore({ items: INITIAL_FORUM_POSTS })).catch(console.error);
+    const dMateri = getDocMateri();
+    const dPenilaian = getDocPenilaian();
+    const dStudents = getDocStudents();
+    const dLogs = getDocLogs();
+    const dForum = getDocForum();
+
+    if (dMateri) setDoc(dMateri, sanitizeForFirestore({ items: INITIAL_MATERI })).catch(console.error);
+    if (dPenilaian) setDoc(dPenilaian, sanitizeForFirestore({ items: INITIAL_PENILAIAN })).catch(console.error);
+    if (dStudents) setDoc(dStudents, sanitizeForFirestore({ items: INITIAL_STUDENTS })).catch(console.error);
+    if (dLogs) setDoc(dLogs, sanitizeForFirestore({ items: INITIAL_LOGS })).catch(console.error);
+    if (dForum) setDoc(dForum, sanitizeForFirestore({ items: INITIAL_FORUM_POSTS })).catch(console.error);
 
     notifyListeners();
   }

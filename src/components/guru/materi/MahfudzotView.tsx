@@ -72,6 +72,9 @@ export const MahfudzotView: React.FC<MahfudzotViewProps> = ({
   const [collapsedGroups, setCollapsedGroups] = useState<Set<number>>(new Set());
   const [mahfudzotCardIndex, setMahfudzotCardIndex] = useState(0);
   const [isMahfudzotFlipped, setIsMahfudzotFlipped] = useState(false);
+  const [initialFacing, setInitialFacing] = useState<'arabic' | 'indonesia'>('arabic');
+  const [isDeckShuffled, setIsDeckShuffled] = useState(false);
+  const [shuffledDeck, setShuffledDeck] = useState<Materi[] | null>(null);
 
   // Flashcard Scope: 'all' | 'selected'
   const [flashcardScope, setFlashcardScope] = useState<'all' | 'selected'>('selected');
@@ -466,9 +469,11 @@ export const MahfudzotView: React.FC<MahfudzotViewProps> = ({
           </div>
 
           {(() => {
-            const activeDeck = flashcardScope === 'all'
+            const rawDeck = flashcardScope === 'all'
               ? mahfudzotMateri
               : (selectedIds.length > 0 ? mahfudzotMateri.filter(m => selectedIds.includes(m.id)) : filteredMahfudzot);
+
+            const activeDeck = isDeckShuffled && shuffledDeck ? shuffledDeck : rawDeck;
 
             if (activeDeck.length === 0) {
               return (
@@ -482,10 +487,65 @@ export const MahfudzotView: React.FC<MahfudzotViewProps> = ({
 
             return (
               <div className="max-w-xl mx-auto space-y-4">
+                {/* Side Toggle & Shuffle Bar */}
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold bg-white p-2.5 rounded-2xl border border-slate-200 shadow-2xs">
+                  <div className="flex bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-[11px]">
+                    <button
+                      type="button"
+                      onClick={() => { setInitialFacing('arabic'); setIsMahfudzotFlipped(false); }}
+                      className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                        initialFacing === 'arabic' ? 'bg-purple-700 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Awal: Arab
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setInitialFacing('indonesia'); setIsMahfudzotFlipped(false); }}
+                      className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                        initialFacing === 'indonesia' ? 'bg-purple-900 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Awal: Indonesia
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShuffledDeck([...rawDeck].sort(() => Math.random() - 0.5));
+                        setIsDeckShuffled(true);
+                        setMahfudzotCardIndex(0);
+                        setIsMahfudzotFlipped(false);
+                      }}
+                      className="px-2.5 py-1 bg-purple-100 hover:bg-purple-200 text-purple-900 rounded-xl border border-purple-200 text-[11px] font-bold cursor-pointer"
+                      title="Acak urutan kartu"
+                    >
+                      🔀 Acak Kartu
+                    </button>
+                    {isDeckShuffled && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsDeckShuffled(false);
+                          setShuffledDeck(null);
+                          setMahfudzotCardIndex(0);
+                          setIsMahfudzotFlipped(false);
+                        }}
+                        className="px-2 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-[11px] font-bold cursor-pointer"
+                        title="Reset ke urutan asli"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
+                </div>
+
                 {/* Controls & Counter */}
                 <div className="flex items-center justify-between text-xs font-bold text-purple-900">
                   <span className="bg-purple-100 text-purple-900 px-3 py-1 rounded-xl border border-purple-200">
-                    Kartu {safeIndex + 1} dari {activeDeck.length} {flashcardScope === 'all' ? '(Semua Materi)' : '(Dipilih)'}
+                    Kartu {safeIndex + 1} dari {activeDeck.length} {isDeckShuffled ? '(Diacak)' : flashcardScope === 'all' ? '(Semua)' : '(Dipilih)'}
                   </span>
                   <div className="flex items-center gap-2">
                     <button
@@ -518,6 +578,9 @@ export const MahfudzotView: React.FC<MahfudzotViewProps> = ({
                   const translation = item?.mahfudzot?.translation || item?.description || '';
                   const categoryTag = getItemCategory(item);
 
+                  const showArabicFirst = initialFacing === 'arabic';
+                  const isShowingArabic = showArabicFirst ? !isMahfudzotFlipped : isMahfudzotFlipped;
+
                   return (
                     <div
                       onClick={() => setIsMahfudzotFlipped(!isMahfudzotFlipped)}
@@ -541,8 +604,11 @@ export const MahfudzotView: React.FC<MahfudzotViewProps> = ({
                         </span>
                       </div>
 
-                      {!isMahfudzotFlipped ? (
+                      {isShowingArabic ? (
                         <div className="space-y-4 pt-6 my-auto z-10">
+                          <span className="inline-block text-[11px] font-extrabold uppercase tracking-widest text-purple-300 bg-purple-950/80 px-3.5 py-1 rounded-full border border-purple-500/40">
+                            Bahasa Arab & Pelafalan
+                          </span>
                           <p className="font-arabic text-3xl sm:text-4xl font-extrabold text-amber-200 leading-relaxed dir-rtl drop-shadow-xl my-2">
                             {arabic}
                           </p>

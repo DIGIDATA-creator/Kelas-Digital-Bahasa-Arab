@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, signInAnonymously, setPersistence, browserLocalPersistence } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, initializeFirestore, type Firestore } from 'firebase/firestore';
 import appletConfig from '../../firebase-applet-config.json';
 
 const firebaseConfig = {
@@ -15,7 +15,20 @@ const firebaseConfig = {
 
 export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+
+let firestoreDb: Firestore | null = null;
+try {
+  firestoreDb = getFirestore(app);
+} catch (err: any) {
+  try {
+    firestoreDb = initializeFirestore(app, {});
+  } catch (err2: any) {
+    console.warn("⚠️ [FIREBASE CONFIG] Firestore service fallback note:", err2?.message || err2);
+    firestoreDb = null;
+  }
+}
+
+export const db = firestoreDb;
 
 // Set explicit Auth local persistence so login sessions persist across browser restarts & tabs
 setPersistence(auth, browserLocalPersistence)

@@ -5,15 +5,6 @@ import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { uploadToSupabaseStorage } from '../../lib/supabase';
 import { storageService } from '../../services/storage';
 
-const docGuruProfile = doc(db, 'app_collections', 'guru_profile');
-
-function sanitizeForFirestore<T>(data: T): T {
-  if (data === undefined) return null as unknown as T;
-  return JSON.parse(
-    JSON.stringify(data, (_key, value) => (value === undefined ? null : value))
-  );
-}
-
 export const GuruProfile: React.FC = () => {
   // Profile State with LocalStorage & Firestore Sync
   const [profile, setProfile] = useState(() => {
@@ -70,23 +61,32 @@ export const GuruProfile: React.FC = () => {
 
   // Firestore sync for profile & credentials
   useEffect(() => {
-    const unsub = onSnapshot(docGuruProfile, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data.profile) {
-          setProfile(data.profile);
-          localStorage.setItem('lms_guru_profile', JSON.stringify(data.profile));
+    if (!db) {
+      console.warn('⚠️ [GURU PROFILE] Firestore db is not available.');
+      return;
+    }
+    try {
+      const docGuruProfile = doc(db, 'app_collections', 'guru_profile');
+      const unsub = onSnapshot(docGuruProfile, (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.profile) {
+            setProfile(data.profile);
+            localStorage.setItem('lms_guru_profile', JSON.stringify(data.profile));
+          }
+          if (data.credentials) {
+            setCredentials(prev => ({ ...prev, username: data.credentials.username }));
+            localStorage.setItem('lms_guru_credentials', JSON.stringify({ username: data.credentials.username }));
+          }
+        } else {
+          setDoc(docGuruProfile, { profile, credentials: { username: credentials.username } }).catch(console.error);
         }
-        if (data.credentials) {
-          setCredentials(prev => ({ ...prev, username: data.credentials.username }));
-          localStorage.setItem('lms_guru_credentials', JSON.stringify({ username: data.credentials.username }));
-        }
-      } else {
-        setDoc(docGuruProfile, sanitizeForFirestore({ profile, credentials: { username: credentials.username } })).catch(console.error);
-      }
-    }, (err) => console.warn('Guru profile snapshot error:', err));
+      }, (err) => console.warn('Guru profile snapshot error:', err));
 
-    return () => unsub();
+      return () => unsub();
+    } catch (err) {
+      console.warn('⚠️ [GURU PROFILE] Failed to set up snapshot listener:', err);
+    }
   }, []);
 
   // Save profile edits

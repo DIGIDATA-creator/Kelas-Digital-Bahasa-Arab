@@ -46,8 +46,11 @@ export const KosakataTableView: React.FC<KosakataTableViewProps> = ({
   const [displayMode, setDisplayMode] = useState<'all' | 'arabic_only' | 'translation_only'>('all');
   const [cardIndex, setCardIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
+  const [initialFacing, setInitialFacing] = useState<'arabic' | 'indonesia'>('arabic');
+  const [shuffledVocabs, setShuffledVocabs] = useState<VocabularyItem[] | null>(null);
 
-  const total = vocabularies.length;
+  const activeVocabs = shuffledVocabs || vocabularies;
+  const total = activeVocabs.length;
   const verifiedCount = teacherKosakataState ? vocabularies.filter(v => teacherKosakataState[v.id]).length : 0;
   const isFullyVerifiedByTeacher = total > 0 && verifiedCount === total;
 
@@ -227,27 +230,80 @@ export const KosakataTableView: React.FC<KosakataTableViewProps> = ({
             /* Inline Flashcard View Mode */
             <div className="p-6 bg-slate-100 rounded-2xl border border-slate-200 space-y-4">
               <div className="max-w-md mx-auto space-y-4">
+                {/* Side Toggle & Shuffle Bar */}
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold bg-white p-2.5 rounded-2xl border border-slate-200 shadow-2xs">
+                  <div className="flex bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-[11px]">
+                    <button
+                      type="button"
+                      onClick={() => { setInitialFacing('arabic'); setIsFlipped(false); }}
+                      className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                        initialFacing === 'arabic' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Awal: Arab
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setInitialFacing('indonesia'); setIsFlipped(false); }}
+                      className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                        initialFacing === 'indonesia' ? 'bg-purple-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      Awal: Indonesia
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShuffledVocabs([...vocabularies].sort(() => Math.random() - 0.5));
+                        setCardIndex(0);
+                        setIsFlipped(false);
+                      }}
+                      className="px-2.5 py-1 bg-purple-100 hover:bg-purple-200 text-purple-900 rounded-xl border border-purple-200 text-[11px] font-bold cursor-pointer"
+                      title="Acak urutan kartu"
+                    >
+                      🔀 Acak Kartu
+                    </button>
+                    {shuffledVocabs && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShuffledVocabs(null);
+                          setCardIndex(0);
+                          setIsFlipped(false);
+                        }}
+                        className="px-2 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-[11px] font-bold cursor-pointer"
+                        title="Reset ke urutan asli"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
+                </div>
+
                 {/* Progress & Card Controls */}
                 <div className="flex items-center justify-between text-xs font-bold text-slate-700">
                   <span className="bg-emerald-100 text-emerald-900 px-3 py-1 rounded-xl border border-emerald-200 shadow-2xs">
-                    Kartu {cardIndex + 1} dari {vocabularies.length}
+                    Kartu {cardIndex + 1} dari {activeVocabs.length} {shuffledVocabs ? '(Diacak)' : ''}
                   </span>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => {
                         setIsFlipped(false);
-                        setCardIndex((prev) => (prev - 1 + vocabularies.length) % vocabularies.length);
+                        setCardIndex((prev) => (prev - 1 + activeVocabs.length) % activeVocabs.length);
                       }}
-                      className="px-3 py-1.5 bg-white hover:bg-slate-200 text-slate-700 rounded-xl border shadow-2xs font-bold text-xs transition-colors"
+                      className="px-3 py-1.5 bg-white hover:bg-slate-200 text-slate-700 rounded-xl border shadow-2xs font-bold text-xs transition-colors cursor-pointer"
                     >
                       ← Prev
                     </button>
                     <button
                       onClick={() => {
                         setIsFlipped(false);
-                        setCardIndex((prev) => (prev + 1) % vocabularies.length);
+                        setCardIndex((prev) => (prev + 1) % activeVocabs.length);
                       }}
-                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-2xs font-bold text-xs transition-colors"
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-2xs font-bold text-xs transition-colors cursor-pointer"
                     >
                       Next →
                     </button>
@@ -255,42 +311,50 @@ export const KosakataTableView: React.FC<KosakataTableViewProps> = ({
                 </div>
 
                 {/* Flip Card Container */}
-                <div
-                  onClick={() => setIsFlipped(!isFlipped)}
-                  className="relative w-full h-64 bg-white rounded-2xl border-2 border-emerald-300 shadow-md cursor-pointer transition-all hover:border-emerald-500 hover:shadow-lg p-6 flex flex-col items-center justify-center text-center space-y-3"
-                >
-                  <div className="absolute top-3 right-3 text-[10px] font-bold text-slate-400 bg-slate-100 px-2.5 py-0.5 rounded-full">
-                    Klik Kartu untuk Membalik 🔄
-                  </div>
+                {(() => {
+                  const item = activeVocabs[cardIndex];
+                  const showArabicFirst = initialFacing === 'arabic';
+                  const isShowingArabic = showArabicFirst ? !isFlipped : isFlipped;
 
-                  {!isFlipped ? (
-                    <div className="space-y-3">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-100">
-                        Bahasa Arab
-                      </span>
-                      <p className="font-arabic text-3xl sm:text-4xl font-bold text-slate-900 dir-rtl my-2">
-                        {vocabularies[cardIndex]?.word}
-                      </p>
-                      <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
-                        <AudioPlayerButton arabicText={vocabularies[cardIndex]?.word || ''} size="md" />
+                  return (
+                    <div
+                      onClick={() => setIsFlipped(!isFlipped)}
+                      className="relative w-full h-64 bg-white rounded-2xl border-2 border-emerald-300 shadow-md cursor-pointer transition-all hover:border-emerald-500 hover:shadow-lg p-6 flex flex-col items-center justify-center text-center space-y-3"
+                    >
+                      <div className="absolute top-3 right-3 text-[10px] font-bold text-slate-400 bg-slate-100 px-2.5 py-0.5 rounded-full">
+                        Klik Kartu untuk Membalik 🔄
                       </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-sky-700 bg-sky-50 px-2.5 py-1 rounded-md border border-sky-100">
-                        Terjemahan Indonesia
-                      </span>
-                      <p className="text-xl sm:text-2xl font-extrabold text-slate-800 my-2">
-                        {vocabularies[cardIndex]?.meaning}
-                      </p>
-                      {vocabularies[cardIndex]?.latin && (
-                        <p className="text-xs text-slate-500 italic font-medium">
-                          ({vocabularies[cardIndex]?.latin})
-                        </p>
+
+                      {isShowingArabic ? (
+                        <div className="space-y-3">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-100">
+                            Bahasa Arab & Pelafalan
+                          </span>
+                          <p className="font-arabic text-3xl sm:text-4xl font-bold text-slate-900 dir-rtl my-2">
+                            {item?.word}
+                          </p>
+                          <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
+                            <AudioPlayerButton arabicText={item?.word || ''} size="md" />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-sky-700 bg-sky-50 px-2.5 py-1 rounded-md border border-sky-100">
+                            Terjemahan Indonesia
+                          </span>
+                          <p className="text-xl sm:text-2xl font-extrabold text-slate-800 my-2">
+                            "{item?.meaning}"
+                          </p>
+                          {item?.latin && (
+                            <p className="text-xs text-slate-500 italic font-medium">
+                              ({item?.latin})
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
-                  )}
-                </div>
+                  );
+                })()}
               </div>
             </div>
           ) : (

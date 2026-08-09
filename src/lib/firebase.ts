@@ -41,19 +41,26 @@ export const signInWithGoogle = async () => {
 
 export const registerUser = async (email: string, pass: string, name: string) => {
   try {
-    const userCred = await createUserWithEmailAndPassword(auth, email, pass);
-    if (userCred.user) {
-      await updateProfile(userCred.user, { displayName: name });
+    const authPromise = createUserWithEmailAndPassword(auth, email, pass);
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Firebase Auth timeout')), 3000)
+    );
+
+    const userCred = (await Promise.race([authPromise, timeoutPromise])) as any;
+    if (userCred?.user) {
+      await updateProfile(userCred.user, { displayName: name }).catch(console.warn);
     }
-    return userCred.user;
+    return userCred?.user || null;
   } catch (error: any) {
-    console.warn("Firebase Register error/warning:", error);
+    console.warn("Firebase Register error/warning:", error?.code || error?.message || error);
     if (
       error?.code === 'auth/operation-not-allowed' ||
       error?.code === 'auth/admin-restricted-operation' ||
-      error?.code === 'auth/configuration-not-found'
+      error?.code === 'auth/configuration-not-found' ||
+      error?.code === 'auth/email-already-in-use' ||
+      error?.message === 'Firebase Auth timeout'
     ) {
-      console.warn("Firebase Email Auth provider is not enabled in Firebase Console. Proceeding with local registration.");
+      console.warn("Firebase Email Auth provider skipped/handled. Proceeding with local & Firestore registration.");
       return null;
     }
     if (error?.code === 'auth/api-key-not-valid' || error?.message?.includes('API key not valid')) {
@@ -66,16 +73,24 @@ export const registerUser = async (email: string, pass: string, name: string) =>
 
 export const loginUser = async (email: string, pass: string) => {
   try {
-    const userCred = await signInWithEmailAndPassword(auth, email, pass);
-    return userCred.user;
+    const authPromise = signInWithEmailAndPassword(auth, email, pass);
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Firebase Auth login timeout')), 3000)
+    );
+
+    const userCred = (await Promise.race([authPromise, timeoutPromise])) as any;
+    return userCred?.user || null;
   } catch (error: any) {
-    console.warn("Firebase Login error/warning:", error);
+    console.warn("Firebase Login error/warning:", error?.code || error?.message || error);
     if (
       error?.code === 'auth/operation-not-allowed' ||
       error?.code === 'auth/admin-restricted-operation' ||
-      error?.code === 'auth/configuration-not-found'
+      error?.code === 'auth/configuration-not-found' ||
+      error?.code === 'auth/user-not-found' ||
+      error?.code === 'auth/wrong-password' ||
+      error?.code === 'auth/invalid-credential' ||
+      error?.message === 'Firebase Auth login timeout'
     ) {
-      console.warn("Firebase Email Auth provider is not enabled in Firebase Console.");
       return null;
     }
     if (error?.code === 'auth/api-key-not-valid' || error?.message?.includes('API key not valid')) {

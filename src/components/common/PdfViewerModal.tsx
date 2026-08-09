@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download, FileText, Printer, Eye, ExternalLink, AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download, FileText, Printer, Eye, ExternalLink, AlertCircle, RefreshCw, Loader2, Target, Check } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 
 // Configure pdfjs worker to unpkg/cdnjs CDN matching installed version
@@ -18,6 +18,9 @@ interface PdfViewerModalProps {
   pdfFileName?: string;
   pdfPageCount?: number;
   textContent?: string;
+  learningTargets?: string[];
+  checkedTargetIndices?: number[];
+  onToggleTargetIndex?: (index: number) => void;
 }
 
 // Utility to convert data URL to Blob
@@ -198,12 +201,16 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
   pdfFileName = 'Dokumen_Materi.pdf',
   pdfPageCount: initialPageCount = 5,
   textContent,
+  learningTargets,
+  checkedTargetIndices = [],
+  onToggleTargetIndex,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [zoom, setZoom] = useState(100);
   const [totalPages, setTotalPages] = useState(initialPageCount);
   const [viewMode, setViewMode] = useState<'embed' | 'document'>(pdfUrl ? 'embed' : 'document');
   const [isLazyPdfLoaded, setIsLazyPdfLoaded] = useState(false);
+  const [showTargetsPanel, setShowTargetsPanel] = useState(false);
 
   // Convert dataUrl to safe Blob URL for browser open/download
   const objectBlobUrl = useMemo(() => {
@@ -296,6 +303,22 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {learningTargets && learningTargets.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowTargetsPanel(!showTargetsPanel)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs border ${
+                  showTargetsPanel
+                    ? 'bg-amber-400 text-slate-950 border-amber-300'
+                    : 'bg-emerald-600/90 hover:bg-emerald-600 text-white border-emerald-500'
+                }`}
+                title="Tampilkan / Sembunyikan Target Pembelajaran Modul Ini"
+              >
+                <Target size={15} />
+                <span>Target ({checkedTargetIndices.length}/{learningTargets.length})</span>
+              </button>
+            )}
+
             {pdfUrl && (
               <div className="flex bg-slate-800 p-1 rounded-xl text-xs font-bold mr-2">
                 <button
@@ -352,6 +375,55 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Collapsible Targets Panel */}
+        {showTargetsPanel && learningTargets && learningTargets.length > 0 && (
+          <div className="bg-amber-950/95 border-b border-amber-800 text-amber-100 px-6 py-4 transition-all shadow-inner shrink-0 max-h-60 overflow-y-auto">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Target size={18} className="text-amber-400" />
+                <h4 className="font-extrabold text-xs sm:text-sm text-amber-200">
+                  Target Pembelajaran & Capaian Modul
+                </h4>
+                <span className="text-[11px] font-bold bg-amber-900/80 text-amber-300 px-2.5 py-0.5 rounded-full border border-amber-700">
+                  {checkedTargetIndices.length} / {learningTargets.length} Tercapai
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTargetsPanel(false)}
+                className="text-amber-400 hover:text-white text-xs font-bold cursor-pointer"
+              >
+                Tutup ✕
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {learningTargets.map((targetText, idx) => {
+                const isChecked = checkedTargetIndices.includes(idx);
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => onToggleTargetIndex && onToggleTargetIndex(idx)}
+                    className={`p-2.5 rounded-xl text-left border transition-all flex items-start gap-2.5 text-xs font-semibold cursor-pointer ${
+                      isChecked
+                        ? 'bg-emerald-950/90 border-emerald-500 text-emerald-200 shadow-xs'
+                        : 'bg-slate-900/80 hover:bg-slate-900 border-amber-800/80 text-amber-100'
+                    }`}
+                  >
+                    <div className={`p-1 rounded-md shrink-0 mt-0.5 transition-colors ${
+                      isChecked ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800 text-slate-400'
+                    }`}>
+                      <Check size={12} className="stroke-[3]" />
+                    </div>
+                    <span className="leading-snug">{targetText}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* PDF Toolbar */}
         <div className="flex flex-wrap items-center justify-between px-6 py-2 bg-slate-100 border-b border-slate-200 text-slate-700 text-sm gap-3">

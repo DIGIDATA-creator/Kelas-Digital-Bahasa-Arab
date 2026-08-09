@@ -36,6 +36,7 @@ export const FlashcardModal: React.FC<FlashcardModalProps> = ({
   const [isCompleted, setIsCompleted] = useState(false);
 
   // Shuffle modal range selection state
+  const [initialFacing, setInitialFacing] = useState<'arabic' | 'indonesia'>('arabic');
   const [showShuffleModal, setShowShuffleModal] = useState(false);
   const [shuffleType, setShuffleType] = useState<'all' | 'range'>('all');
   const [startNum, setStartNum] = useState<number>(1);
@@ -203,6 +204,35 @@ export const FlashcardModal: React.FC<FlashcardModalProps> = ({
           />
         </div>
 
+        {/* Initial Side Toggle Bar */}
+        <div className="px-5 py-2 bg-slate-950/90 border-b border-slate-800 flex items-center justify-between text-xs font-bold text-slate-300">
+          <span className="text-[11px] text-slate-400">Tampilan Awal Flashcard:</span>
+          <div className="flex bg-slate-800 p-0.5 rounded-xl border border-slate-700">
+            <button
+              type="button"
+              onClick={() => { setInitialFacing('arabic'); setIsFlipped(false); }}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                initialFacing === 'arabic'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Bahasa Arab
+            </button>
+            <button
+              type="button"
+              onClick={() => { setInitialFacing('indonesia'); setIsFlipped(false); }}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                initialFacing === 'indonesia'
+                  ? 'bg-purple-600 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Bahasa Indonesia
+            </button>
+          </div>
+        </div>
+
         {/* Card Arena or Completion Summary */}
         {isCompleted ? (
           <div className="p-8 flex flex-col items-center justify-center text-center space-y-6 min-h-[360px] animate-fadeIn">
@@ -263,53 +293,82 @@ export const FlashcardModal: React.FC<FlashcardModalProps> = ({
                     <div className="absolute -top-16 -right-16 w-40 h-40 rounded-full blur-2xl pointer-events-none bg-emerald-400/20" />
                     <div className="absolute -bottom-16 -left-16 w-40 h-40 rounded-full blur-2xl pointer-events-none bg-teal-400/20" />
 
-                    {/* Header Badge */}
-                    <div className="absolute top-4 left-4 z-10 text-[10px] font-extrabold uppercase tracking-wider px-3 py-1 rounded-full bg-slate-950/70 text-emerald-300 border border-emerald-500/40 backdrop-blur-md shadow-sm">
-                      {currentCard.speaker1Name ? `Soal (${currentCard.speaker1Name})` : 'Soal / Bahasa Arab'}
-                    </div>
-
-                    {/* Audio Button */}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSpeak(currentCard.frontArabic);
-                      }}
-                      className="absolute top-4 right-4 z-10 p-2.5 bg-emerald-500/30 hover:bg-emerald-500/60 text-emerald-200 hover:text-white rounded-full transition-all shadow-md cursor-pointer border border-emerald-400/40 hover:scale-110"
-                      title="Dengarkan Pelafalan"
-                    >
-                      <Volume2 size={18} />
-                    </button>
-
-                    <div className="space-y-4 my-auto w-full px-2 z-10">
-                      <p className="font-arabic text-3xl sm:text-4xl font-extrabold text-amber-200 leading-relaxed drop-shadow-xl my-1">
-                        {currentCard.frontArabic}
-                      </p>
-
-                      {currentCard.latin && (
-                        <span className="inline-block px-3 py-1 bg-slate-900/80 border border-emerald-500/30 text-emerald-300 text-xs italic font-medium rounded-full shadow-inner">
-                          "{currentCard.latin}"
-                        </span>
-                      )}
-
-                      {/* Terjemah Jawaban di Bawah Soal */}
-                      {currentCard.frontSubtext && (
-                        <div className="p-3 bg-slate-900/90 rounded-2xl border border-sky-500/50 text-xs text-sky-200 shadow-lg text-left">
-                          <span className="text-[10px] text-sky-400 font-extrabold block uppercase tracking-wider">
-                            Terjemah Jawaban:
-                          </span>
-                          <p className="font-semibold text-sky-100 text-xs sm:text-sm mt-0.5">
-                            "{currentCard.frontSubtext}"
-                          </p>
+                    {initialFacing === 'arabic' ? (
+                      /* Arabic on Front Face */
+                      <>
+                        <div className="absolute top-4 left-4 z-10 text-[10px] font-extrabold uppercase tracking-wider px-3 py-1 rounded-full bg-slate-950/70 text-emerald-300 border border-emerald-500/40 backdrop-blur-md shadow-sm">
+                          {currentCard.speaker1Name ? `Soal (${currentCard.speaker1Name})` : 'Bahasa Arab'}
                         </div>
-                      )}
 
-                      <div className="pt-2">
-                        <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-300 bg-slate-950/60 px-3 py-1 rounded-full border border-emerald-500/30 animate-pulse">
-                          <Eye size={13} /> Klik kartu untuk me-balik melihat jawaban
-                        </span>
-                      </div>
-                    </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSpeak(currentCard.frontArabic);
+                          }}
+                          className="absolute top-4 right-4 z-10 p-2.5 bg-emerald-500/30 hover:bg-emerald-500/60 text-emerald-200 hover:text-white rounded-full transition-all shadow-md cursor-pointer border border-emerald-400/40 hover:scale-110"
+                          title="Dengarkan Pelafalan"
+                        >
+                          <Volume2 size={18} />
+                        </button>
+
+                        <div className="space-y-4 my-auto w-full px-2 z-10">
+                          <p className="font-arabic text-3xl sm:text-4xl font-extrabold text-amber-200 leading-relaxed drop-shadow-xl my-1">
+                            {currentCard.frontArabic}
+                          </p>
+
+                          {currentCard.latin && (
+                            <span className="inline-block px-3 py-1 bg-slate-900/80 border border-emerald-500/30 text-emerald-300 text-xs italic font-medium rounded-full shadow-inner">
+                              "{currentCard.latin}"
+                            </span>
+                          )}
+
+                          {currentCard.frontSubtext && (
+                            <div className="p-3 bg-slate-900/90 rounded-2xl border border-sky-500/50 text-xs text-sky-200 shadow-lg text-left">
+                              <span className="text-[10px] text-sky-400 font-extrabold block uppercase tracking-wider">
+                                Terjemah Jawaban:
+                              </span>
+                              <p className="font-semibold text-sky-100 text-xs sm:text-sm mt-0.5">
+                                "{currentCard.frontSubtext}"
+                              </p>
+                            </div>
+                          )}
+
+                          <div className="pt-2">
+                            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-300 bg-slate-950/60 px-3 py-1 rounded-full border border-emerald-500/30 animate-pulse">
+                              <Eye size={13} /> Klik kartu untuk me-balik melihat arti
+                            </span>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      /* Indonesian on Front Face */
+                      <>
+                        <div className="absolute top-4 left-4 z-10 text-[10px] font-extrabold uppercase tracking-wider px-3 py-1 rounded-full bg-slate-950/70 text-emerald-300 border border-emerald-500/40 backdrop-blur-md shadow-sm">
+                          Terjemahan Indonesia
+                        </div>
+
+                        <div className="space-y-4 my-auto w-full px-2 z-10">
+                          <p className="text-2xl sm:text-3xl font-black text-white tracking-tight drop-shadow-xl my-1">
+                            "{currentCard.backTranslation}"
+                          </p>
+
+                          {currentCard.frontSubtext && (
+                            <div className="p-3 bg-slate-900/90 rounded-2xl border border-sky-500/50 text-xs text-sky-200 shadow-lg text-left">
+                              <p className="font-semibold text-sky-100 text-xs sm:text-sm">
+                                "{currentCard.frontSubtext}"
+                              </p>
+                            </div>
+                          )}
+
+                          <div className="pt-2">
+                            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-300 bg-slate-950/60 px-3 py-1 rounded-full border border-emerald-500/30 animate-pulse">
+                              <Eye size={13} /> Klik kartu untuk melihat Bahasa Arab & Suara
+                            </span>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   {/* BACK FACE OF FLASHCARD */}
@@ -318,54 +377,100 @@ export const FlashcardModal: React.FC<FlashcardModalProps> = ({
                     <div className="absolute -top-16 -right-16 w-40 h-40 rounded-full blur-2xl pointer-events-none bg-purple-500/20" />
                     <div className="absolute -bottom-16 -left-16 w-40 h-40 rounded-full blur-2xl pointer-events-none bg-indigo-500/20" />
 
-                    {/* Header Badge */}
-                    <div className="absolute top-4 left-4 z-10 text-[10px] font-extrabold uppercase tracking-wider px-3 py-1 rounded-full bg-slate-950/70 text-purple-300 border border-purple-500/40 backdrop-blur-md shadow-sm">
-                      {currentCard.speaker2Name ? `Jawaban (${currentCard.speaker2Name})` : 'Jawaban / Terjemahan'}
-                    </div>
+                    {initialFacing === 'arabic' ? (
+                      /* Translation on Back Face */
+                      <>
+                        <div className="absolute top-4 left-4 z-10 text-[10px] font-extrabold uppercase tracking-wider px-3 py-1 rounded-full bg-slate-950/70 text-purple-300 border border-purple-500/40 backdrop-blur-md shadow-sm">
+                          {currentCard.speaker2Name ? `Jawaban (${currentCard.speaker2Name})` : 'Jawaban / Terjemahan'}
+                        </div>
 
-                    {/* Audio Button */}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSpeak(currentCard.backArabic || currentCard.frontArabic);
-                      }}
-                      className="absolute top-4 right-4 z-10 p-2.5 bg-purple-500/30 hover:bg-purple-500/60 text-purple-200 hover:text-white rounded-full transition-all shadow-md cursor-pointer border border-purple-400/40 hover:scale-110"
-                      title="Dengarkan Pelafalan"
-                    >
-                      <Volume2 size={18} />
-                    </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSpeak(currentCard.backArabic || currentCard.frontArabic);
+                          }}
+                          className="absolute top-4 right-4 z-10 p-2.5 bg-purple-500/30 hover:bg-purple-500/60 text-purple-200 hover:text-white rounded-full transition-all shadow-md cursor-pointer border border-purple-400/40 hover:scale-110"
+                          title="Dengarkan Pelafalan"
+                        >
+                          <Volume2 size={18} />
+                        </button>
 
-                    <div className="space-y-3.5 my-auto w-full px-2 z-10">
-                      <span className="text-xs uppercase font-extrabold tracking-widest text-purple-300 block">
-                        {currentCard.backArabic ? 'Jawaban (Bahasa Arab):' : 'Terjemahan / Arti:'}
-                      </span>
+                        <div className="space-y-3.5 my-auto w-full px-2 z-10">
+                          <span className="text-xs uppercase font-extrabold tracking-widest text-purple-300 block">
+                            {currentCard.backArabic ? 'Jawaban (Bahasa Arab):' : 'Terjemahan / Arti:'}
+                          </span>
 
-                      {currentCard.backArabic && (
-                        <p className="font-arabic text-3xl sm:text-4xl font-extrabold text-amber-200 leading-relaxed drop-shadow-xl my-1">
-                          {currentCard.backArabic}
-                        </p>
-                      )}
+                          {currentCard.backArabic && (
+                            <p className="font-arabic text-3xl sm:text-4xl font-extrabold text-amber-200 leading-relaxed drop-shadow-xl my-1">
+                              {currentCard.backArabic}
+                            </p>
+                          )}
 
-                      <div className="p-3 bg-slate-950/80 rounded-2xl border border-purple-500/40 shadow-inner">
-                        <span className="text-[10px] uppercase font-bold text-purple-400 block">Terjemahan Jawaban:</span>
-                        <p className="text-base sm:text-lg font-black text-white tracking-tight mt-0.5">
-                          "{currentCard.backTranslation}"
-                        </p>
-                      </div>
+                          <div className="p-3 bg-slate-950/80 rounded-2xl border border-purple-500/40 shadow-inner">
+                            <span className="text-[10px] uppercase font-bold text-purple-400 block">Terjemahan:</span>
+                            <p className="text-base sm:text-lg font-black text-white tracking-tight mt-0.5">
+                              "{currentCard.backTranslation}"
+                            </p>
+                          </div>
 
-                      {currentCard.detail && (
-                        <p className="text-xs text-slate-300 max-w-xs mx-auto mt-1">
-                          {currentCard.detail}
-                        </p>
-                      )}
+                          {currentCard.detail && (
+                            <p className="text-xs text-slate-300 max-w-xs mx-auto mt-1">
+                              {currentCard.detail}
+                            </p>
+                          )}
 
-                      <div className="pt-1">
-                        <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-purple-300 bg-slate-950/60 px-3 py-1 rounded-full border border-purple-500/30">
-                          <RotateCw size={13} /> Klik kartu untuk me-balik ke Soal
-                        </span>
-                      </div>
-                    </div>
+                          <div className="pt-1">
+                            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-purple-300 bg-slate-950/60 px-3 py-1 rounded-full border border-purple-500/30">
+                              <RotateCw size={13} /> Klik kartu untuk me-balik ke depan
+                            </span>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      /* Arabic on Back Face when Initial facing is Indonesian */
+                      <>
+                        <div className="absolute top-4 left-4 z-10 text-[10px] font-extrabold uppercase tracking-wider px-3 py-1 rounded-full bg-slate-950/70 text-purple-300 border border-purple-500/40 backdrop-blur-md shadow-sm">
+                          Bahasa Arab & Pelafalan
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSpeak(currentCard.frontArabic);
+                          }}
+                          className="absolute top-4 right-4 z-10 p-2.5 bg-purple-500/30 hover:bg-purple-500/60 text-purple-200 hover:text-white rounded-full transition-all shadow-md cursor-pointer border border-purple-400/40 hover:scale-110"
+                          title="Dengarkan Pelafalan"
+                        >
+                          <Volume2 size={18} />
+                        </button>
+
+                        <div className="space-y-3.5 my-auto w-full px-2 z-10">
+                          <p className="font-arabic text-3xl sm:text-4xl font-extrabold text-amber-200 leading-relaxed drop-shadow-xl my-1">
+                            {currentCard.frontArabic}
+                          </p>
+
+                          {currentCard.latin && (
+                            <span className="inline-block px-3 py-1 bg-slate-900/80 border border-purple-500/30 text-purple-300 text-xs italic font-medium rounded-full shadow-inner">
+                              "{currentCard.latin}"
+                            </span>
+                          )}
+
+                          {currentCard.detail && (
+                            <p className="text-xs text-slate-300 max-w-xs mx-auto mt-1">
+                              {currentCard.detail}
+                            </p>
+                          )}
+
+                          <div className="pt-1">
+                            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-purple-300 bg-slate-950/60 px-3 py-1 rounded-full border border-purple-500/30">
+                              <RotateCw size={13} /> Klik kartu untuk me-balik ke terjemahan
+                            </span>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

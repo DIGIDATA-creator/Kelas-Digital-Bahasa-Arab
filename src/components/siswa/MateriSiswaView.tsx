@@ -28,14 +28,57 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
   onMarkComplete,
   onUpdateStudent,
 }) => {
-  const [activeCategory, setActiveCategory] = useState<CategoryType>('qowaid');
-  const [activeMateriId, setActiveMateriId] = useState<string>(
-    selectedMateriId || materiList[0]?.id || ''
-  );
+  const getInitialCategoryAndId = () => {
+    if (selectedMateriId) {
+      const found = materiList.find(m => m.id === selectedMateriId);
+      if (found) {
+        return { category: found.category, materiId: found.id };
+      }
+    }
+    const defaultCat: CategoryType = 'qowaid';
+    const firstInCat = materiList.find(m => m.category === defaultCat) || materiList[0];
+    return { category: defaultCat, materiId: firstInCat?.id || '' };
+  };
+
+  const initialValues = getInitialCategoryAndId();
+  const [activeCategory, setActiveCategory] = useState<CategoryType>(initialValues.category);
+  const [activeMateriId, setActiveMateriId] = useState<string>(initialValues.materiId);
+
+  useEffect(() => {
+    if (selectedMateriId) {
+      const found = materiList.find(m => m.id === selectedMateriId);
+      if (found) {
+        setActiveCategory(found.category);
+        setActiveMateriId(found.id);
+      }
+    }
+  }, [selectedMateriId, materiList]);
 
   // Compute vocabulary verification streaks from student's quiz attempts
   const penilaianList = storageService.getPenilaian();
   const vocabStreakResult = calculateStudentVocabStreaks(currentStudent, materiList, penilaianList);
+
+  const handleToggleSelfQowaidTarget = (materiId: string, targetIdx: number) => {
+    const key = `${materiId}_target_${targetIdx}`;
+    const currentSelf = currentStudent.hafalanProgress?.selfQowaidIds || {};
+    const updatedSelf = { ...currentSelf, [key]: !currentSelf[key] };
+
+    const updatedStudent: Student = {
+      ...currentStudent,
+      hafalanProgress: {
+        ...currentStudent.hafalanProgress,
+        selfQowaidIds: updatedSelf,
+      },
+    };
+
+    if (onUpdateStudent) {
+      onUpdateStudent(updatedStudent);
+    } else {
+      const allStudents = storageService.getStudents();
+      const updatedList = allStudents.map(s => s.id === updatedStudent.id ? updatedStudent : s);
+      storageService.saveStudents(updatedList);
+    }
+  };
 
   // Self-marking handlers for Kosakata and Mahfudzot (0 XP)
   const handleToggleSelfKosakata = (vocabId: string) => {
@@ -691,20 +734,41 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
                   {/* Target Pembelajaran / Capaian Qowaid */}
                   {currentMateri.learningTargets && currentMateri.learningTargets.length > 0 && (
                     <div className="p-4 sm:p-5 bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 rounded-2xl border border-emerald-200/80 space-y-3 shadow-2xs">
-                      <div className="flex items-center gap-2 text-emerald-900 font-extrabold text-xs sm:text-sm">
-                        <div className="p-1.5 bg-emerald-600 text-white rounded-lg shadow-2xs">
-                          <Target size={16} />
+                      <div className="flex items-center justify-between text-emerald-900 font-extrabold text-xs sm:text-sm">
+                        <div className="flex items-center gap-2">
+                          <div className="p-1.5 bg-emerald-600 text-white rounded-lg shadow-2xs">
+                            <Target size={16} />
+                          </div>
+                          <span>Target Pembelajaran & Capaian Materi Qowaid</span>
                         </div>
-                        <span>Target Pembelajaran & Capaian Materi Qowaid</span>
+                        <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                          Klik target untuk menceklis
+                        </span>
                       </div>
-                      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-emerald-950 font-medium">
-                        {currentMateri.learningTargets.map((target, idx) => (
-                          <li key={idx} className="flex items-start gap-2 bg-white/90 p-3 rounded-xl border border-emerald-100/90 shadow-2xs">
-                            <CheckCircle2 size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                            <span className="leading-snug">{target}</span>
-                          </li>
-                        ))}
-                      </ul>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-emerald-950 font-medium">
+                        {currentMateri.learningTargets.map((target, idx) => {
+                          const isTargetChecked = !!currentStudent.hafalanProgress?.selfQowaidIds?.[`${currentMateri.id}_target_${idx}`];
+                          return (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => handleToggleSelfQowaidTarget(currentMateri.id, idx)}
+                              className={`w-full text-left flex items-start gap-2.5 p-3 rounded-xl border transition-all cursor-pointer shadow-2xs ${
+                                isTargetChecked
+                                  ? 'bg-emerald-100 border-emerald-400 text-emerald-950 font-bold'
+                                  : 'bg-white/90 hover:bg-white border-emerald-100 hover:border-emerald-300 text-emerald-950'
+                              }`}
+                            >
+                              <div className={`p-1 rounded-md shrink-0 mt-0.5 transition-colors ${
+                                isTargetChecked ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-400'
+                              }`}>
+                                <Check size={13} className="stroke-[3]" />
+                              </div>
+                              <span className="leading-snug text-xs">{target}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
 
@@ -881,6 +945,12 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
           pdfFileName={previewPdfMateri.pdfFileName}
           pdfPageCount={previewPdfMateri.pdfPageCount || 5}
           textContent={previewPdfMateri.content}
+          learningTargets={previewPdfMateri.learningTargets}
+          checkedTargetIndices={(previewPdfMateri.learningTargets || [])
+            .map((_, idx) => idx)
+            .filter(idx => !!currentStudent.hafalanProgress?.selfQowaidIds?.[`${previewPdfMateri.id}_target_${idx}`])
+          }
+          onToggleTargetIndex={(idx) => handleToggleSelfQowaidTarget(previewPdfMateri.id, idx)}
         />
       )}
 

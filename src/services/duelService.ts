@@ -149,6 +149,7 @@ export const duelService = {
     };
 
     try {
+      if (!db) throw new Error('Firestore DB is not initialized');
       await setDoc(doc(db, 'duels', roomId), roomData);
       return roomData;
     } catch (error) {
@@ -159,6 +160,7 @@ export const duelService = {
 
   // Join existing room by Room Code or Room ID
   async joinRoom(roomCodeOrId: string, challengerStudent: Student): Promise<DuelRoom> {
+    if (!db) throw new Error('Firestore DB is not initialized');
     const trimmed = roomCodeOrId.trim();
     let targetDocRef = doc(db, 'duels', trimmed);
     let path = `duels/${trimmed}`;
@@ -225,6 +227,7 @@ export const duelService = {
 
   // Add a Bot Opponent (for practicing alone / instant preview)
   async addBotOpponent(roomId: string, botName = 'Ustaz AI Bot'): Promise<void> {
+    if (!db) return;
     const path = `duels/${roomId}`;
     const botPlayer: DuelPlayer = {
       studentId: `bot-${Date.now()}`,
@@ -339,6 +342,7 @@ export const duelService = {
     }
 
     try {
+      if (!db) return;
       await updateDoc(doc(db, 'duels', roomId), {
         [playerKey]: updatedPlayer,
         currentRound: newRound,
@@ -379,6 +383,10 @@ export const duelService = {
 
   // Listen to Duel Room in Real-Time via Firestore onSnapshot
   subscribeRoom(roomId: string, onUpdate: (room: DuelRoom | null) => void): () => void {
+    if (!db) {
+      onUpdate(null);
+      return () => {};
+    }
     const path = `duels/${roomId}`;
     return onSnapshot(
       doc(db, 'duels', roomId),
@@ -397,6 +405,7 @@ export const duelService = {
 
   // Get active public waiting rooms
   async getPublicWaitingRooms(): Promise<DuelRoom[]> {
+    if (!db) return [];
     const path = 'duels';
     try {
       const q = query(
@@ -439,6 +448,7 @@ export const duelService = {
       : null;
 
     try {
+      if (!db) return;
       await updateDoc(doc(db, 'duels', roomId), {
         status: resetChallenger ? 'playing' : 'waiting',
         currentRound: 0,
