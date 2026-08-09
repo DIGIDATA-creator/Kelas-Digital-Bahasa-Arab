@@ -88,7 +88,7 @@ export const QowaidFormModal: React.FC<QowaidFormModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.type !== 'application/pdf') {
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
       alert('Harap pilih file berformat PDF.');
       return;
     }
@@ -98,18 +98,35 @@ export const QowaidFormModal: React.FC<QowaidFormModalProps> = ({
 
     try {
       const uploadResult = await uploadToSupabaseStorage(file, file.name, 'materi_pdf');
-      setPdfUrl(uploadResult.publicUrl);
+      if (uploadResult && uploadResult.publicUrl) {
+        setPdfUrl(uploadResult.publicUrl);
+      }
     } catch (err: any) {
-      console.error('Supabase upload error:', err);
-      // Fallback local data url
-      const reader = new FileReader();
-      reader.onload = () => {
-        setPdfUrl(reader.result as string);
+      console.error('PDF upload error:', err);
+      const fileToDataUrlLocal = (f: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = (readErr) => reject(readErr);
+          reader.readAsDataURL(f);
+        });
       };
-      reader.readAsDataURL(file);
+      try {
+        const dataUrl = await fileToDataUrlLocal(file);
+        setPdfUrl(dataUrl);
+      } catch (readErr) {
+        console.error('Failed to read file:', readErr);
+        alert('Gagal membaca file PDF.');
+      }
     } finally {
       setIsUploadingPdf(false);
+      e.target.value = '';
     }
+  };
+
+  const handleRemovePdf = () => {
+    setPdfFileName('');
+    setPdfUrl('');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -295,22 +312,63 @@ export const QowaidFormModal: React.FC<QowaidFormModalProps> = ({
           </div>
 
           {/* Upload File PDF Modular */}
-          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
-            <label className="block font-bold text-slate-800">
-              Dokumen / Modul Pembelajaran PDF (Supabase Storage)
-            </label>
-            <div className="flex items-center gap-3">
-              <label className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-xl font-bold cursor-pointer flex items-center gap-2 shadow-2xs">
+          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="block font-bold text-slate-800">
+                Dokumen / Modul Pembelajaran PDF
+              </label>
+              <span className="text-[10px] font-bold text-slate-400 bg-slate-200 px-2 py-0.5 rounded-full">
+                Supabase / Direct File
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <label className={`px-4 py-2 rounded-xl font-bold cursor-pointer flex items-center gap-2 shadow-2xs border transition-all ${
+                isUploadingPdf
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                  : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
+              }`}>
                 {isUploadingPdf ? <Loader2 size={16} className="animate-spin text-emerald-600" /> : <UploadCloud size={16} className="text-emerald-600" />}
-                {isUploadingPdf ? 'Mengunggah...' : 'Pilih File PDF'}
-                <input type="file" accept="application/pdf" onChange={handleFileUpload} className="hidden" />
+                {isUploadingPdf ? 'Mengunggah PDF...' : 'Unggah File PDF Baru'}
+                <input type="file" accept="application/pdf" onChange={handleFileUpload} disabled={isUploadingPdf} className="hidden" />
               </label>
 
-              {pdfFileName && (
-                <span className="text-xs font-semibold text-emerald-700 truncate max-w-xs">
-                  ✓ {pdfFileName}
-                </span>
+              {(pdfFileName || pdfUrl) && (
+                <div className="flex items-center gap-2 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200">
+                  <span className="text-xs font-semibold text-emerald-800 truncate max-w-[200px] sm:max-w-xs">
+                    ✓ {pdfFileName || 'File_Materi.pdf'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleRemovePdf}
+                    className="p-1 text-slate-400 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
+                    title="Hapus PDF Ini"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               )}
+            </div>
+
+            {/* Optional Direct URL Fallback */}
+            <div className="pt-1">
+              <details className="text-xs text-slate-500">
+                <summary className="font-semibold text-slate-600 cursor-pointer hover:text-emerald-700 select-none">
+                  Atau masukkan URL/Link PDF langsung (Opsional)
+                </summary>
+                <input
+                  type="text"
+                  value={pdfUrl}
+                  onChange={(e) => {
+                    setPdfUrl(e.target.value);
+                    if (!pdfFileName && e.target.value) {
+                      setPdfFileName('Dokumen_Link.pdf');
+                    }
+                  }}
+                  placeholder="https://... (URL PDF atau Google Drive Embed PDF)"
+                  className="w-full mt-2 px-3 py-1.5 border border-slate-300 rounded-xl bg-white text-xs text-slate-800 font-medium"
+                />
+              </details>
             </div>
           </div>
 

@@ -19,15 +19,21 @@ export async function uploadToSupabaseStorage(
   const filePath = `${folder}/${Date.now()}_${cleanFileName}`;
 
   try {
-    const { data, error } = await supabase.storage
+    const uploadPromise = supabase.storage
       .from(BUCKET_NAME)
       .upload(filePath, file, {
         cacheControl: '3600',
         upsert: true,
       });
 
-    if (error) {
-      console.warn('Supabase storage upload error, falling back to local Data URL:', error.message);
+    const timeoutPromise = new Promise<{ data: null; error: Error }>((_, reject) =>
+      setTimeout(() => reject(new Error('Upload Supabase timeout (6s)')), 6000)
+    );
+
+    const { data, error } = await Promise.race([uploadPromise, timeoutPromise]) as any;
+
+    if (error || !data) {
+      console.warn('Supabase storage upload error/timeout, falling back to local Data URL:', error);
       const dataUrl = await fileToDataUrl(file);
       return {
         publicUrl: dataUrl,
