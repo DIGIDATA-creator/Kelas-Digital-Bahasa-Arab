@@ -110,16 +110,19 @@ export const LoginView: React.FC<LoginViewProps> = ({
         const guruProfile = freshGuru.profile || storageService.getGuruProfile();
         const guruCreds = freshGuru.credentials || storageService.getGuruCredentials();
 
-        const guruEmail = (guruProfile?.email || 'ahmad.dahlan@sekolah.sch.id').toLowerCase().trim();
-        const guruName = (guruProfile?.name || 'Ust. Ahmad Dahlan, M.Pd.').toLowerCase().trim();
+        const guruEmail = (guruProfile?.email || 'ruangk106@gmail.com').toLowerCase().trim();
+        const guruName = (guruProfile?.name || 'Ahmad Yusron').toLowerCase().trim();
 
         const validGuruUsernames = [
+          'ahmad yusron',
+          'ahmadyusron',
+          'ruangk106@gmail.com',
+          'ruangk106',
           'admin_guru',
           'admin',
           'guru',
           'guru@sekolah.sch.id',
           'admin@sekolah.sch.id',
-          'ruangk106@gmail.com',
           guruEmail,
           guruName,
         ];
@@ -128,19 +131,23 @@ export const LoginView: React.FC<LoginViewProps> = ({
           validGuruUsernames.push(String(guruCreds.username).toLowerCase().trim());
         }
 
-        const validGuruPasswords = ['admin123', '123456', 'admin', 'guru123', '@cirebon1996'];
+        const validGuruPasswords = ['@cirebon1996', '@Cirebon1996', 'cirebon1996', 'Cirebon1996', 'admin123', '123456', 'admin', 'guru123'];
         const credsObj = guruCreds as Record<string, any>;
         if (credsObj?.password) validGuruPasswords.push(String(credsObj.password).trim());
         if (credsObj?.newPassword) validGuruPasswords.push(String(credsObj.newPassword).trim());
         if (credsObj?.currentPassword) validGuruPasswords.push(String(credsObj.currentPassword).trim());
 
+        const inputClean = inputStr.toLowerCase().trim();
+        const inputPassClean = inputPass.toLowerCase().trim();
+
         const isUserMatch =
-          validGuruUsernames.includes(inputStr) ||
-          inputStr.includes('guru') ||
-          inputStr.includes('admin') ||
-          inputStr === guruEmail ||
-          inputStr === guruName ||
-          (guruName.length > 3 && (inputStr.includes(guruName) || guruName.includes(inputStr)));
+          validGuruUsernames.some(u => u.toLowerCase().trim() === inputClean) ||
+          inputClean.includes('yusron') ||
+          inputClean.includes('guru') ||
+          inputClean.includes('admin') ||
+          inputClean === guruEmail ||
+          inputClean === guruName ||
+          (guruName.length > 3 && (inputClean.includes(guruName) || guruName.includes(inputClean)));
 
         console.log('🔍 [AUTH DEBUG] Checking Guru Login match...');
         console.log('   - Valid Guru Usernames:', validGuruUsernames);
@@ -149,16 +156,16 @@ export const LoginView: React.FC<LoginViewProps> = ({
         if (isUserMatch) {
           const isPassValid =
             !inputPass ||
-            validGuruPasswords.includes(inputPass) ||
-            (guruCreds?.password ? inputPass === guruCreds.password : inputPass.length >= 4);
+            validGuruPasswords.some(p => String(p).toLowerCase().trim() === inputPassClean) ||
+            (guruCreds?.password ? inputPass === guruCreds.password || inputPassClean === String(guruCreds.password).toLowerCase().trim() : inputPass.length >= 4);
 
           console.log('   - Password provided valid?', isPassValid);
 
           if (isPassValid) {
             return {
               role: 'guru' as Role,
-              userName: guruProfile?.name || 'Ust. Ahmad Dahlan, M.Pd.',
-              userEmail: guruProfile?.email || 'ahmad.dahlan@sekolah.sch.id',
+              userName: guruProfile?.name || 'Ahmad Yusron',
+              userEmail: guruProfile?.email || 'ruangk106@gmail.com',
               avatar: guruProfile?.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&auto=format&fit=crop&q=80',
               loggedInAt: new Date().toISOString(),
             };
@@ -322,13 +329,13 @@ export const LoginView: React.FC<LoginViewProps> = ({
       const freshStudents = storageService.getStudents();
       const freshGuru = { profile: storageService.getGuruProfile(), credentials: storageService.getGuruCredentials() };
 
-      const guruEmail = (freshGuru.profile?.email || 'ahmad.dahlan@sekolah.sch.id').toLowerCase().trim();
+      const guruEmail = (freshGuru.profile?.email || 'ruangk106@gmail.com').toLowerCase().trim();
       const isTeacher = userEmail.includes('guru') || userEmail.includes('admin') || userEmail === 'ruangk106@gmail.com' || userEmail === guruEmail;
 
       if (isTeacher) {
         const session: UserSession = {
           role: 'guru',
-          userName: user.displayName || freshGuru.profile?.name || 'Ust. Ahmad Dahlan, M.Pd.',
+          userName: user.displayName || freshGuru.profile?.name || 'Ahmad Yusron',
           userEmail: user.email || guruEmail,
           avatar: user.photoURL || freshGuru.profile?.avatar,
           loggedInAt: new Date().toISOString(),
@@ -533,7 +540,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
                     required
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
-                    placeholder={loginRole === 'guru' ? 'ahmad.dahlan@sekolah.sch.id / admin_guru' : 'farhan@siswa.belajar.id'}
+                    placeholder={loginRole === 'guru' ? 'ruangk106@gmail.com / Ahmad Yusron' : 'farhan@siswa.belajar.id'}
                     className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs sm:text-sm border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-hidden focus:border-emerald-500 font-medium"
                   />
                 </div>
@@ -551,7 +558,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Masukkan Kata Sandi (Default: 123456)"
+                    placeholder={loginRole === 'guru' ? 'Masukkan Kata Sandi Guru (Misal: @Cirebon1996)' : 'Masukkan Kata Sandi Siswa (Default: 123456)'}
                     className="w-full pl-10 pr-10 py-2.5 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs sm:text-sm border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-hidden focus:border-emerald-500 font-medium"
                   />
                   <button
@@ -563,7 +570,11 @@ export const LoginView: React.FC<LoginViewProps> = ({
                   </button>
                 </div>
                 <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
-                  Default kata sandi akun siswa/guru awal: <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded font-mono">123456</code>
+                  {loginRole === 'guru' ? (
+                    <>Kata sandi Guru/Admin: <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded font-mono font-bold text-emerald-700 dark:text-emerald-400">@Cirebon1996</code></>
+                  ) : (
+                    <>Default kata sandi akun siswa awal: <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded font-mono font-bold">123456</code></>
+                  )}
                 </p>
               </div>
 

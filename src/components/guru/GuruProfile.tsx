@@ -10,12 +10,17 @@ export const GuruProfile: React.FC = () => {
   const [profile, setProfile] = useState(() => {
     const saved = localStorage.getItem('lms_guru_profile');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) { /* fallback */ }
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.name && !parsed.name.includes('Ahmad Dahlan')) {
+          return parsed;
+        }
+      } catch (e) { /* fallback */ }
     }
     return {
-      name: 'Ust. Ahmad Dahlan, M.Pd.',
-      title: 'Pengampu Bahasa Arab & Kepala Kurikulum Digital',
-      email: 'ahmad.dahlan@sekolah.sch.id',
+      name: 'Ahmad Yusron',
+      title: 'Pengampu Bahasa Arab & Admin Kurikulum Digital',
+      email: 'ruangk106@gmail.com',
       phone: '+62 812-3456-7890',
       avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&auto=format&fit=crop&q=80',
     };
@@ -25,10 +30,15 @@ export const GuruProfile: React.FC = () => {
   const [credentials, setCredentials] = useState(() => {
     const saved = localStorage.getItem('lms_guru_credentials');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) { /* fallback */ }
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.username && parsed.username !== 'admin_guru') {
+          return parsed;
+        }
+      } catch (e) { /* fallback */ }
     }
     return {
-      username: 'admin_guru',
+      username: 'Ahmad Yusron',
       currentPassword: '',
       newPassword: '',
       confirmPassword: '',

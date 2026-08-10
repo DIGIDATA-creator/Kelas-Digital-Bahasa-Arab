@@ -321,7 +321,7 @@ export const HiwarFormModal: React.FC<HiwarFormModalProps> = ({
       dialogues: flatDialogues,
       content: `Materi Hiwar Percakapan Bab ${babNumber} - Level ${hiwarLevelNumber}: ${title}`,
       description: `Modul Percakapan Bahasa Arab Bab ${babNumber} Level ${hiwarLevelNumber} berisi ${dialoguePairs.length} percakapan.`,
-      authorName: 'Ust. Ahmad Dahlan, M.Pd.',
+      authorName: storageService.getGuruProfile()?.name || 'Ahmad Yusron',
     });
 
     onClose();

@@ -142,7 +142,7 @@ export const QowaidFormModal: React.FC<QowaidFormModalProps> = ({
       videoUrl: videoUrl.trim(),
       pdfFileName,
       pdfUrl,
-      authorName: 'Ust. Ahmad Dahlan, M.Pd.',
+      authorName: storageService.getGuruProfile()?.name || 'Ahmad Yusron',
     });
 
     onClose();

@@ -151,7 +151,7 @@ export const KosakataFormModal: React.FC<KosakataFormModalProps> = ({
       vocabularies: updatedVocabs,
       content: `Kumpulan Kosakata Bab ${babNumber}: ${title}`,
       description: `Materi Kosakata Bahasa Arab Bab ${babNumber} (${vocabCategory}) berisi ${vocabularies.length} kata.`,
-      authorName: 'Ust. Ahmad Dahlan, M.Pd.',
+      authorName: storageService.getGuruProfile()?.name || 'Ahmad Yusron',
     });
 
     onClose();

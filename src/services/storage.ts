@@ -4,6 +4,32 @@ import { db } from '../firebase/config';
 import { doc, collection, onSnapshot, setDoc, getDoc, getDocs, getDocFromServer } from 'firebase/firestore';
 import { offlineCacheService } from './offlineCacheService';
 
+// Helper function to merge materi lists across devices without data loss
+function mergeMateriLists(...lists: Materi[][]): Materi[] {
+  const map = new Map<string, Materi>();
+
+  for (const list of lists) {
+    if (!Array.isArray(list)) continue;
+    for (const item of list) {
+      if (!item || !item.id) continue;
+      const existing = map.get(item.id);
+      if (!existing) {
+        map.set(item.id, { ...item });
+      } else {
+        const existingTime = existing.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
+        const itemTime = item.updatedAt ? new Date(item.updatedAt).getTime() : 0;
+        if (itemTime >= existingTime) {
+          map.set(item.id, { ...existing, ...item });
+        } else {
+          map.set(item.id, { ...item, ...existing });
+        }
+      }
+    }
+  }
+
+  return Array.from(map.values());
+}
+
 // Helper function to merge student lists across devices without data loss
 function mergeStudentLists(...lists: Student[][]): Student[] {
   const map = new Map<string, Student>();
@@ -160,19 +186,39 @@ function getLocal<T>(key: string, fallback: T): T {
 
 const SYSTEM_SAMPLE_QUIZ_IDS = ['pen-1', 'pen-2', 'pen-3'];
 
-// Cached Guru Profile & Credentials
+// Cached Guru Profile & Credentials (Default: Ahmad Yusron)
 let cachedGuruProfile = getLocal('lms_guru_profile', {
-  name: 'Ust. Ahmad Dahlan, M.Pd.',
-  title: 'Pengampu Bahasa Arab & Kepala Kurikulum Digital',
-  email: 'ahmad.dahlan@sekolah.sch.id',
+  name: 'Ahmad Yusron',
+  title: 'Pengampu Bahasa Arab & Admin Kurikulum Digital',
+  email: 'ruangk106@gmail.com',
   phone: '+62 812-3456-7890',
   avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&auto=format&fit=crop&q=80',
 });
 
 let cachedGuruCredentials = getLocal('lms_guru_credentials', {
-  username: 'admin_guru',
-  password: '',
+  username: 'Ahmad Yusron',
+  password: '@Cirebon1996',
 });
+
+// Auto-migrate legacy "Ust. Ahmad Dahlan" cache to "Ahmad Yusron"
+if (!cachedGuruProfile.name || cachedGuruProfile.name.includes('Ahmad Dahlan') || cachedGuruProfile.email === 'ahmad.dahlan@sekolah.sch.id') {
+  cachedGuruProfile = {
+    name: 'Ahmad Yusron',
+    title: 'Pengampu Bahasa Arab & Admin Kurikulum Digital',
+    email: 'ruangk106@gmail.com',
+    phone: '+62 812-3456-7890',
+    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&auto=format&fit=crop&q=80',
+  };
+  saveLocal('lms_guru_profile', cachedGuruProfile);
+}
+
+if (!cachedGuruCredentials.username || cachedGuruCredentials.username === 'admin_guru' || !cachedGuruCredentials.password) {
+  cachedGuruCredentials = {
+    username: 'Ahmad Yusron',
+    password: '@Cirebon1996',
+  };
+  saveLocal('lms_guru_credentials', cachedGuruCredentials);
+}
 
 // Initialize cached data from LocalStorage first
 cachedMateri = getLocal(KEYS.MATERI, INITIAL_MATERI);
@@ -210,10 +256,16 @@ export const storageService = {
       if (dMateri) {
         unsubs.push(onSnapshot(dMateri, (docSnap) => {
           if (docSnap.exists() && docSnap.data().items) {
-            cachedMateri = docSnap.data().items;
-            saveLocal(KEYS.MATERI, cachedMateri);
-            offlineCacheService.cacheAllMateriAndKosakata(cachedMateri).catch(console.warn);
+            const remoteItems = docSnap.data().items as Materi[];
+            const merged = mergeMateriLists(remoteItems, cachedMateri);
+            cachedMateri = merged;
+            saveLocal(KEYS.MATERI, merged);
+            offlineCacheService.cacheAllMateriAndKosakata(merged).catch(console.warn);
             notifyListeners();
+
+            if (merged.length > remoteItems.length) {
+              setDoc(dMateri, sanitizeForFirestore({ items: merged })).catch(console.error);
+            }
           } else {
             setDoc(dMateri, sanitizeForFirestore({ items: cachedMateri })).catch(console.error);
           }

@@ -151,12 +151,12 @@ export default function App() {
 
         try {
           const freshGuru = { profile: storageService.getGuruProfile(), credentials: storageService.getGuruCredentials() };
-          const guruEmail = (freshGuru.profile?.email || 'ahmad.dahlan@sekolah.sch.id').toLowerCase().trim();
+          const guruEmail = (freshGuru.profile?.email || 'ruangk106@gmail.com').toLowerCase().trim();
 
           if (userEmail === guruEmail || userEmail.includes('guru') || userEmail.includes('admin') || userEmail === 'ruangk106@gmail.com') {
             const newSession: UserSession = {
               role: 'guru',
-              userName: firebaseUser.displayName || freshGuru.profile?.name || 'Ust. Ahmad Dahlan, M.Pd.',
+              userName: firebaseUser.displayName || freshGuru.profile?.name || 'Ahmad Yusron',
               userEmail: firebaseUser.email || guruEmail,
               avatar: firebaseUser.photoURL || freshGuru.profile?.avatar,
               loggedInAt: new Date().toISOString(),

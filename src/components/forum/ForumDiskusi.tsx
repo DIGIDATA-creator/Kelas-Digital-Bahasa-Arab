@@ -58,9 +58,10 @@ export const ForumDiskusi: React.FC<ForumDiskusiProps> = ({
 
     const linkedMateri = materiList.find(m => m.id === newPostMateriId);
 
-    const authorName = currentRole === 'guru' ? 'Ust. Ahmad Dahlan, M.Pd.' : currentStudent.name;
+    const guruProf = storageService.getGuruProfile();
+    const authorName = currentRole === 'guru' ? (guruProf?.name || 'Ahmad Yusron') : currentStudent.name;
     const authorAvatar = currentRole === 'guru' 
-      ? 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80'
+      ? (guruProf?.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80')
       : currentStudent.avatar;
 
     const newPost = storageService.addForumPost({
@@ -86,9 +87,10 @@ export const ForumDiskusi: React.FC<ForumDiskusiProps> = ({
     e.preventDefault();
     if (!selectedPostId || !replyContent.trim()) return;
 
-    const authorName = currentRole === 'guru' ? 'Ust. Ahmad Dahlan, M.Pd.' : currentStudent.name;
+    const guruProf = storageService.getGuruProfile();
+    const authorName = currentRole === 'guru' ? (guruProf?.name || 'Ahmad Yusron') : currentStudent.name;
     const authorAvatar = currentRole === 'guru' 
-      ? 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80'
+      ? (guruProf?.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80')
       : currentStudent.avatar;
 
     storageService.addForumReply(selectedPostId, {

@@ -182,7 +182,7 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
         pdfFileName: '',
         vocabularies: [],
         mahfudzot: item.mahfudzot,
-        authorName: 'Ust. Ahmad Dahlan, M.Pd.',
+        authorName: storageService.getGuruProfile()?.name || 'Ahmad Yusron',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       }));
@@ -225,7 +225,7 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
         pdfFileName: partial.pdfFileName || '',
         vocabularies: partial.vocabularies || [],
         mahfudzot: partial.mahfudzot,
-        authorName: 'Ust. Ahmad Dahlan, M.Pd.',
+        authorName: storageService.getGuruProfile()?.name || 'Ahmad Yusron',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         ...partial,

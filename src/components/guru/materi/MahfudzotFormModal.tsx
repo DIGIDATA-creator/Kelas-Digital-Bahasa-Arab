@@ -85,7 +85,7 @@ export const MahfudzotFormModal: React.FC<MahfudzotFormModalProps> = ({
         translation: translation.trim(),
         categoryTag: categoryTag,
       },
-      authorName: 'Ust. Ahmad Dahlan, M.Pd.',
+      authorName: storageService.getGuruProfile()?.name || 'Ahmad Yusron',
     });
 
     onClose();
@@ -207,7 +207,7 @@ export const MahfudzotFormModal: React.FC<MahfudzotFormModalProps> = ({
         arabic: row.arabic,
         translation: row.translation,
       },
-      authorName: 'Ust. Ahmad Dahlan, M.Pd.',
+      authorName: storageService.getGuruProfile()?.name || 'Ahmad Yusron',
     }));
 
     onSave(partialItems, importMode);
