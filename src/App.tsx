@@ -49,7 +49,11 @@ export default function App() {
 
   // Dark mode state
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
-    return localStorage.getItem('lms_dark_mode') === 'true';
+    try {
+      return localStorage.getItem('lms_dark_mode') === 'true';
+    } catch {
+      return false;
+    }
   });
 
   useEffect(() => {
@@ -58,7 +62,11 @@ export default function App() {
     } else {
       document.documentElement.classList.remove('dark');
     }
-    localStorage.setItem('lms_dark_mode', String(isDarkMode));
+    try {
+      localStorage.setItem('lms_dark_mode', String(isDarkMode));
+    } catch {
+      // ignore
+    }
   }, [isDarkMode]);
 
   const handleToggleDarkMode = () => {
@@ -142,7 +150,9 @@ export default function App() {
         const userEmail = (firebaseUser.email || '').toLowerCase().trim();
 
         const cached = storageService.getUserSession();
-        if (cached && (cached.firebaseUid === firebaseUser.uid || (userEmail && cached.userEmail.toLowerCase().trim() === userEmail))) {
+        if (cached) {
+          // If we have a local cached session, respect it over the background Firebase Auth session.
+          // This prevents a stale Firebase Auth login from overriding a fresh local login.
           setUserSession(cached);
           setCurrentRole(cached.role);
           if (cached.studentId) setCurrentStudentId(cached.studentId);
@@ -204,9 +214,13 @@ export default function App() {
     if (userSession && userSession.role === 'siswa') {
       const studentId = userSession.studentId || currentStudentId;
       const tourKey = 'lms_tour_seen_' + studentId;
-      if (!localStorage.getItem(tourKey)) {
-        setIsTourOpen(true);
-        localStorage.setItem(tourKey, 'true');
+      try {
+        if (!localStorage.getItem(tourKey)) {
+          setIsTourOpen(true);
+          localStorage.setItem(tourKey, 'true');
+        }
+      } catch (err) {
+        // ignore
       }
     }
   }, [userSession, currentStudentId]);

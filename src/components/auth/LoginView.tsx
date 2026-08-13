@@ -276,7 +276,8 @@ export const LoginView: React.FC<LoginViewProps> = ({
         // Background Firebase Auth Email sign-in attempt to keep Firebase Auth token in sync
         if (finalSession.userEmail && inputPass) {
           console.log(`🔥 [AUTH DEBUG] Attempting background Firebase Auth sign-in for ${finalSession.userEmail}...`);
-          retryWithBackoff(() => loginUser(finalSession.userEmail, inputPass))
+          logoutUser()
+            .then(() => retryWithBackoff(() => loginUser(finalSession.userEmail, inputPass)))
             .then(user => {
               if (user) {
                 console.log('🔥 [AUTH DEBUG] Firebase Auth sign-in succeeded! UID:', user.uid);

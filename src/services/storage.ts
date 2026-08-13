@@ -175,9 +175,9 @@ function saveLocal(key: string, data: any) {
 }
 
 function getLocal<T>(key: string, fallback: T): T {
-  const data = localStorage.getItem(key);
-  if (!data) return fallback;
   try {
+    const data = localStorage.getItem(key);
+    if (!data) return fallback;
     return JSON.parse(data) as T;
   } catch {
     return fallback;
@@ -299,24 +299,8 @@ export const storageService = {
       console.warn('Penilaian snapshot init warning:', err);
     }
 
-    // 3. Listen to Students master document
-    try {
-      const dStudents = getDocStudents();
-      if (dStudents) {
-        unsubs.push(onSnapshot(dStudents, (docSnap) => {
-          if (docSnap.exists() && docSnap.data()?.items) {
-            const remoteItems = docSnap.data().items as Student[];
-            const merged = mergeStudentLists(remoteItems, cachedStudents);
-            cachedStudents = merged;
-            saveLocal(KEYS.STUDENTS, merged);
-            notifyListeners();
-          }
-        }, (err) => console.warn('Students snapshot warning:', err)));
-      }
-    } catch (err) {
-      console.warn('Students snapshot init warning:', err);
-    }
-
+    // 3. (Legacy) Listen to Students master document was removed to prevent race conditions with students_records
+    
     // 3b. Listen to individual student registration records collection
     try {
       if (db) {
