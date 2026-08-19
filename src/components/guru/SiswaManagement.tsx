@@ -101,6 +101,7 @@ interface SiswaManagementProps {
   logs?: ActivityLog[];
   onSaveStudents: (updated: Student[]) => void;
   onSwitchToStudentSession?: (student: Student) => void;
+  onForceCleanStudent?: (emailOrId: string) => void;
   initialSelectedStudentId?: string;
   onClearInitialSelectedStudentId?: () => void;
 }
@@ -111,6 +112,7 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
   logs,
   onSaveStudents,
   onSwitchToStudentSession,
+  onForceCleanStudent,
   initialSelectedStudentId,
   onClearInitialSelectedStudentId,
 }) => {
@@ -119,7 +121,7 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
   const [selectedClass, setSelectedClass] = useState('semua');
   const [selectedSchoolFilter, setSelectedSchoolFilter] = useState('semua');
   const [activeMainSection, setActiveMainSection] = useState<'acc' | 'aktif' | 'semua'>('acc');
-  const [statusTab, setStatusTab] = useState<'semua' | 'pending' | 'disetujui' | 'ditolak'>('pending');
+  const [statusTab, setStatusTab] = useState<'semua' | 'pending' | 'disetujui' | 'ditolak' | 'nonaktif'>('pending');
   const [viewMode, setViewMode] = useState<'cards' | 'grouped' | 'flat'>('cards');
   const [showLogsVisitsModal, setShowLogsVisitsModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
@@ -170,6 +172,7 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
   const pendingStudents = students.filter(s => s.status === 'pending');
   const approvedStudents = students.filter(s => s.status === 'disetujui' || s.status === 'aktif');
   const rejectedStudents = students.filter(s => s.status === 'ditolak');
+  const deactivatedStudents = students.filter(s => s.status === 'nonaktif');
 
   // Extract unique schools & classes for filters
   const allSchoolNames = Array.from(
@@ -195,7 +198,8 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
       statusTab === 'semua' ||
       (statusTab === 'pending' && s.status === 'pending') ||
       (statusTab === 'disetujui' && (s.status === 'disetujui' || s.status === 'aktif')) ||
-      (statusTab === 'ditolak' && s.status === 'ditolak');
+      (statusTab === 'ditolak' && s.status === 'ditolak') ||
+      (statusTab === 'nonaktif' && s.status === 'nonaktif');
 
     return matchesSearch && matchesClass && matchesSchool && matchesStatus;
   });
@@ -280,6 +284,60 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
     });
     onSaveStudents(updated);
     setSelectedStudentIds([]);
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedStudentIds.length === 0) return;
+    if (confirm(`Hapus ${selectedStudentIds.length} data siswa terpilih dan bebaskan email mereka untuk pendaftaran baru?`)) {
+      const updated = students.filter(s => !selectedStudentIds.includes(s.id));
+      onSaveStudents(updated);
+      setSelectedStudentIds([]);
+    }
+  };
+
+  const handleForceCleanSingle = (std: Student) => {
+    if (confirm(`Bersihkan berkas dan bebaskan email "${std.email}" milik siswa "${std.name}" agar dapat digunakan kembali untuk mendaftar?`)) {
+      if (onForceCleanStudent) {
+        onForceCleanStudent(std.id);
+      } else {
+        const updated = students.filter(s => s.id !== std.id);
+        onSaveStudents(updated);
+      }
+    }
+  };
+
+  const handleCleanAllRejected = async () => {
+    if (confirm(`Bersihkan seluruh ${rejectedStudents.length} berkas siswa yang ditolak dan bebaskan email mereka?`)) {
+      setIsSyncing(true);
+      try {
+        await storageService.cleanRejectedOrInactiveStudents('ditolak');
+        const fresh = storageService.getStudents();
+        onSaveStudents(fresh);
+        setSyncNotice(`✅ Seluruh ${rejectedStudents.length} berkas siswa ditolak telah dibersihkan.`);
+        setTimeout(() => setSyncNotice(null), 3000);
+      } catch (err) {
+        console.error('Error cleaning rejected students:', err);
+      } finally {
+        setIsSyncing(false);
+      }
+    }
+  };
+
+  const handleCleanAllDeactivated = async () => {
+    if (confirm(`Bersihkan seluruh ${deactivatedStudents.length} berkas siswa yang dinonaktifkan?`)) {
+      setIsSyncing(true);
+      try {
+        await storageService.cleanRejectedOrInactiveStudents('nonaktif');
+        const fresh = storageService.getStudents();
+        onSaveStudents(fresh);
+        setSyncNotice(`✅ Seluruh berkas siswa nonaktif telah dibersihkan.`);
+        setTimeout(() => setSyncNotice(null), 3000);
+      } catch (err) {
+        console.error('Error cleaning deactivated students:', err);
+      } finally {
+        setIsSyncing(false);
+      }
+    }
   };
 
   const handleSelectAllInSchool = (schoolName: string) => {
@@ -699,6 +757,16 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
             >
               <XCircle size={13} /> Ditolak ({rejectedStudents.length})
             </button>
+            <button
+              onClick={() => setStatusTab('nonaktif')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                statusTab === 'nonaktif'
+                  ? 'bg-slate-700 text-white shadow-xs'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <AlertTriangle size={13} /> Nonaktif ({deactivatedStudents.length})
+            </button>
           </div>
 
           {/* View Mode Switcher */}
@@ -881,6 +949,14 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
               </button>
               <button
                 type="button"
+                onClick={handleBulkDelete}
+                className="px-3.5 py-2 bg-rose-800 hover:bg-rose-900 text-white font-extrabold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
+                title="Hapus akun terpilih dan bebaskan email untuk pendaftaran baru"
+              >
+                <Trash2 size={15} /> Hapus & Bebaskan Email ({selectedStudentIds.length})
+              </button>
+              <button
+                type="button"
                 onClick={() => handleBulkUpdateStatus('pending')}
                 className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-xs rounded-xl transition-all cursor-pointer border border-slate-700"
               >
@@ -902,6 +978,48 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
       {statusTab === 'pending' && pendingStudents.length === 0 && (
         <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 text-slate-400 text-xs font-semibold">
           Tidak ada pendaftaran siswa yang sedang menunggu ACC.
+        </div>
+      )}
+
+      {/* Rejected Accounts Notice & Quick Clean */}
+      {statusTab === 'ditolak' && (
+        <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5 text-rose-900 font-semibold">
+            <XCircle size={18} className="text-rose-600 shrink-0" />
+            <span>
+              Terdapat <strong>{rejectedStudents.length} akun ditolak</strong>. Siswa dengan status ditolak dapat langsung mendaftar ulang kapan saja menggunakan email yang sama.
+            </span>
+          </div>
+          {rejectedStudents.length > 0 && (
+            <button
+              type="button"
+              onClick={handleCleanAllRejected}
+              className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl transition-all shadow-xs cursor-pointer flex items-center gap-1.5 text-xs"
+            >
+              <Trash2 size={13} /> Bersihkan Seluruh Berkas Ditolak ({rejectedStudents.length})
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Deactivated Accounts Notice & Quick Clean */}
+      {statusTab === 'nonaktif' && (
+        <div className="p-4 bg-slate-100 border border-slate-300 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5 text-slate-800 font-semibold">
+            <AlertTriangle size={18} className="text-slate-600 shrink-0" />
+            <span>
+              Terdapat <strong>{deactivatedStudents.length} akun dinonaktifkan</strong>. Akun nonaktif tidak dapat masuk ke sistem sampai diaktifkan kembali atau didaftarkan ulang.
+            </span>
+          </div>
+          {deactivatedStudents.length > 0 && (
+            <button
+              type="button"
+              onClick={handleCleanAllDeactivated}
+              className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl transition-all shadow-xs cursor-pointer flex items-center gap-1.5 text-xs"
+            >
+              <Trash2 size={13} /> Bersihkan Akun Nonaktif ({deactivatedStudents.length})
+            </button>
+          )}
         </div>
       )}
 
@@ -1057,6 +1175,17 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                       </button>
 
                       <div className="flex items-center gap-1">
+                        {(std.status === 'ditolak' || std.status === 'nonaktif') && (
+                          <button
+                            type="button"
+                            onClick={() => handleForceCleanSingle(std)}
+                            className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-[11px] font-extrabold transition-all cursor-pointer shadow-2xs flex items-center gap-1"
+                            title="Bersihkan berkas dan bebaskan email agar siswa dapat mendaftar ulang"
+                          >
+                            <Trash2 size={13} className="text-amber-700" />
+                            <span className="hidden sm:inline">Bebaskan Email</span>
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => onSwitchToStudentSession?.(std)}
@@ -1426,16 +1555,29 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                                 ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
                                 : std.status === 'ditolak'
                                 ? 'bg-rose-50 text-rose-800 border-rose-300'
+                                : std.status === 'nonaktif'
+                                ? 'bg-slate-100 text-slate-800 border-slate-300'
                                 : 'bg-amber-50 text-amber-900 border-amber-300'
                             }`}
                           >
                             <option value="pending">⏳ Pending</option>
                             <option value="disetujui">✓ Disetujui</option>
                             <option value="ditolak">✕ Ditolak</option>
+                            <option value="nonaktif">🚫 Nonaktif</option>
                           </select>
                         </td>
                         <td className="py-3.5 px-3 sm:px-4 text-right">
                           <div className="flex items-center justify-end gap-1">
+                            {(std.status === 'ditolak' || std.status === 'nonaktif') && (
+                              <button
+                                onClick={() => handleForceCleanSingle(std)}
+                                className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg text-xs font-extrabold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                                title="Bersihkan berkas dan bebaskan email agar siswa dapat mendaftar ulang"
+                              >
+                                <Trash2 size={13} className="text-amber-700" />
+                                <span className="hidden sm:inline">Bebaskan Email</span>
+                              </button>
+                            )}
                             {onSwitchToStudentSession && (
                               <button
                                 onClick={() => onSwitchToStudentSession(std)}

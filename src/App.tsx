@@ -370,9 +370,43 @@ export default function App() {
   };
 
   const handleSaveStudents = (updated: Student[]) => {
+    const previous = storageService.getStudents();
+    const newIds = new Set(updated.map(s => s.id));
+    const deletedStudents = previous.filter(s => !newIds.has(s.id));
+
     setStudents(updated);
     storageService.saveStudents(updated);
     setLogs(storageService.getLogs());
+
+    if (userSession && userSession.role === 'siswa') {
+      const isCurrentDeleted = deletedStudents.some(
+        ds => ds.id === userSession.studentId || (ds.email && ds.email.toLowerCase().trim() === userSession.userEmail?.toLowerCase().trim())
+      );
+      if (isCurrentDeleted) {
+        console.warn('⛔ [SESSION] Current logged in student was removed from students collection. Terminating session.');
+        storageService.clearUserSession();
+        setUserSession(null);
+        logoutUser().catch(() => {});
+        addToast({
+          type: 'info',
+          title: 'Sesi Dihentikan',
+          message: 'Akun siswa Anda telah dihapus oleh Guru.',
+        });
+      }
+    }
+  };
+
+  const handleForceCleanStudent = async (emailOrStudentId: string) => {
+    const result = await storageService.forceCleanStudentEmail(emailOrStudentId);
+    setStudents(storageService.getStudents());
+    setLogs(storageService.getLogs());
+    if (result.success && result.removedCount > 0) {
+      addToast({
+        type: 'info',
+        title: '🧹 Email Dibebaskan',
+        message: `Akun (${result.studentNames.join(', ')}) telah dibersihkan. Email dapat digunakan kembali untuk pendaftaran.`,
+      });
+    }
   };
 
   const handleUpdateStudentProfile = (updatedStudent: Student) => {
@@ -491,6 +525,7 @@ export default function App() {
                       materiList={materiList}
                       onSaveStudents={handleSaveStudents}
                       onSwitchToStudentSession={handleSwitchToStudentSession}
+                      onForceCleanStudent={handleForceCleanStudent}
                       initialSelectedStudentId={selectedStudentForDetailId || undefined}
                       onClearInitialSelectedStudentId={() => setSelectedStudentForDetailId(null)}
                     />

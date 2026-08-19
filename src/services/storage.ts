@@ -468,21 +468,39 @@ export const storageService = {
     try {
       // 1. Use cached real-time student data
       const latestStudents = this.getStudents();
+      const normalizedEmail = newStudent.email ? newStudent.email.toLowerCase().trim() : '';
 
-      // Check for duplicate email (case insensitive)
-      const isDuplicate = latestStudents.some(
-        s => s.email && s.email.toLowerCase().trim() === newStudent.email.toLowerCase().trim() && (s.status === 'aktif' || s.status === 'disetujui' || s.status === 'pending')
+      // Check for duplicate active email (only active or approved accounts block registration)
+      const activeDuplicate = latestStudents.find(
+        s => s.email && s.email.toLowerCase().trim() === normalizedEmail && (s.status === 'aktif' || s.status === 'disetujui')
       );
 
-      if (isDuplicate) {
+      if (activeDuplicate) {
         return {
           success: false,
-          message: `Email "${newStudent.email}" sudah terdaftar. Silakan gunakan email lain atau masuk dengan akun Anda.`
+          message: `Email "${newStudent.email}" sudah aktif terdaftar sebagai siswa (${activeDuplicate.name}). Silakan masuk langsung dengan akun Anda.`
         };
       }
 
-      // 2. Merge new student into master list and update local cache first for instant feedback
-      const updatedList = mergeStudentLists([newStudent], latestStudents);
+      // If there were old records with this email (e.g. status was 'ditolak', 'nonaktif', or previous 'pending'), clean them up
+      const oldRecords = latestStudents.filter(
+        s => s.email && s.email.toLowerCase().trim() === normalizedEmail
+      );
+
+      if (db && oldRecords.length > 0) {
+        oldRecords.forEach(oldS => {
+          if (oldS && oldS.id && oldS.id !== newStudent.id) {
+            deleteDoc(doc(db, 'students_records', oldS.id)).catch(console.error);
+          }
+        });
+      }
+
+      // Filter out old records with same email so the new registration replaces them cleanly without stale conflicts
+      const cleanList = latestStudents.filter(
+        s => !(s.email && s.email.toLowerCase().trim() === normalizedEmail)
+      );
+
+      const updatedList = [newStudent, ...cleanList];
       cachedStudents = updatedList;
       saveLocal(KEYS.STUDENTS, updatedList);
       notifyListeners();
@@ -557,6 +575,7 @@ export const storageService = {
   },
 
   async deleteStudent(studentId: string): Promise<Student[]> {
+    const targetStudent = cachedStudents.find(s => s.id === studentId);
     const updated = cachedStudents.filter(s => s.id !== studentId);
     this.saveStudents(updated);
     if (db) {
@@ -566,7 +585,86 @@ export const storageService = {
         console.warn('Error deleting student document from Firestore:', err);
       }
     }
+    if (targetStudent) {
+      this.addLog({
+        userName: 'Guru Admin',
+        userRole: 'guru',
+        action: 'Hapus Data Siswa',
+        details: `Menghapus akun siswa (${targetStudent.name} - ${targetStudent.email}) dan membebaskan email untuk pendaftaran ulang.`,
+      });
+    }
     return updated;
+  },
+
+  /**
+   * Utility to force clean/remove student records by email or ID, releasing the email so it can be reused for new registration attempts.
+   */
+  async forceCleanStudentEmail(emailOrStudentId: string): Promise<{ success: boolean; removedCount: number; studentNames: string[] }> {
+    const target = emailOrStudentId.toLowerCase().trim();
+    const studentsToRemove = cachedStudents.filter(
+      s => s.id === emailOrStudentId || (s.email && s.email.toLowerCase().trim() === target)
+    );
+
+    if (studentsToRemove.length === 0) {
+      return { success: true, removedCount: 0, studentNames: [] };
+    }
+
+    const removedIds = new Set(studentsToRemove.map(s => s.id));
+    const studentNames = studentsToRemove.map(s => s.name);
+
+    // Filter out removed students from local cache & Firestore master list
+    const updated = cachedStudents.filter(s => !removedIds.has(s.id));
+    this.saveStudents(updated);
+
+    // Explicitly delete each individual student document from students_records collection
+    if (db) {
+      for (const std of studentsToRemove) {
+        try {
+          await deleteDoc(doc(db, 'students_records', std.id));
+        } catch (err) {
+          console.warn(`[STORAGE] Error deleting doc for student ${std.id}:`, err);
+        }
+      }
+    }
+
+    this.addLog({
+      userName: 'Guru Admin',
+      userRole: 'guru',
+      action: 'Pembersihan Akun Siswa (Force Clean)',
+      details: `Menghapus dan membebaskan email akun (${studentNames.join(', ')}) agar dapat digunakan kembali untuk pendaftaran.`,
+    });
+
+    notifyListeners();
+    return { success: true, removedCount: studentsToRemove.length, studentNames };
+  },
+
+  /**
+   * Utility to clean all rejected or inactive accounts at once and release their emails.
+   */
+  async cleanRejectedOrInactiveStudents(statusType: 'ditolak' | 'nonaktif' | 'all'): Promise<{ success: boolean; count: number }> {
+    const targets = cachedStudents.filter(s => {
+      if (statusType === 'all') return s.status === 'ditolak' || s.status === 'nonaktif';
+      return s.status === statusType;
+    });
+
+    if (targets.length === 0) return { success: true, count: 0 };
+
+    const targetIds = new Set(targets.map(t => t.id));
+    const updated = cachedStudents.filter(s => !targetIds.has(s.id));
+    this.saveStudents(updated);
+
+    if (db) {
+      for (const std of targets) {
+        try {
+          await deleteDoc(doc(db, 'students_records', std.id));
+        } catch (err) {
+          console.warn(`[STORAGE] Error cleaning doc for student ${std.id}:`, err);
+        }
+      }
+    }
+
+    notifyListeners();
+    return { success: true, count: targets.length };
   },
 
   getGuruProfile() {

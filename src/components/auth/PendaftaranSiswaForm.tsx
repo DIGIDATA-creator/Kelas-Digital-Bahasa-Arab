@@ -41,14 +41,14 @@ export const PendaftaranSiswaForm: React.FC<PendaftaranSiswaFormProps> = ({
   const [rombelName, setRombelName] = useState(initialStudent?.rombelName || '');
   const [emailError, setEmailError] = useState('');
 
-  // Check if email is duplicate
+  // Check if email is duplicate - only active/approved student accounts block registration
   const checkIsDuplicateEmail = (emailToCheck: string) => {
     const trimmed = emailToCheck.toLowerCase().trim();
     if (!trimmed) return false;
     return existingStudents.some(
-      s => s.email.toLowerCase().trim() === trimmed && 
+      s => s.email && s.email.toLowerCase().trim() === trimmed && 
            s.id !== editingStudentId && 
-           (s.status === 'aktif' || s.status === 'disetujui' || s.status === 'pending')
+           (s.status === 'aktif' || s.status === 'disetujui')
     );
   };
 

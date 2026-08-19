@@ -717,12 +717,12 @@ export const LoginView: React.FC<LoginViewProps> = ({
                   setErrorMsg('');
                   setSuccessMsg('');
 
-                  // Double check duplicate email in database before sending to Firebase
+                  // Double check duplicate email in database - only active accounts block registration
                   const isDuplicate = liveStudents.some(
-                    s => s.email.toLowerCase().trim() === data.email.toLowerCase().trim() && (s.status === 'aktif' || s.status === 'disetujui' || s.status === 'pending')
+                    s => s.email && s.email.toLowerCase().trim() === data.email.toLowerCase().trim() && (s.status === 'aktif' || s.status === 'disetujui')
                   );
                   if (isDuplicate) {
-                    setErrorMsg('Email sudah terdaftar atau menunggu verifikasi guru. Silakan masuk atau gunakan email lain.');
+                    setErrorMsg('Email ini sudah aktif terdaftar sebagai akun siswa. Silakan langsung masuk di tab Log In.');
                     setIsLoading(false);
                     return;
                   }
