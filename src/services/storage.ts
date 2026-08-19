@@ -964,7 +964,22 @@ export const storageService = {
   },
 
   getUserSession(): UserSession | null {
-    return getLocal<UserSession | null>(KEYS.USER_SESSION, null);
+    const session = getLocal<UserSession | null>(KEYS.USER_SESSION, null);
+    if (!session) return null;
+    // If it is a student session, verify that the account is active in local/synced storage
+    if (session.role === 'siswa' && (session.studentId || session.userEmail)) {
+      const students = this.getStudents();
+      const current = students.find(s => 
+        (session.studentId && s.id === session.studentId) ||
+        (session.userEmail && s.email && s.email.toLowerCase().trim() === session.userEmail.toLowerCase().trim())
+      );
+      if (current && current.status !== 'aktif' && current.status !== 'disetujui') {
+        console.warn(`⛔ [STORAGE SESSION] Student ${current.name} status is "${current.status}". Invalidating cached session.`);
+        this.clearUserSession();
+        return null;
+      }
+    }
+    return session;
   },
 
   setUserSession(session: UserSession): void {

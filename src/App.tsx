@@ -4,8 +4,9 @@ import { Role, Materi, Penilaian, Student, ActivityLog, QuizAttempt, ForumPost }
 import { storageService, UserSession } from './services/storage';
 import { Navbar } from './components/Navbar';
 import { LoginView } from './components/auth/LoginView';
-import { auth } from './firebase/config';
+import { auth, db } from './firebase/config';
 import { onAuthStateChanged, logoutUser } from './lib/firebase';
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import './utils/firebaseDiagnostics';
 
 // Guru Components
@@ -142,28 +143,20 @@ export default function App() {
     };
   }, []);
 
-  // Firebase Auth Built-in State Management & Persistence Listener
+  // Firebase Auth Built-in State Management & Persistence Listener with Firestore Status Validation
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser && !firebaseUser.isAnonymous) {
         console.log('🔒 [FIREBASE AUTH SESSION] User authenticated:', firebaseUser.email || firebaseUser.uid);
         const userEmail = (firebaseUser.email || '').toLowerCase().trim();
 
-        const cached = storageService.getUserSession();
-        if (cached) {
-          // If we have a local cached session, respect it over the background Firebase Auth session.
-          // This prevents a stale Firebase Auth login from overriding a fresh local login.
-          setUserSession(cached);
-          setCurrentRole(cached.role);
-          if (cached.studentId) setCurrentStudentId(cached.studentId);
-          return;
-        }
-
         try {
           const freshGuru = { profile: storageService.getGuruProfile(), credentials: storageService.getGuruCredentials() };
           const guruEmail = (freshGuru.profile?.email || 'ruangk106@gmail.com').toLowerCase().trim();
 
-          if (userEmail === guruEmail || userEmail.includes('guru') || userEmail.includes('admin') || userEmail === 'ruangk106@gmail.com') {
+          const isGuru = userEmail === guruEmail || userEmail === 'ruangk106@gmail.com' || userEmail.includes('guru') || userEmail.includes('admin');
+
+          if (isGuru) {
             const newSession: UserSession = {
               role: 'guru',
               userName: firebaseUser.displayName || freshGuru.profile?.name || 'Ahmad Yusron',
@@ -176,26 +169,84 @@ export default function App() {
             setUserSession(newSession);
             setCurrentRole('guru');
           } else {
-            const freshStudents = storageService.getStudents();
-            const student = freshStudents.find(s => s.email.toLowerCase().trim() === userEmail);
-            if (student && student.status === 'aktif') {
-              const newSession: UserSession = {
-                role: 'siswa',
-                studentId: student.id,
-                userName: student.name,
-                userEmail: student.email,
-                avatar: student.avatar,
-                loggedInAt: new Date().toISOString(),
-                firebaseUid: firebaseUser.uid,
-              };
-              storageService.setUserSession(newSession);
-              setUserSession(newSession);
-              setCurrentRole('siswa');
-              setCurrentStudentId(student.id);
+            // Explicitly query the students collection in Firestore to validate the status field ('aktif' vs 'nonaktif')
+            let matchedStudentRecord: Student | null = null;
+
+            if (db) {
+              try {
+                // 1. Check individual student records collection in Firestore
+                const studentRecordsSnap = await getDocs(collection(db, 'students_records'));
+                studentRecordsSnap.forEach((docSnap) => {
+                  if (docSnap.exists()) {
+                    const data = docSnap.data() as Student;
+                    if (data.email && data.email.toLowerCase().trim() === userEmail) {
+                      matchedStudentRecord = data;
+                    }
+                  }
+                });
+
+                // 2. Check master students collection document in Firestore if not found yet
+                if (!matchedStudentRecord) {
+                  const masterStudentsDoc = await getDoc(doc(db, 'app_collections', 'students'));
+                  if (masterStudentsDoc.exists() && masterStudentsDoc.data()?.items) {
+                    const items = masterStudentsDoc.data().items as Student[];
+                    const found = items.find(s => s.email && s.email.toLowerCase().trim() === userEmail);
+                    if (found) matchedStudentRecord = found;
+                  }
+                }
+              } catch (fsErr) {
+                console.warn('⚠️ [FIREBASE AUTH SESSION] Firestore direct query error, checking local store:', fsErr);
+              }
+            }
+
+            // Fallback to local cached students if offline/error
+            if (!matchedStudentRecord) {
+              const freshStudents = storageService.getStudents();
+              matchedStudentRecord = freshStudents.find(s => s.email && s.email.toLowerCase().trim() === userEmail) || null;
+            }
+
+            if (matchedStudentRecord) {
+              const student = matchedStudentRecord as Student;
+              const isAccountActive = student.status === 'aktif' || student.status === 'disetujui';
+
+              if (isAccountActive) {
+                const newSession: UserSession = {
+                  role: 'siswa',
+                  studentId: student.id,
+                  userName: student.name,
+                  userEmail: student.email,
+                  avatar: student.avatar,
+                  loggedInAt: new Date().toISOString(),
+                  firebaseUid: firebaseUser.uid,
+                };
+                storageService.setUserSession(newSession);
+                setUserSession(newSession);
+                setCurrentRole('siswa');
+                setCurrentStudentId(student.id);
+              } else {
+                // Deactivated or pending account -> IMMEDIATELY terminate session and log out
+                console.warn(`⛔ [FIREBASE AUTH SESSION] Account ${student.email} status is "${student.status}". Logging out immediately.`);
+                storageService.clearUserSession();
+                setUserSession(null);
+                await logoutUser().catch(() => {});
+                addToast({
+                  type: 'info',
+                  title: 'Akses Ditolak',
+                  message: student.status === 'nonaktif'
+                    ? `Akun "${student.name}" sedang DINONAKTIFKAN oleh Guru. Silakan hubungi Guru Anda.`
+                    : `Akun "${student.name}" belum disetujui (Status: ${student.status}).`,
+                });
+              }
+            } else {
+              // No student record found matching this email -> Logout immediately
+              console.warn('⛔ [FIREBASE AUTH SESSION] No matching student record found for:', userEmail);
+              storageService.clearUserSession();
+              setUserSession(null);
+              await logoutUser().catch(() => {});
             }
           }
         } catch (err) {
-          console.warn('⚠️ [FIREBASE AUTH SESSION] Error resolving user profile:', err);
+          console.warn('⚠️ [FIREBASE AUTH SESSION] Error resolving user session:', err);
         }
       } else {
         const cached = storageService.getUserSession();
@@ -208,6 +259,33 @@ export default function App() {
 
     return () => unsubscribeAuth();
   }, []);
+
+  // Real-time Session Guard: Validate student account status whenever student data updates or after reload
+  useEffect(() => {
+    if (userSession && userSession.role === 'siswa') {
+      const activeStudentId = userSession.studentId;
+      const activeEmail = userSession.userEmail?.toLowerCase().trim();
+
+      const matched = students.find(s => 
+        (activeStudentId && s.id === activeStudentId) ||
+        (activeEmail && s.email && s.email.toLowerCase().trim() === activeEmail)
+      );
+
+      if (matched && matched.status !== 'aktif' && matched.status !== 'disetujui') {
+        console.warn(`⛔ [SESSION GUARD] Student ${matched.name} status is "${matched.status}". Terminating session immediately.`);
+        storageService.clearUserSession();
+        setUserSession(null);
+        logoutUser().catch(() => {});
+        addToast({
+          type: 'info',
+          title: 'Sesi Berakhir',
+          message: matched.status === 'nonaktif'
+            ? `Akun Anda telah dinonaktifkan oleh Guru. Sesi Anda dihentikan.`
+            : `Status akun Anda tidak lagi aktif (Status: ${matched.status}).`,
+        });
+      }
+    }
+  }, [students, userSession]);
 
   // Auto open onboarding tour for student first-time login
   useEffect(() => {

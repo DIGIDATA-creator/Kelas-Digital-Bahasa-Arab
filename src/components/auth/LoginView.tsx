@@ -223,6 +223,10 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
         console.log('   - Matched student record found:', matchedStudent.name, `(Status: ${matchedStudent.status})`);
 
+        if (matchedStudent.status === 'nonaktif') {
+          return { error: `Akun "${matchedStudent.name}" sedang DINONAKTIFKAN oleh Guru. Silakan hubungi Guru Anda untuk mengaktifkan kembali akun.`, student: matchedStudent };
+        }
+
         if (matchedStudent.status === 'pending') {
           return { error: `Akun "${matchedStudent.name}" masih MENUNGGU ACC (Persetujuan) dari Guru. Silakan hubungi Guru Anda untuk mengaktifkan akun.`, student: matchedStudent };
         }
@@ -372,10 +376,21 @@ export const LoginView: React.FC<LoginViewProps> = ({
         return;
       }
 
+      if (matchedStudent.status === 'nonaktif') {
+        const errMsg = `Akun Google (${user.email}) atas nama "${matchedStudent.name}" sedang DINONAKTIFKAN oleh Guru. Silakan hubungi Guru Anda.`;
+        console.warn('❌ [AUTH DEBUG] Google Login student account is deactivated:', matchedStudent.name);
+        console.groupEnd();
+        logoutUser().catch(() => {});
+        setErrorMsg(errMsg);
+        setIsLoading(false);
+        return;
+      }
+
       if (matchedStudent.status === 'pending') {
         const errMsg = `Akun Google (${user.email}) atas nama "${matchedStudent.name}" masih MENUNGGU ACC dari Guru.`;
         console.warn('❌ [AUTH DEBUG] Google Login student account is pending:', matchedStudent.name);
         console.groupEnd();
+        logoutUser().catch(() => {});
         setErrorMsg(errMsg);
         setIsLoading(false);
         return;
@@ -385,6 +400,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
         const errMsg = `Akun Google (${user.email}) DITOLAK oleh Guru.`;
         console.warn('❌ [AUTH DEBUG] Google Login student account is rejected:', matchedStudent.name);
         console.groupEnd();
+        logoutUser().catch(() => {});
         setErrorMsg(errMsg);
         setIsLoading(false);
         return;
