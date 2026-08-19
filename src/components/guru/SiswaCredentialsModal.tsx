@@ -281,7 +281,7 @@ export const SiswaCredentialsModal: React.FC<SiswaCredentialsModalProps> = ({
               </div>
             ) : (
               <div className="space-y-2.5">
-                {filteredStudents.map((std) => {
+                {filteredStudents.map((std, idx) => {
                   const currentPw = std.password || '123456';
                   const isVisible = showAllPasswords || !!visiblePasswordIds[std.id];
                   const isSelected = editingStudent?.id === std.id;
@@ -289,7 +289,7 @@ export const SiswaCredentialsModal: React.FC<SiswaCredentialsModalProps> = ({
 
                   return (
                     <div
-                      key={std.id}
+                      key={`${std.id || 'std'}-${idx}`}
                       className={`p-3.5 rounded-2xl border transition-all duration-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                         isSelected
                           ? 'bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-500 ring-2 ring-emerald-500/20 shadow-md'

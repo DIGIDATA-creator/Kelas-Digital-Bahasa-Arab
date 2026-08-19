@@ -456,7 +456,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
 
             return (
               <div
-                key={std.id}
+                key={`${std.id || 'std'}-${idx}`}
                 className={`px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors ${
                   isCurrent ? 'bg-amber-50/80 border-l-4 border-amber-500 font-bold' : 'hover:bg-slate-50'
                 }`}
@@ -565,7 +565,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                 </div>
               ) : (
                 quizLogModalData.attempts.map((att, idx) => (
-                  <div key={att.id || idx} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2 text-xs">
+                  <div key={`${att.id || 'att'}-${idx}`} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2 text-xs">
                     <div className="flex items-start justify-between gap-2 font-bold">
                       <div>
                         <span className="text-slate-900 text-sm block font-black">{att.penilaianTitle}</span>
@@ -729,7 +729,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
                         attempts.map((att, i) => {
                           const exp = att.earnedExp !== undefined ? att.earnedExp : (att.passed ? att.score : 0);
                           return (
-                            <div key={att.id || i} className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between gap-3">
+                            <div key={`${att.id || 'att'}-${i}`} className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between gap-3">
                               <div className="min-w-0">
                                 <span className="font-bold text-slate-800 block truncate">{att.penilaianTitle}</span>
                                 <span className="text-[10px] text-slate-400 block">

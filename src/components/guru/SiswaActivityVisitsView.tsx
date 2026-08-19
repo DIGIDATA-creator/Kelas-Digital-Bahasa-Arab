@@ -247,9 +247,9 @@ export const SiswaActivityVisitsView: React.FC<SiswaActivityVisitsViewProps> = (
                 <p className="font-bold text-sm text-slate-600">Tidak ada data log aktivitas yang sesuai filter.</p>
               </div>
             ) : (
-              filteredLogs.map(log => (
+              filteredLogs.map((log, idx) => (
                 <div
-                  key={log.id}
+                  key={`${log.id || 'log'}-${idx}`}
                   className="p-4 bg-white hover:bg-slate-50/80 rounded-2xl border border-slate-200 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs"
                 >
                   <div className="flex items-start gap-3 min-w-0">
@@ -364,11 +364,11 @@ export const SiswaActivityVisitsView: React.FC<SiswaActivityVisitsViewProps> = (
                       </td>
                     </tr>
                   ) : (
-                    filteredStudents.map(std => {
+                    filteredStudents.map((std, idx) => {
                       const stats = getStudentVisitStats(std);
 
                       return (
-                        <tr key={std.id} className="hover:bg-slate-50 transition-colors">
+                        <tr key={`${std.id || 'std'}-${idx}`} className="hover:bg-slate-50 transition-colors">
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-3">
                               <img

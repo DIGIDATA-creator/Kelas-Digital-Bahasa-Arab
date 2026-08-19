@@ -339,8 +339,8 @@ export const PenilaianSiswaView: React.FC<PenilaianSiswaViewProps> = ({
                       onChange={(e) => setKosakataConfig({ ...kosakataConfig, specificBab: Number(e.target.value) })}
                       className="w-full bg-slate-900 text-white font-bold px-3 py-1.5 rounded-xl border border-emerald-400/40 focus:outline-hidden"
                     >
-                      {(availableBabs.length > 0 ? availableBabs : [1, 2, 3, 4, 5]).map(b => (
-                        <option key={b} value={b}>{getBabLabelWithTitle(b)}</option>
+                      {(availableBabs.length > 0 ? availableBabs : [1, 2, 3, 4, 5]).map((b, idx) => (
+                        <option key={`spec-bab-${b}-${idx}`} value={b}>{getBabLabelWithTitle(b)}</option>
                       ))}
                     </select>
                   </div>
@@ -364,8 +364,8 @@ export const PenilaianSiswaView: React.FC<PenilaianSiswaViewProps> = ({
                       onChange={(e) => setKosakataConfig({ ...kosakataConfig, rangeStartBab: Number(e.target.value) })}
                       className="w-full bg-slate-900 text-white font-bold px-2.5 py-1.5 rounded-xl border border-emerald-400/40"
                     >
-                      {(availableBabs.length > 0 ? availableBabs : [1, 2, 3, 4, 5]).map(b => (
-                        <option key={b} value={b}>{getBabLabelWithTitle(b)}</option>
+                      {(availableBabs.length > 0 ? availableBabs : [1, 2, 3, 4, 5]).map((b, idx) => (
+                        <option key={`range-start-${b}-${idx}`} value={b}>{getBabLabelWithTitle(b)}</option>
                       ))}
                     </select>
                     <span className="font-bold text-white/70">s/d</span>
@@ -374,8 +374,8 @@ export const PenilaianSiswaView: React.FC<PenilaianSiswaViewProps> = ({
                       onChange={(e) => setKosakataConfig({ ...kosakataConfig, rangeEndBab: Number(e.target.value) })}
                       className="w-full bg-slate-900 text-white font-bold px-2.5 py-1.5 rounded-xl border border-emerald-400/40"
                     >
-                      {(availableBabs.length > 0 ? availableBabs : [1, 2, 3, 4, 5]).map(b => (
-                        <option key={b} value={b}>{getBabLabelWithTitle(b)}</option>
+                      {(availableBabs.length > 0 ? availableBabs : [1, 2, 3, 4, 5]).map((b, idx) => (
+                        <option key={`range-end-${b}-${idx}`} value={b}>{getBabLabelWithTitle(b)}</option>
                       ))}
                     </select>
                   </div>
@@ -435,9 +435,9 @@ export const PenilaianSiswaView: React.FC<PenilaianSiswaViewProps> = ({
                   { count: 30, time: '15 Mnt' },
                   { count: 40, time: '20 Mnt' },
                   { count: 50, time: '25 Mnt' },
-                ].map((item) => (
+                ].map((item, idx) => (
                   <button
-                    key={item.count}
+                    key={`kosakata-cnt-${item.count}-${idx}`}
                     type="button"
                     onClick={() => setKosakataConfig({ ...kosakataConfig, questionCount: item.count as any })}
                     className={`p-2 rounded-xl text-center border font-extrabold transition-all cursor-pointer ${
@@ -729,9 +729,9 @@ export const PenilaianSiswaView: React.FC<PenilaianSiswaViewProps> = ({
                   { count: 30, time: '15 Mnt' },
                   { count: 40, time: '20 Mnt' },
                   { count: 50, time: '25 Mnt' },
-                ].map((item) => (
+                ].map((item, idx) => (
                   <button
-                    key={item.count}
+                    key={`mahfudzot-cnt-${item.count}-${idx}`}
                     type="button"
                     onClick={() => setMahfudzotConfig({ ...mahfudzotConfig, questionCount: item.count as any })}
                     className={`p-2 rounded-xl text-center border font-extrabold transition-all cursor-pointer ${

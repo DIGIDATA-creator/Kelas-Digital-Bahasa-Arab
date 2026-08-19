@@ -875,9 +875,9 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                   <span>✨ Prediksi Nama Siswa ({studentPredictions.length})</span>
                   <span className="text-[9px] text-slate-400 font-normal">Klik untuk memilih</span>
                 </div>
-                {studentPredictions.map((st) => (
+                {studentPredictions.map((st, idx) => (
                   <button
-                    key={st.id}
+                    key={`${st.id || 'pred'}-${idx}`}
                     type="button"
                     onClick={() => {
                       setSearchTerm(st.name);
@@ -922,8 +922,8 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-hidden focus:border-emerald-500"
             >
               <option value="semua">🏢 Filter Sekolah: Semua ({allSchoolNames.length} Sekolah)</option>
-              {allSchoolNames.map(sch => (
-                <option key={sch} value={sch}>🏫 {sch}</option>
+              {allSchoolNames.map((sch, idx) => (
+                <option key={`${sch}-${idx}`} value={sch}>🏫 {sch}</option>
               ))}
             </select>
           </div>
@@ -935,8 +935,8 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-hidden focus:border-emerald-500"
             >
               <option value="semua">📚 Filter Kelas: Semua ({allClasses.length} Kelas)</option>
-              {allClasses.map(c => (
-                <option key={c} value={c}>{c}</option>
+              {allClasses.map((c, idx) => (
+                <option key={`${c}-${idx}`} value={c}>{c}</option>
               ))}
             </select>
           </div>
@@ -1068,7 +1068,7 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {filteredStudents.map((std) => {
+              {filteredStudents.map((std, idx) => {
                 const isSelected = selectedStudentIds.includes(std.id);
                 const vocabCount = Object.values(std.hafalanProgress?.kosakataIds || {}).filter(Boolean).length;
                 const mahfudzotCount = Object.values(std.hafalanProgress?.mahfudzotChecklist || {}).filter(
@@ -1079,7 +1079,7 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
 
                 return (
                   <div
-                    key={std.id}
+                    key={`${std.id || 'std'}-${idx}`}
                     className={`bg-white rounded-3xl border transition-all duration-300 shadow-xs hover:shadow-xl flex flex-col justify-between relative overflow-hidden group ${
                       isSelected
                         ? 'border-emerald-500 ring-2 ring-emerald-500/30 bg-emerald-50/20'
@@ -1283,7 +1283,7 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
               Tidak ada data siswa yang cocok dengan filter.
             </div>
           ) : (
-            Object.entries(groupedData).map(([schoolName, tingkatMap]) => {
+            Object.entries(groupedData).map(([schoolName, tingkatMap], sIdx) => {
               const totalInSchool = Object.values(tingkatMap).reduce(
                 (sum, rMap) => sum + Object.values(rMap).reduce((s2, list) => s2 + list.length, 0),
                 0
@@ -1293,7 +1293,7 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
 
               return (
                 <div
-                  key={schoolName}
+                  key={`${schoolName}-${sIdx}`}
                   className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden transition-all"
                 >
                   {/* Outer Group: Sekolah Header */}
@@ -1336,8 +1336,8 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                   {/* Inner Group Content */}
                   {!isCollapsed && (
                     <div className="p-5 space-y-6 bg-slate-50/60">
-                      {Object.entries(tingkatMap).map(([tingkatName, rombelMap]) => (
-                        <div key={tingkatName} className="space-y-4">
+                      {Object.entries(tingkatMap).map(([tingkatName, rombelMap], tIdx) => (
+                        <div key={`${tingkatName}-${tIdx}`} className="space-y-4">
                           {/* Sub Group Header: Tingkat */}
                           <div className="flex items-center gap-2 pb-1 border-b border-slate-200">
                             <GraduationCap size={16} className="text-emerald-600" />
@@ -1348,9 +1348,9 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
 
                           {/* Inner Sub Group: Rombel / Kelas */}
                           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                            {Object.entries(rombelMap).map(([rombelName, listSiswa]) => (
+                            {Object.entries(rombelMap).map(([rombelName, listSiswa], rIdx) => (
                               <div
-                                key={rombelName}
+                                key={`${rombelName}-${rIdx}`}
                                 className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3"
                               >
                                 <div className="flex items-center justify-between border-b border-slate-100 pb-2">
@@ -1365,11 +1365,11 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
 
                                 {/* Student List Items in Rombel */}
                                 <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-                                  {listSiswa.map(std => {
+                                  {listSiswa.map((std, lIdx) => {
                                     const isSelected = selectedStudentIds.includes(std.id);
                                     return (
                                       <div
-                                        key={std.id}
+                                        key={`${std.id || 'std'}-${lIdx}`}
                                         className={`p-2.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2 transition-colors ${
                                           isSelected
                                             ? 'bg-emerald-50/90 border-emerald-300'
@@ -1530,11 +1530,11 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                     </td>
                   </tr>
                 ) : (
-                  filteredStudents.map(std => {
+                  filteredStudents.map((std, idx) => {
                     const isSelected = selectedStudentIds.includes(std.id);
                     return (
                       <tr
-                        key={std.id}
+                        key={`${std.id || 'std'}-${idx}`}
                         className={`transition-colors ${
                           isSelected ? 'bg-emerald-50/70' : 'hover:bg-slate-50/80'
                         }`}
@@ -1809,10 +1809,10 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                     <p className="text-xs text-slate-400 font-medium">Belum ada materi yang diselesaikan.</p>
                   ) : (
                     <div className="flex flex-wrap gap-1.5">
-                      {selectedStudentForDetail.completedMaterials.map(matId => {
+                      {selectedStudentForDetail.completedMaterials.map((matId, idx) => {
                         const matObj = materiList.find(m => m.id === matId);
                         return (
-                          <span key={matId} className="px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold rounded-lg">
+                          <span key={`${matId}-${idx}`} className="px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold rounded-lg">
                             ✓ {matObj ? matObj.title : matId}
                           </span>
                         );

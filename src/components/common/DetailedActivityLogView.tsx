@@ -266,11 +266,11 @@ export const DetailedActivityLogView: React.FC<DetailedActivityLogViewProps> = (
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
-              {filteredLogs.map((log) => {
+              {filteredLogs.map((log, idx) => {
                 const isQuiz = log.type === 'kuis' || log.type === 'latihan';
 
                 return (
-                  <tr key={log.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
+                  <tr key={`${log.id || 'log'}-${idx}`} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
                     {/* Activity Title & Type Badge */}
                     <td className="py-3 px-3.5">
                       <div className="flex items-start gap-2.5">

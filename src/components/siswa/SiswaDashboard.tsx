@@ -310,9 +310,9 @@ export const SiswaDashboard: React.FC<SiswaDashboardProps> = ({
               Notifikasi Capaian Terkini Sesi Ini ({toasts.length})
             </span>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {toasts.map((t) => (
+              {toasts.map((t, idx) => (
                 <div
-                  key={t.id}
+                  key={`${t.id || 'toast'}-${idx}`}
                   className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-start gap-2.5 text-xs relative group"
                 >
                   <div className="p-1.5 bg-emerald-100 text-emerald-800 rounded-lg shrink-0">
