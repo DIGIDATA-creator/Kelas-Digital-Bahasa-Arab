@@ -27,18 +27,31 @@ export const GuruProfile: React.FC = () => {
   });
 
   // Account & Credentials State with LocalStorage & Firestore Sync
-  const [credentials, setCredentials] = useState(() => {
+  const [credentials, setCredentials] = useState<{
+    username: string;
+    password?: string;
+    currentPassword?: string;
+    newPassword?: string;
+    confirmPassword?: string;
+  }>(() => {
     const saved = localStorage.getItem('lms_guru_credentials');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
         if (parsed && parsed.username && parsed.username !== 'admin_guru') {
-          return parsed;
+          return {
+            username: parsed.username,
+            password: parsed.password || '@Cirebon1996',
+            currentPassword: '',
+            newPassword: '',
+            confirmPassword: '',
+          };
         }
       } catch (e) { /* fallback */ }
     }
     return {
       username: 'Ahmad Yusron',
+      password: '@Cirebon1996',
       currentPassword: '',
       newPassword: '',
       confirmPassword: '',
@@ -85,11 +98,24 @@ export const GuruProfile: React.FC = () => {
             localStorage.setItem('lms_guru_profile', JSON.stringify(data.profile));
           }
           if (data.credentials) {
-            setCredentials(prev => ({ ...prev, username: data.credentials.username }));
-            localStorage.setItem('lms_guru_credentials', JSON.stringify({ username: data.credentials.username }));
+            setCredentials(prev => ({
+              ...prev,
+              username: data.credentials.username || prev.username,
+              password: data.credentials.password || prev.password || '@Cirebon1996',
+            }));
+            localStorage.setItem('lms_guru_credentials', JSON.stringify({
+              username: data.credentials.username,
+              password: data.credentials.password || '@Cirebon1996',
+            }));
           }
         } else {
-          setDoc(docGuruProfile, { profile, credentials: { username: credentials.username } }).catch(console.error);
+          setDoc(docGuruProfile, {
+            profile,
+            credentials: {
+              username: credentials.username,
+              password: credentials.password || '@Cirebon1996',
+            }
+          }).catch(console.error);
         }
       }, (err) => console.warn('Guru profile snapshot error:', err));
 
@@ -192,8 +218,11 @@ export const GuruProfile: React.FC = () => {
       }
     }
 
+    const activePassword = credentials.newPassword ? credentials.newPassword.trim() : (credentials.password || '@Cirebon1996');
+
     const updatedCreds = {
       username: credentials.username.trim(),
+      password: activePassword,
       currentPassword: '',
       newPassword: '',
       confirmPassword: '',
@@ -201,9 +230,11 @@ export const GuruProfile: React.FC = () => {
 
     setCredentials(updatedCreds);
 
-    const storageCreds: Record<string, string> = { username: credentials.username.trim() };
+    const storageCreds: Record<string, string> = {
+      username: credentials.username.trim(),
+      password: activePassword,
+    };
     if (credentials.newPassword) {
-      storageCreds.password = credentials.newPassword.trim();
       storageCreds.newPassword = credentials.newPassword.trim();
     }
 

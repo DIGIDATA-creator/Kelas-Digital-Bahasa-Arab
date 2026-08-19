@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Materi, VocabularyItem } from '../../../types';
 import { parseSpreadsheetText } from '../../common/ArabicUtils';
+import { storageService } from '../../../services/storage';
 import { X, Plus, Trash2, FileSpreadsheet, Save, Layers } from 'lucide-react';
 
 interface KosakataFormModalProps {

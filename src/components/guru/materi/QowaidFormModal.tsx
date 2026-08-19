@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Materi } from '../../../types';
+import { storageService } from '../../../services/storage';
 import { X, Plus, Trash2, UploadCloud, Loader2, Save, Video } from 'lucide-react';
 import { uploadToSupabaseStorage } from '../../../lib/supabase';
 

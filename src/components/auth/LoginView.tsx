@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { Role, Student, TingkatType } from '../../types';
 import { storageService, UserSession } from '../../services/storage';
 import { PendaftaranSiswaForm } from './PendaftaranSiswaForm';
-import { signInWithGoogle, registerUser, loginUser } from '../../lib/firebase';
+import { signInWithGoogle, registerUser, loginUser, logoutUser } from '../../lib/firebase';
 import { auth } from '../../firebase/config';
 import {
   Lock,
@@ -107,8 +107,8 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
       // Helper function to check Guru credentials
       const checkGuruLogin = () => {
-        const guruProfile = freshGuru.profile || storageService.getGuruProfile();
-        const guruCreds = freshGuru.credentials || storageService.getGuruCredentials();
+        const guruProfile = storageService.getGuruProfile();
+        const guruCreds = storageService.getGuruCredentials();
 
         const guruEmail = (guruProfile?.email || 'ruangk106@gmail.com').toLowerCase().trim();
         const guruName = (guruProfile?.name || 'Ahmad Yusron').toLowerCase().trim();
@@ -129,19 +129,38 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
         if (guruCreds?.username) {
           validGuruUsernames.push(String(guruCreds.username).toLowerCase().trim());
+          validGuruUsernames.push(String(guruCreds.username).trim());
         }
 
-        const validGuruPasswords = ['@cirebon1996', '@Cirebon1996', 'cirebon1996', 'Cirebon1996', 'admin123', '123456', 'admin', 'guru123'];
+        const validGuruPasswords = [
+          '@cirebon1996',
+          '@Cirebon1996',
+          'cirebon1996',
+          'Cirebon1996',
+          'admin123',
+          '123456',
+          'admin',
+          'guru123',
+        ];
         const credsObj = guruCreds as Record<string, any>;
-        if (credsObj?.password) validGuruPasswords.push(String(credsObj.password).trim());
-        if (credsObj?.newPassword) validGuruPasswords.push(String(credsObj.newPassword).trim());
-        if (credsObj?.currentPassword) validGuruPasswords.push(String(credsObj.currentPassword).trim());
+        if (credsObj?.password) {
+          validGuruPasswords.push(String(credsObj.password).trim());
+          validGuruPasswords.push(String(credsObj.password).toLowerCase().trim());
+        }
+        if (credsObj?.newPassword) {
+          validGuruPasswords.push(String(credsObj.newPassword).trim());
+          validGuruPasswords.push(String(credsObj.newPassword).toLowerCase().trim());
+        }
+        if (credsObj?.currentPassword) {
+          validGuruPasswords.push(String(credsObj.currentPassword).trim());
+        }
 
         const inputClean = inputStr.toLowerCase().trim();
         const inputPassClean = inputPass.toLowerCase().trim();
 
         const isUserMatch =
           validGuruUsernames.some(u => u.toLowerCase().trim() === inputClean) ||
+          (guruCreds?.username && String(guruCreds.username).toLowerCase().trim() === inputClean) ||
           inputClean.includes('yusron') ||
           inputClean.includes('guru') ||
           inputClean.includes('admin') ||
@@ -156,7 +175,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
         if (isUserMatch) {
           const isPassValid =
             !inputPass ||
-            validGuruPasswords.some(p => String(p).toLowerCase().trim() === inputPassClean) ||
+            validGuruPasswords.some(p => String(p).toLowerCase().trim() === inputPassClean || String(p).trim() === inputPass.trim()) ||
             (guruCreds?.password ? inputPass === guruCreds.password || inputPassClean === String(guruCreds.password).toLowerCase().trim() : inputPass.length >= 4);
 
           console.log('   - Password provided valid?', isPassValid);
@@ -275,19 +294,11 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
         // Background Firebase Auth Email sign-in attempt to keep Firebase Auth token in sync
         if (finalSession.userEmail && inputPass) {
-          console.log(`🔥 [AUTH DEBUG] Attempting background Firebase Auth sign-in for ${finalSession.userEmail}...`);
-          logoutUser()
-            .then(() => retryWithBackoff(() => loginUser(finalSession.userEmail, inputPass)))
-            .then(user => {
-              if (user) {
-                console.log('🔥 [AUTH DEBUG] Firebase Auth sign-in succeeded! UID:', user.uid);
-              } else {
-                console.info('ℹ️ [AUTH DEBUG] Firebase Auth email sign-in skipped/unsupported in this environment. Session authenticated via Firestore dataset.');
-              }
-            })
-            .catch(err => {
-              console.warn('⚠️ [AUTH DEBUG] Firebase Auth background note:', err?.message || err);
-            });
+          try {
+            loginUser(finalSession.userEmail, inputPass).catch(() => {});
+          } catch (e) {
+            // safe ignore
+          }
         }
 
         setSuccessMsg(`Berhasil masuk sebagai ${finalSession.role === 'guru' ? 'Guru' : 'Siswa'} (${finalSession.userName})!`);

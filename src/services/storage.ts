@@ -1,7 +1,7 @@
 import { Materi, Penilaian, Student, ActivityLog, Role, QuizAttempt, ForumPost, ForumReply, DetailedActivityLog } from '../types';
 import { INITIAL_MATERI, INITIAL_PENILAIAN, INITIAL_STUDENTS, INITIAL_LOGS, INITIAL_FORUM_POSTS } from '../data/initialData';
 import { db } from '../firebase/config';
-import { doc, collection, onSnapshot, setDoc, getDoc, getDocs, getDocFromServer } from 'firebase/firestore';
+import { doc, collection, onSnapshot, setDoc, getDoc, getDocs, getDocFromServer, deleteDoc } from 'firebase/firestore';
 import { offlineCacheService } from './offlineCacheService';
 
 // Helper function to merge materi lists across devices without data loss
@@ -44,10 +44,11 @@ function mergeStudentLists(...lists: Student[][]): Student[] {
       if (!existing) {
         map.set(key, { ...student });
       } else {
-        // Merge student records intelligently (existing takes precedence over student)
+        // Merge student records: later list (student) updates properties while preserving combined progress
         const merged: Student = {
-          ...student,
           ...existing,
+          ...student,
+          status: student.status || existing.status || 'pending',
           hafalanProgress: {
             ...existing.hafalanProgress,
             ...student.hafalanProgress,
@@ -76,11 +77,6 @@ function mergeStudentLists(...lists: Student[][]): Student[] {
               ...(student.hafalanProgress?.mahfudzotChecklist || {}),
             },
           },
-          status: (existing.status === 'aktif' || student.status === 'aktif')
-            ? 'aktif'
-            : (existing.status === 'ditolak' || student.status === 'ditolak')
-              ? (existing.status === 'ditolak' ? existing.status : student.status)
-              : (existing.status || student.status || 'pending'),
           totalXP: Math.max(existing.totalXP || 0, student.totalXP || 0),
           completedMaterials: Array.from(new Set([...(existing.completedMaterials || []), ...(student.completedMaterials || [])])),
           attempts: [...(existing.attempts || []), ...(student.attempts || [])].filter(
@@ -212,7 +208,7 @@ if (!cachedGuruProfile.name || cachedGuruProfile.name.includes('Ahmad Dahlan') |
   saveLocal('lms_guru_profile', cachedGuruProfile);
 }
 
-if (!cachedGuruCredentials.username || cachedGuruCredentials.username === 'admin_guru' || !cachedGuruCredentials.password) {
+if (!cachedGuruCredentials || !cachedGuruCredentials.username || !cachedGuruCredentials.password) {
   cachedGuruCredentials = {
     username: 'Ahmad Yusron',
     password: '@Cirebon1996',
@@ -310,10 +306,20 @@ export const storageService = {
             if (d.exists()) colItems.push(d.data() as Student);
           });
           if (colItems.length > 0) {
-            const merged = mergeStudentLists(colItems, cachedStudents);
-            cachedStudents = merged;
-            saveLocal(KEYS.STUDENTS, merged);
+            cachedStudents = colItems;
+            saveLocal(KEYS.STUDENTS, colItems);
             notifyListeners();
+          } else if (snap.empty && cachedStudents.length > 0) {
+            // Seed Firestore with initial data only when collection is completely fresh
+            cachedStudents.forEach(s => {
+              if (s && s.id) {
+                setDoc(doc(db, 'students_records', s.id), sanitizeForFirestore(s)).catch(console.error);
+              }
+            });
+            const dStudents = getDocStudents();
+            if (dStudents) {
+              setDoc(dStudents, sanitizeForFirestore({ items: cachedStudents })).catch(console.error);
+            }
           }
         }, (err) => console.warn('Students collection snapshot warning:', err)));
       }
@@ -415,15 +421,6 @@ export const storageService = {
   async fetchLatestStudentsData() {
     if (!db) return cachedStudents;
     try {
-      const dStudents = getDocStudents();
-      let remoteDocStudents: Student[] = [];
-      if (dStudents) {
-        const docSnap = await getDoc(dStudents);
-        if (docSnap.exists() && docSnap.data()?.items) {
-          remoteDocStudents = docSnap.data().items as Student[];
-        }
-      }
-
       // Query individual student registration records collection from server
       let indStudents: Student[] = [];
       try {
@@ -437,16 +434,30 @@ export const storageService = {
         console.warn('[FIRESTORE] Querying students_records fallback:', err);
       }
 
-      const merged = mergeStudentLists(remoteDocStudents, indStudents, cachedStudents);
-      cachedStudents = merged;
-      saveLocal(KEYS.STUDENTS, merged);
-
-      // Keep master document docStudents updated with all merged records
-      if (dStudents && merged.length > remoteDocStudents.length) {
-        setDoc(dStudents, sanitizeForFirestore({ items: merged })).catch(console.error);
+      if (indStudents.length > 0) {
+        cachedStudents = indStudents;
+        saveLocal(KEYS.STUDENTS, indStudents);
+        const dStudents = getDocStudents();
+        if (dStudents) {
+          setDoc(dStudents, sanitizeForFirestore({ items: indStudents })).catch(console.error);
+        }
+        return indStudents;
       }
 
-      return merged;
+      const dStudents = getDocStudents();
+      if (dStudents) {
+        const docSnap = await getDoc(dStudents);
+        if (docSnap.exists() && docSnap.data()?.items) {
+          const remoteDocStudents = docSnap.data().items as Student[];
+          if (remoteDocStudents.length > 0) {
+            cachedStudents = remoteDocStudents;
+            saveLocal(KEYS.STUDENTS, remoteDocStudents);
+            return remoteDocStudents;
+          }
+        }
+      }
+
+      return cachedStudents;
     } catch (err) {
       console.warn('[AUTH DEBUG] Error fetching latest Students data from Firestore:', err);
       return cachedStudents;
@@ -511,18 +522,25 @@ export const storageService = {
     try {
       const latestStudents = this.getStudents();
       const updatedList = updater(latestStudents);
-      const merged = mergeStudentLists(updatedList, latestStudents);
-      cachedStudents = merged;
-      saveLocal(KEYS.STUDENTS, merged);
+      const previousStudents = [...cachedStudents];
+      cachedStudents = updatedList;
+      saveLocal(KEYS.STUDENTS, updatedList);
       
       const dStudents = getDocStudents();
       if (dStudents) {
-        await setDoc(dStudents, sanitizeForFirestore({ items: merged }));
+        await setDoc(dStudents, sanitizeForFirestore({ items: updatedList }));
       }
 
       // Also persist individual student updates to students_records collection
       if (db) {
-        merged.forEach(s => {
+        const newIds = new Set(updatedList.map(s => s.id));
+        previousStudents.forEach(oldS => {
+          if (oldS && oldS.id && !newIds.has(oldS.id)) {
+            deleteDoc(doc(db, 'students_records', oldS.id)).catch(console.error);
+          }
+        });
+
+        updatedList.forEach(s => {
           if (s && s.id) {
             setDoc(doc(db, 'students_records', s.id), sanitizeForFirestore(s)).catch(console.error);
           }
@@ -530,7 +548,7 @@ export const storageService = {
       }
 
       notifyListeners();
-      return merged;
+      return updatedList;
     } catch (err) {
       console.error('Error in syncAndSaveStudents:', err);
       this.saveStudents(cachedStudents);
@@ -538,10 +556,31 @@ export const storageService = {
     }
   },
 
+  async deleteStudent(studentId: string): Promise<Student[]> {
+    const updated = cachedStudents.filter(s => s.id !== studentId);
+    this.saveStudents(updated);
+    if (db) {
+      try {
+        await deleteDoc(doc(db, 'students_records', studentId));
+      } catch (err) {
+        console.warn('Error deleting student document from Firestore:', err);
+      }
+    }
+    return updated;
+  },
+
   getGuruProfile() {
+    const local = getLocal('lms_guru_profile', null);
+    if (local && local.name) {
+      cachedGuruProfile = { ...cachedGuruProfile, ...local };
+    }
     return cachedGuruProfile;
   },
   getGuruCredentials() {
+    const local = getLocal('lms_guru_credentials', null);
+    if (local && (local.username || local.password)) {
+      cachedGuruCredentials = { ...cachedGuruCredentials, ...local };
+    }
     return cachedGuruCredentials;
   },
   saveGuruProfile(profile: any) {
@@ -663,18 +702,24 @@ export const storageService = {
   },
 
   saveStudents(list: Student[]): void {
-    // Merge list with cachedStudents so newly registered students are never accidentally deleted
-    const merged = mergeStudentLists(list, cachedStudents);
-    cachedStudents = merged;
-    saveLocal(KEYS.STUDENTS, merged);
+    const previousStudents = [...cachedStudents];
+    cachedStudents = list;
+    saveLocal(KEYS.STUDENTS, list);
     const dStudents = getDocStudents();
     if (dStudents) {
-      setDoc(dStudents, sanitizeForFirestore({ items: merged })).catch(err => console.error('Error syncing Students to Firestore:', err));
+      setDoc(dStudents, sanitizeForFirestore({ items: list })).catch(err => console.error('Error syncing Students to Firestore:', err));
     }
 
     // Also sync to students_records collection
     if (db) {
-      merged.forEach(s => {
+      const newIds = new Set(list.map(s => s.id));
+      previousStudents.forEach(oldS => {
+        if (oldS && oldS.id && !newIds.has(oldS.id)) {
+          deleteDoc(doc(db, 'students_records', oldS.id)).catch(console.error);
+        }
+      });
+
+      list.forEach(s => {
         if (s && s.id) {
           setDoc(doc(db, 'students_records', s.id), sanitizeForFirestore(s)).catch(console.error);
         }
