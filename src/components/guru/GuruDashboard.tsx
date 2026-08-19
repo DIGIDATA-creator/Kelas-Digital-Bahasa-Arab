@@ -1,11 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { Materi, Penilaian, Student, ActivityLog } from '../../types';
-import { Users, BookOpen, FileCheck2, Award, Plus, FileUp, Sparkles, TrendingUp, Clock, CheckCircle2, UserCheck, GraduationCap, ArrowRight, Search, X, Eye, Activity, FileSpreadsheet } from 'lucide-react';
+import { Users, BookOpen, FileCheck2, Award, Plus, FileUp, Sparkles, TrendingUp, Clock, CheckCircle2, UserCheck, GraduationCap, ArrowRight, Search, X, Eye, Activity, FileSpreadsheet, KeyRound } from 'lucide-react';
 import { DistribusiKemahiranChart } from './DistribusiKemahiranChart';
 import { GuruDashboardSkeleton } from '../common/Skeleton';
 import { MahfudzotOfTheDayCard } from '../common/MahfudzotOfTheDayCard';
 import { SiswaActivityVisitsView } from './SiswaActivityVisitsView';
 import { ExportNilaiModal } from './ExportNilaiModal';
+import { SiswaCredentialsModal } from './SiswaCredentialsModal';
 
 interface GuruDashboardProps {
   materiList: Materi[];
@@ -14,6 +15,7 @@ interface GuruDashboardProps {
   logs: ActivityLog[];
   onNavigate: (tab: string) => void;
   isLoading?: boolean;
+  onSaveStudents?: (students: Student[]) => void;
   onSwitchToStudentSession?: (student: Student) => void;
   onSelectStudentForDetail?: (studentId: string) => void;
 }
@@ -25,6 +27,7 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({
   logs,
   onNavigate,
   isLoading = false,
+  onSaveStudents,
   onSwitchToStudentSession,
   onSelectStudentForDetail,
 }) => {
@@ -32,6 +35,7 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({
   const [showPredictions, setShowPredictions] = useState(false);
   const [showLogsVisitsModal, setShowLogsVisitsModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
 
   // Predictive student lookup
   const studentPredictions = useMemo(() => {
@@ -101,6 +105,12 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({
               className="px-4 py-2.5 bg-emerald-400 hover:bg-emerald-300 text-slate-950 rounded-xl text-xs sm:text-sm font-black transition-all shadow-md flex items-center gap-2 cursor-pointer"
             >
               <FileSpreadsheet size={16} className="text-slate-950" /> Ekspor Nilai Siswa (CSV/Excel)
+            </button>
+            <button
+              onClick={() => setShowCredentialsModal(true)}
+              className="px-4 py-2.5 bg-slate-950 hover:bg-slate-900 text-emerald-300 border border-emerald-500/40 rounded-xl text-xs sm:text-sm font-black transition-all shadow-md flex items-center gap-2 cursor-pointer"
+            >
+              <KeyRound size={16} className="text-emerald-400" /> Akses Akun & Password Siswa
             </button>
             <button
               onClick={() => setShowLogsVisitsModal(true)}
@@ -563,6 +573,15 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({
         onClose={() => setShowExportModal(false)}
         students={students}
         penilaianList={penilaianList}
+      />
+
+      {/* MODAL OVERLAY: Akses Akun & Reset Kata Sandi Siswa */}
+      <SiswaCredentialsModal
+        isOpen={showCredentialsModal}
+        onClose={() => setShowCredentialsModal(false)}
+        students={students}
+        onSaveStudents={onSaveStudents || (() => {})}
+        onSwitchToStudentSession={onSwitchToStudentSession}
       />
 
     </div>

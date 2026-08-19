@@ -667,6 +667,50 @@ export const storageService = {
     return { success: true, count: targets.length };
   },
 
+  /**
+   * Directly updates a student's credentials (password, email, or username) from the admin panel.
+   */
+  async updateStudentCredentials(
+    studentId: string,
+    newPassword?: string,
+    newEmail?: string,
+    newUsername?: string
+  ): Promise<{ success: boolean; student?: Student; message?: string }> {
+    const freshStudents = this.getStudents();
+    const targetStudent = freshStudents.find(s => s.id === studentId);
+    if (!targetStudent) {
+      return { success: false, message: 'Data siswa tidak ditemukan.' };
+    }
+
+    const updatedStudent: Student = {
+      ...targetStudent,
+      password: newPassword !== undefined && newPassword.trim() ? newPassword.trim() : (targetStudent.password || '123456'),
+      email: newEmail !== undefined && newEmail.trim() ? newEmail.trim().toLowerCase() : targetStudent.email,
+      ...(newUsername ? { username: newUsername.trim() } : {}),
+    };
+
+    const updatedList = freshStudents.map(s => s.id === studentId ? updatedStudent : s);
+    this.saveStudents(updatedList);
+
+    if (db) {
+      try {
+        await setDoc(doc(db, 'students_records', studentId), sanitizeForFirestore(updatedStudent), { merge: true });
+      } catch (err) {
+        console.warn('[STORAGE] Error updating student credentials doc in Firestore:', err);
+      }
+    }
+
+    this.addLog({
+      userName: 'Guru Admin',
+      userRole: 'guru',
+      action: 'Akses & Ubah Password Siswa',
+      details: `Admin memperbarui kredensial/kata sandi akun siswa (${targetStudent.name} - ${targetStudent.email}) menjadi "${updatedStudent.password}".`,
+    });
+
+    notifyListeners();
+    return { success: true, student: updatedStudent };
+  },
+
   getGuruProfile() {
     const local = getLocal('lms_guru_profile', null);
     if (local && local.name) {

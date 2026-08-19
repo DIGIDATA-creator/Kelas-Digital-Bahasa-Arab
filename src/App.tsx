@@ -511,6 +511,7 @@ export default function App() {
                       logs={logs}
                       onNavigate={setActiveTab}
                       isLoading={isLoadingData}
+                      onSaveStudents={handleSaveStudents}
                       onSwitchToStudentSession={handleSwitchToStudentSession}
                       onSelectStudentForDetail={(stdId) => {
                         setSelectedStudentForDetailId(stdId);

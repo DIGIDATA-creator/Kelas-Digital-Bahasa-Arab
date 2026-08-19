@@ -30,12 +30,14 @@ import {
   Quote,
   Activity,
   RefreshCw,
-  FileSpreadsheet
+  FileSpreadsheet,
+  KeyRound
 } from 'lucide-react';
 import { PendaftaranSiswaForm } from '../auth/PendaftaranSiswaForm';
 import { CeklisHafalanModal } from './CeklisHafalanModal';
 import { SiswaActivityVisitsView } from './SiswaActivityVisitsView';
 import { ExportNilaiModal } from './ExportNilaiModal';
+import { SiswaCredentialsModal } from './SiswaCredentialsModal';
 import { storageService } from '../../services/storage';
 
 export const getTingkatColorTheme = (tingkat?: TingkatType | string, className?: string) => {
@@ -125,6 +127,8 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
   const [viewMode, setViewMode] = useState<'cards' | 'grouped' | 'flat'>('cards');
   const [showLogsVisitsModal, setShowLogsVisitsModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+  const [selectedStudentForCredentialsId, setSelectedStudentForCredentialsId] = useState<string | undefined>(undefined);
 
   const activeLogs = logs || storageService.getLogs();
 
@@ -538,6 +542,13 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
           )}
 
           <button
+            onClick={() => setShowCredentialsModal(true)}
+            className="px-3.5 py-2.5 bg-slate-950 hover:bg-slate-900 text-emerald-300 border border-emerald-500/40 rounded-xl font-extrabold text-xs shadow-md flex items-center gap-1.5 transition-all cursor-pointer"
+          >
+            <KeyRound size={16} className="text-emerald-400" /> Akses Akun & Password Siswa
+          </button>
+
+          <button
             onClick={handleOpenAddModal}
             className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-emerald-900/10 flex items-center gap-2 transition-all cursor-pointer"
           >
@@ -553,8 +564,8 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
         </div>
       )}
 
-      {/* Primary Column Menu Navigation: ACC Siswa vs Siswa Aktif */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+      {/* Primary Column Menu Navigation: ACC Siswa vs Siswa Aktif vs Semua vs Akses Akun */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         {/* MENU 1: ACC SISWA */}
         <button
           type="button"
@@ -661,6 +672,31 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
             </div>
           </div>
           <ChevronRight size={18} className={`shrink-0 ${activeMainSection === 'semua' ? 'text-slate-800' : 'text-slate-300'}`} />
+        </button>
+
+        {/* MENU 4: AKSES AKUN & RESET PASSWORD */}
+        <button
+          type="button"
+          onClick={() => setShowCredentialsModal(true)}
+          className="p-4 rounded-2xl border-2 border-emerald-500/40 bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-950 text-left transition-all cursor-pointer relative overflow-hidden flex items-center justify-between gap-3 shadow-md hover:border-emerald-400 hover:shadow-lg group"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="p-3 rounded-2xl shrink-0 bg-emerald-500 text-slate-950 shadow-sm group-hover:scale-105 transition-transform">
+              <KeyRound size={22} />
+            </div>
+            <div className="min-w-0">
+              <div className="font-extrabold text-sm text-white flex items-center gap-1.5 flex-wrap">
+                <span>Akses Akun & Sandi</span>
+                <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-black text-[10px] rounded-full">
+                  Admin
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-300 font-medium truncate mt-0.5">
+                Lihat username & reset password
+              </p>
+            </div>
+          </div>
+          <ChevronRight size={18} className="shrink-0 text-emerald-400" />
         </button>
       </div>
 
@@ -1188,6 +1224,17 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                         )}
                         <button
                           type="button"
+                          onClick={() => {
+                            setSelectedStudentForCredentialsId(std.id);
+                            setShowCredentialsModal(true);
+                          }}
+                          className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 rounded-xl transition-all cursor-pointer border border-emerald-200 dark:border-emerald-800 shadow-2xs"
+                          title="Akses Akun & Ubah Password Siswa ini"
+                        >
+                          <KeyRound size={15} />
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => onSwitchToStudentSession?.(std)}
                           className="p-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded-xl text-xs font-bold transition-all cursor-pointer"
                           title="Uji Log In sebagai Siswa ini"
@@ -1370,6 +1417,17 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                                           </select>
 
                                           <div className="flex items-center gap-1">
+                                            <button
+                                              onClick={() => {
+                                                setSelectedStudentForCredentialsId(std.id);
+                                                setShowCredentialsModal(true);
+                                              }}
+                                              className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-[11px] font-extrabold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                                              title="Akses Akun & Ubah Password Siswa"
+                                            >
+                                              <KeyRound size={13} className="text-emerald-700" />
+                                              <span>Sandi</span>
+                                            </button>
                                             {onSwitchToStudentSession && (
                                               <button
                                                 onClick={() => onSwitchToStudentSession(std)}
@@ -1578,6 +1636,17 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                                 <span className="hidden sm:inline">Bebaskan Email</span>
                               </button>
                             )}
+                            <button
+                              onClick={() => {
+                                setSelectedStudentForCredentialsId(std.id);
+                                setShowCredentialsModal(true);
+                              }}
+                              className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-extrabold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                              title="Akses Akun & Ubah Password Siswa"
+                            >
+                              <KeyRound size={13} className="text-emerald-700" />
+                              <span>Sandi</span>
+                            </button>
                             {onSwitchToStudentSession && (
                               <button
                                 onClick={() => onSwitchToStudentSession(std)}
@@ -1752,6 +1821,33 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                   )}
                 </div>
 
+                {/* Credentials / Password Block */}
+                <div className="p-3.5 bg-emerald-50/80 rounded-2xl border border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                  <div>
+                    <div className="text-xs font-extrabold text-emerald-900 flex items-center gap-1.5">
+                      <KeyRound size={14} className="text-emerald-700" /> Kredensial Akun & Kata Sandi
+                    </div>
+                    <div className="text-xs text-slate-700 font-medium mt-1">
+                      Username / Email: <span className="font-mono font-bold text-slate-900">{selectedStudentForDetail.email}</span>
+                    </div>
+                    <div className="text-xs text-slate-700 font-medium">
+                      Kata Sandi: <span className="font-mono font-bold text-emerald-800">{selectedStudentForDetail.password || '123456'}</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const sid = selectedStudentForDetail.id;
+                      setSelectedStudentForDetail(null);
+                      setSelectedStudentForCredentialsId(sid);
+                      setShowCredentialsModal(true);
+                    }}
+                    className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-black shadow-xs flex items-center justify-center gap-1.5 cursor-pointer shrink-0 transition-all"
+                  >
+                    <KeyRound size={13} /> Ubah / Reset Sandi
+                  </button>
+                </div>
+
                 {onSwitchToStudentSession && (
                   <div className="pt-3 border-t border-slate-200">
                     <button
@@ -1864,6 +1960,19 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
           isOpen={showExportModal}
           onClose={() => setShowExportModal(false)}
           students={students}
+        />
+
+        {/* MODAL OVERLAY: Akses Akun & Reset Kata Sandi Siswa */}
+        <SiswaCredentialsModal
+          isOpen={showCredentialsModal}
+          onClose={() => {
+            setShowCredentialsModal(false);
+            setSelectedStudentForCredentialsId(undefined);
+          }}
+          students={students}
+          onSaveStudents={onSaveStudents}
+          initialSelectedStudentId={selectedStudentForCredentialsId}
+          onSwitchToStudentSession={onSwitchToStudentSession}
         />
       </AnimatePresence>
     </div>
