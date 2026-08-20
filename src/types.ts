@@ -192,6 +192,7 @@ export interface Student {
   status: StudentStatus;
   lastActive: string;
   registeredAt?: string;
+  updatedAt?: string;
   hafalanProgress?: StudentHafalanProgress;
   visitHistory?: string[]; // ISO string timestamps of app logins/visits
   visitCount?: number; // Total visit counter

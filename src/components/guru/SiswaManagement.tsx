@@ -143,6 +143,15 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
       }
     }
   }, [initialSelectedStudentId, students]);
+
+  // Silently refresh latest students from server on mount to ensure real-time accuracy of registrations
+  React.useEffect(() => {
+    storageService.fetchLatestStudentsData().then(fresh => {
+      if (fresh && fresh.length > 0) {
+        onSaveStudents(fresh);
+      }
+    }).catch(console.warn);
+  }, []);
   const [studentForHafalanChecklist, setStudentForHafalanChecklist] = useState<Student | null>(null);
 
   // Predictive search calculation
@@ -244,14 +253,19 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
     setDeleteConfirmation({ isOpen: false });
   };
 
-  const handleSetStudentStatus = (id: string, newStatus: StudentStatus) => {
-    const updated = students.map(s => {
-      if (s.id === id) {
-        return { ...s, status: newStatus };
-      }
-      return s;
-    });
-    onSaveStudents(updated);
+  const handleSetStudentStatus = async (id: string, newStatus: StudentStatus) => {
+    setIsSyncing(true);
+    try {
+      const updated = await storageService.setStudentStatus(id, newStatus);
+      onSaveStudents(updated);
+      const studentObj = updated.find(s => s.id === id);
+      setSyncNotice(`✅ Status ${studentObj ? studentObj.name : 'siswa'} berhasil diperbarui menjadi "${newStatus.toUpperCase()}"!`);
+      setTimeout(() => setSyncNotice(null), 3000);
+    } catch (err) {
+      console.error('Error updating student status:', err);
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   // Bulk selection handlers
@@ -278,16 +292,21 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
     filteredStudents.some(s => selectedStudentIds.includes(s.id)) &&
     !isAllFilteredSelected;
 
-  const handleBulkUpdateStatus = (newStatus: StudentStatus) => {
+  const handleBulkUpdateStatus = async (newStatus: StudentStatus) => {
     if (selectedStudentIds.length === 0) return;
-    const updated = students.map(s => {
-      if (selectedStudentIds.includes(s.id)) {
-        return { ...s, status: newStatus };
-      }
-      return s;
-    });
-    onSaveStudents(updated);
-    setSelectedStudentIds([]);
+    setIsSyncing(true);
+    try {
+      const count = selectedStudentIds.length;
+      const updated = await storageService.bulkSetStudentStatus(selectedStudentIds, newStatus);
+      onSaveStudents(updated);
+      setSyncNotice(`✅ Status ${count} siswa berhasil diubah menjadi "${newStatus.toUpperCase()}"!`);
+      setSelectedStudentIds([]);
+      setTimeout(() => setSyncNotice(null), 3000);
+    } catch (err) {
+      console.error('Error in bulk update student status:', err);
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const handleBulkDelete = () => {
@@ -383,16 +402,9 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
     if (confirm(`Setujui (ACC) seluruh ${pendingStudents.length} siswa pendaftar baru?`)) {
       setIsSyncing(true);
       try {
-        const updated = await storageService.syncAndSaveStudents((currentRemote) => {
-          return currentRemote.map(s => {
-            if (s.status === 'pending') {
-              return { ...s, status: 'disetujui' as const };
-            }
-            return s;
-          });
-        });
+        const updated = await storageService.approveAllPendingStudents();
         onSaveStudents(updated);
-        setSyncNotice(`✅ Seluruh pendaftaran berhasil disetujui!`);
+        setSyncNotice(`✅ Seluruh pendaftaran berhasil disetujui (ACC)!`);
         setTimeout(() => setSyncNotice(null), 3000);
       } catch (err) {
         console.error('Error approving students:', err);

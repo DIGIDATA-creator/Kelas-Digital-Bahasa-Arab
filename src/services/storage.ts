@@ -1,4 +1,4 @@
-import { Materi, Penilaian, Student, ActivityLog, Role, QuizAttempt, ForumPost, ForumReply, DetailedActivityLog } from '../types';
+import { Materi, Penilaian, Student, StudentStatus, ActivityLog, Role, QuizAttempt, ForumPost, ForumReply, DetailedActivityLog } from '../types';
 import { INITIAL_MATERI, INITIAL_PENILAIAN, INITIAL_STUDENTS, INITIAL_LOGS, INITIAL_FORUM_POSTS } from '../data/initialData';
 import { db } from '../firebase/config';
 import { doc, collection, onSnapshot, setDoc, getDoc, getDocs, getDocFromServer, deleteDoc } from 'firebase/firestore';
@@ -30,7 +30,7 @@ function mergeMateriLists(...lists: Materi[][]): Materi[] {
   return Array.from(map.values());
 }
 
-// Helper function to merge student lists across devices without data loss
+// Helper function to merge student lists across devices without data loss or status regression
 function mergeStudentLists(...lists: Student[][]): Student[] {
   const map = new Map<string, Student>();
 
@@ -44,37 +44,66 @@ function mergeStudentLists(...lists: Student[][]): Student[] {
       if (!existing) {
         map.set(key, { ...student });
       } else {
-        // Merge student records: later list (student) updates properties while preserving combined progress
+        // Determine status precedence based on timestamps and definitive status
+        const existingTime = existing.updatedAt
+          ? new Date(existing.updatedAt).getTime()
+          : (existing.registeredAt ? new Date(existing.registeredAt).getTime() : 0);
+        const incomingTime = student.updatedAt
+          ? new Date(student.updatedAt).getTime()
+          : (student.registeredAt ? new Date(student.registeredAt).getTime() : 0);
+
+        let finalStatus: StudentStatus = existing.status || 'pending';
+
+        if (incomingTime > existingTime && student.status) {
+          finalStatus = student.status;
+        } else if (existingTime > incomingTime && existing.status) {
+          finalStatus = existing.status;
+        } else {
+          // If timestamps are identical or absent:
+          // A definitive non-pending status ('disetujui' | 'aktif' | 'ditolak' | 'nonaktif') takes precedence over 'pending'
+          if (student.status && student.status !== 'pending') {
+            finalStatus = student.status;
+          } else if (existing.status && existing.status !== 'pending') {
+            finalStatus = existing.status;
+          } else {
+            finalStatus = student.status || existing.status || 'pending';
+          }
+        }
+
+        const newerObj = incomingTime >= existingTime ? student : existing;
+        const olderObj = incomingTime >= existingTime ? existing : student;
+
         const merged: Student = {
-          ...existing,
-          ...student,
-          status: student.status || existing.status || 'pending',
+          ...olderObj,
+          ...newerObj,
+          status: finalStatus,
+          password: newerObj.password || olderObj.password || '123456',
           hafalanProgress: {
-            ...existing.hafalanProgress,
-            ...student.hafalanProgress,
+            ...olderObj.hafalanProgress,
+            ...newerObj.hafalanProgress,
             kosakataIds: {
-              ...(existing.hafalanProgress?.kosakataIds || {}),
-              ...(student.hafalanProgress?.kosakataIds || {}),
+              ...(olderObj.hafalanProgress?.kosakataIds || {}),
+              ...(newerObj.hafalanProgress?.kosakataIds || {}),
             },
             selfKosakataIds: {
-              ...(existing.hafalanProgress?.selfKosakataIds || {}),
-              ...(student.hafalanProgress?.selfKosakataIds || {}),
+              ...(olderObj.hafalanProgress?.selfKosakataIds || {}),
+              ...(newerObj.hafalanProgress?.selfKosakataIds || {}),
             },
             selfMahfudzotIds: {
-              ...(existing.hafalanProgress?.selfMahfudzotIds || {}),
-              ...(student.hafalanProgress?.selfMahfudzotIds || {}),
+              ...(olderObj.hafalanProgress?.selfMahfudzotIds || {}),
+              ...(newerObj.hafalanProgress?.selfMahfudzotIds || {}),
             },
             selfQowaidIds: {
-              ...(existing.hafalanProgress?.selfQowaidIds || {}),
-              ...(student.hafalanProgress?.selfQowaidIds || {}),
+              ...(olderObj.hafalanProgress?.selfQowaidIds || {}),
+              ...(newerObj.hafalanProgress?.selfQowaidIds || {}),
             },
             selfHiwarIds: {
-              ...(existing.hafalanProgress?.selfHiwarIds || {}),
-              ...(student.hafalanProgress?.selfHiwarIds || {}),
+              ...(olderObj.hafalanProgress?.selfHiwarIds || {}),
+              ...(newerObj.hafalanProgress?.selfHiwarIds || {}),
             },
             mahfudzotChecklist: {
-              ...(existing.hafalanProgress?.mahfudzotChecklist || {}),
-              ...(student.hafalanProgress?.mahfudzotChecklist || {}),
+              ...(olderObj.hafalanProgress?.mahfudzotChecklist || {}),
+              ...(newerObj.hafalanProgress?.mahfudzotChecklist || {}),
             },
           },
           totalXP: Math.max(existing.totalXP || 0, student.totalXP || 0),
@@ -82,8 +111,9 @@ function mergeStudentLists(...lists: Student[][]): Student[] {
           attempts: [...(existing.attempts || []), ...(student.attempts || [])].filter(
             (att, index, self) => self.findIndex(a => a.id === att.id) === index
           ),
-          registeredAt: existing.registeredAt || student.registeredAt,
-          lastActive: student.lastActive || existing.lastActive,
+          registeredAt: olderObj.registeredAt || newerObj.registeredAt,
+          updatedAt: newerObj.updatedAt || olderObj.updatedAt || new Date().toISOString(),
+          lastActive: newerObj.lastActive || olderObj.lastActive || new Date().toISOString(),
         };
         map.set(key, merged);
       }
@@ -306,8 +336,9 @@ export const storageService = {
             if (d.exists()) colItems.push(d.data() as Student);
           });
           if (colItems.length > 0) {
-            cachedStudents = colItems;
-            saveLocal(KEYS.STUDENTS, colItems);
+            const merged = mergeStudentLists(cachedStudents, colItems);
+            cachedStudents = merged;
+            saveLocal(KEYS.STUDENTS, merged);
             notifyListeners();
           } else if (snap.empty && cachedStudents.length > 0) {
             // Seed Firestore with initial data only when collection is completely fresh
@@ -418,11 +449,12 @@ export const storageService = {
     return { profile: cachedGuruProfile, credentials: cachedGuruCredentials };
   },
 
-  async fetchLatestStudentsData() {
-    if (!db) return cachedStudents;
-    try {
-      // Query individual student registration records collection from server
-      let indStudents: Student[] = [];
+  async fetchLatestStudentsData(): Promise<Student[]> {
+    let indStudents: Student[] = [];
+    let masterStudents: Student[] = [];
+
+    if (db) {
+      // 1. Fetch individual student records
       try {
         const indSnap = await getDocs(collection(db, 'students_records'));
         indSnap.forEach((d) => {
@@ -431,37 +463,47 @@ export const storageService = {
           }
         });
       } catch (err) {
-        console.warn('[FIRESTORE] Querying students_records fallback:', err);
+        console.warn('[FIRESTORE] Querying students_records warning:', err);
       }
 
-      if (indStudents.length > 0) {
-        cachedStudents = indStudents;
-        saveLocal(KEYS.STUDENTS, indStudents);
+      // 2. Fetch master students collection
+      try {
         const dStudents = getDocStudents();
         if (dStudents) {
-          setDoc(dStudents, sanitizeForFirestore({ items: indStudents })).catch(console.error);
-        }
-        return indStudents;
-      }
-
-      const dStudents = getDocStudents();
-      if (dStudents) {
-        const docSnap = await getDoc(dStudents);
-        if (docSnap.exists() && docSnap.data()?.items) {
-          const remoteDocStudents = docSnap.data().items as Student[];
-          if (remoteDocStudents.length > 0) {
-            cachedStudents = remoteDocStudents;
-            saveLocal(KEYS.STUDENTS, remoteDocStudents);
-            return remoteDocStudents;
+          const docSnap = await getDoc(dStudents);
+          if (docSnap.exists() && docSnap.data()?.items) {
+            masterStudents = docSnap.data().items as Student[];
           }
         }
+      } catch (err) {
+        console.warn('[FIRESTORE] Querying master docStudents warning:', err);
       }
-
-      return cachedStudents;
-    } catch (err) {
-      console.warn('[AUTH DEBUG] Error fetching latest Students data from Firestore:', err);
-      return cachedStudents;
     }
+
+    // 3. Merge everything without loss: local storage + memory cache + master doc + individual records
+    const localStored = getLocal<Student[]>(KEYS.STUDENTS, []);
+    const merged = mergeStudentLists(cachedStudents, localStored, masterStudents, indStudents);
+
+    if (merged.length > 0) {
+      cachedStudents = merged;
+      saveLocal(KEYS.STUDENTS, merged);
+
+      // Re-sync back to Firestore if db is available
+      if (db) {
+        const dStudents = getDocStudents();
+        if (dStudents) {
+          setDoc(dStudents, sanitizeForFirestore({ items: merged })).catch(console.error);
+        }
+        merged.forEach(s => {
+          if (s && s.id) {
+            setDoc(doc(db, 'students_records', s.id), sanitizeForFirestore(s), { merge: true }).catch(console.error);
+          }
+        });
+      }
+      return merged;
+    }
+
+    return cachedStudents;
   },
 
   async addStudent(newStudent: Student): Promise<{ success: boolean; student?: Student; message?: string }> {
@@ -500,15 +542,24 @@ export const storageService = {
         s => !(s.email && s.email.toLowerCase().trim() === normalizedEmail)
       );
 
-      const updatedList = [newStudent, ...cleanList];
+      const timestamp = new Date().toISOString();
+      const studentToSave: Student = {
+        ...newStudent,
+        registeredAt: newStudent.registeredAt || timestamp,
+        updatedAt: timestamp,
+        lastActive: newStudent.lastActive || timestamp,
+        status: newStudent.status || 'pending',
+      };
+
+      const updatedList = [studentToSave, ...cleanList];
       cachedStudents = updatedList;
       saveLocal(KEYS.STUDENTS, updatedList);
       notifyListeners();
 
       // 3. Sync to Firestore in background with timeout protection
       if (db) {
-        const studentDocRef = doc(db, 'students_records', newStudent.id);
-        const syncDocRecord = setDoc(studentDocRef, sanitizeForFirestore(newStudent)).catch(err => console.error('Error syncing student_record:', err));
+        const studentDocRef = doc(db, 'students_records', studentToSave.id);
+        const syncDocRecord = setDoc(studentDocRef, sanitizeForFirestore(studentToSave)).catch(err => console.error('Error syncing student_record:', err));
         const dStudents = getDocStudents();
         const syncDocMaster = dStudents ? setDoc(dStudents, sanitizeForFirestore({ items: updatedList })).catch(err => console.error('Error syncing docStudents:', err)) : Promise.resolve();
 
@@ -520,13 +571,13 @@ export const storageService = {
       }
 
       this.addLog({
-        userName: newStudent.name,
+        userName: studentToSave.name,
         userRole: 'siswa',
         action: 'Pendaftaran Siswa Baru',
-        details: `Mengirimkan berkas pendaftaran akun siswa (${newStudent.schoolName || 'Umum'} - ${newStudent.className || 'Umum'}) - Status: MENUNGGU ACC`,
+        details: `Mengirimkan berkas pendaftaran akun siswa (${studentToSave.schoolName || 'Umum'} - ${studentToSave.className || 'Umum'}) - Status: MENUNGGU ACC`,
       });
 
-      return { success: true, student: newStudent };
+      return { success: true, student: studentToSave };
     } catch (err: any) {
       console.error('Error in addStudent:', err);
       return {
@@ -534,6 +585,92 @@ export const storageService = {
         message: err.message || 'Gagal menyimpan pendaftaran ke server database.'
       };
     }
+  },
+
+  async setStudentStatus(studentId: string, newStatus: StudentStatus): Promise<Student[]> {
+    const timestamp = new Date().toISOString();
+    const currentStudents = this.getStudents();
+    const updated = currentStudents.map(s => {
+      if (s.id === studentId) {
+        return {
+          ...s,
+          status: newStatus,
+          updatedAt: timestamp,
+        };
+      }
+      return s;
+    });
+
+    this.saveStudents(updated);
+
+    const target = updated.find(s => s.id === studentId);
+    if (target) {
+      this.addLog({
+        userName: 'Guru Admin',
+        userRole: 'guru',
+        action: 'Perubahan Status Akun Siswa',
+        details: `Mengubah status akun siswa ${target.name} (${target.email}) menjadi "${newStatus.toUpperCase()}".`,
+      });
+    }
+
+    return updated;
+  },
+
+  async bulkSetStudentStatus(studentIds: string[], newStatus: StudentStatus): Promise<Student[]> {
+    const timestamp = new Date().toISOString();
+    const idSet = new Set(studentIds);
+    const currentStudents = this.getStudents();
+    const updated = currentStudents.map(s => {
+      if (idSet.has(s.id)) {
+        return {
+          ...s,
+          status: newStatus,
+          updatedAt: timestamp,
+        };
+      }
+      return s;
+    });
+
+    this.saveStudents(updated);
+
+    this.addLog({
+      userName: 'Guru Admin',
+      userRole: 'guru',
+      action: 'Aksi Massal Status Siswa',
+      details: `Mengubah status ${studentIds.length} akun siswa menjadi "${newStatus.toUpperCase()}".`,
+    });
+
+    return updated;
+  },
+
+  async approveAllPendingStudents(): Promise<Student[]> {
+    const timestamp = new Date().toISOString();
+    const currentStudents = this.getStudents();
+    let approvedCount = 0;
+    const updated = currentStudents.map(s => {
+      if (s.status === 'pending') {
+        approvedCount++;
+        return {
+          ...s,
+          status: 'disetujui' as StudentStatus,
+          updatedAt: timestamp,
+        };
+      }
+      return s;
+    });
+
+    this.saveStudents(updated);
+
+    if (approvedCount > 0) {
+      this.addLog({
+        userName: 'Guru Admin',
+        userRole: 'guru',
+        action: 'ACC Seluruh Pendaftaran Siswa',
+        details: `Menyetujui (ACC) ${approvedCount} berkas pendaftaran akun siswa baru sekaligus.`,
+      });
+    }
+
+    return updated;
   },
 
   async syncAndSaveStudents(updater: (currentRemoteList: Student[]) => Student[]): Promise<Student[]> {
@@ -560,7 +697,7 @@ export const storageService = {
 
         updatedList.forEach(s => {
           if (s && s.id) {
-            setDoc(doc(db, 'students_records', s.id), sanitizeForFirestore(s)).catch(console.error);
+            setDoc(doc(db, 'students_records', s.id), sanitizeForFirestore(s), { merge: true }).catch(console.error);
           }
         });
       }
@@ -863,7 +1000,7 @@ export const storageService = {
 
       list.forEach(s => {
         if (s && s.id) {
-          setDoc(doc(db, 'students_records', s.id), sanitizeForFirestore(s)).catch(console.error);
+          setDoc(doc(db, 'students_records', s.id), sanitizeForFirestore(s), { merge: true }).catch(console.error);
         }
       });
     }
