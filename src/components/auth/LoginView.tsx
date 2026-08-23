@@ -236,11 +236,15 @@ export const LoginView: React.FC<LoginViewProps> = ({
         }
 
         const expectedPassword = (matchedStudent.password || '123456').trim();
-        const isPasswordOk = !inputPass || inputPass === expectedPassword || inputPass === '123456';
-        console.log('   - Student password check OK?', isPasswordOk);
+        if (!inputPass) {
+          return { error: 'Silakan masukkan kata sandi akun Anda.', student: matchedStudent };
+        }
+
+        const isPasswordOk = inputPass === expectedPassword;
+        console.log('   - Student password check OK?', isPasswordOk, 'Expected:', expectedPassword);
 
         if (!isPasswordOk) {
-          return { error: 'Kata sandi salah. Silakan periksa kembali kata sandi Anda.', student: matchedStudent };
+          return { error: 'Kata sandi salah. Silakan periksa kembali kata sandi akun Anda.', student: matchedStudent };
         }
 
         return {

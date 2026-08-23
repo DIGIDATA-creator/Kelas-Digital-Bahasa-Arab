@@ -283,16 +283,11 @@ export const storageService = {
         unsubs.push(onSnapshot(dMateri, (docSnap) => {
           if (docSnap.exists() && docSnap.data().items) {
             const remoteItems = docSnap.data().items as Materi[];
-            const merged = mergeMateriLists(remoteItems, cachedMateri);
-            cachedMateri = merged;
-            saveLocal(KEYS.MATERI, merged);
-            offlineCacheService.cacheAllMateriAndKosakata(merged).catch(console.warn);
+            cachedMateri = remoteItems;
+            saveLocal(KEYS.MATERI, remoteItems);
+            offlineCacheService.cacheAllMateriAndKosakata(remoteItems).catch(console.warn);
             notifyListeners();
-
-            if (merged.length > remoteItems.length) {
-              setDoc(dMateri, sanitizeForFirestore({ items: merged })).catch(console.error);
-            }
-          } else {
+          } else if (!docSnap.exists() && cachedMateri.length > 0) {
             setDoc(dMateri, sanitizeForFirestore({ items: cachedMateri })).catch(console.error);
           }
         }, (err) => console.warn('Materi snapshot warning:', err)));
@@ -335,22 +330,10 @@ export const storageService = {
           snap.forEach(d => {
             if (d.exists()) colItems.push(d.data() as Student);
           });
-          if (colItems.length > 0) {
-            const merged = mergeStudentLists(cachedStudents, colItems);
-            cachedStudents = merged;
-            saveLocal(KEYS.STUDENTS, merged);
+          if (colItems.length > 0 || snap.size === 0) {
+            cachedStudents = colItems;
+            saveLocal(KEYS.STUDENTS, colItems);
             notifyListeners();
-          } else if (snap.empty && cachedStudents.length > 0) {
-            // Seed Firestore with initial data only when collection is completely fresh
-            cachedStudents.forEach(s => {
-              if (s && s.id) {
-                setDoc(doc(db, 'students_records', s.id), sanitizeForFirestore(s)).catch(console.error);
-              }
-            });
-            const dStudents = getDocStudents();
-            if (dStudents) {
-              setDoc(dStudents, sanitizeForFirestore({ items: cachedStudents })).catch(console.error);
-            }
           }
         }, (err) => console.warn('Students collection snapshot warning:', err)));
       }
@@ -451,10 +434,9 @@ export const storageService = {
 
   async fetchLatestStudentsData(): Promise<Student[]> {
     let indStudents: Student[] = [];
-    let masterStudents: Student[] = [];
 
     if (db) {
-      // 1. Fetch individual student records
+      // 1. Fetch individual student records from Firestore
       try {
         const indSnap = await getDocs(collection(db, 'students_records'));
         indSnap.forEach((d) => {
@@ -465,42 +447,17 @@ export const storageService = {
       } catch (err) {
         console.warn('[FIRESTORE] Querying students_records warning:', err);
       }
-
-      // 2. Fetch master students collection
-      try {
-        const dStudents = getDocStudents();
-        if (dStudents) {
-          const docSnap = await getDoc(dStudents);
-          if (docSnap.exists() && docSnap.data()?.items) {
-            masterStudents = docSnap.data().items as Student[];
-          }
-        }
-      } catch (err) {
-        console.warn('[FIRESTORE] Querying master docStudents warning:', err);
-      }
     }
 
-    // 3. Merge everything without loss: local storage + memory cache + master doc + individual records
-    const localStored = getLocal<Student[]>(KEYS.STUDENTS, []);
-    const merged = mergeStudentLists(cachedStudents, localStored, masterStudents, indStudents);
-
-    if (merged.length > 0) {
-      cachedStudents = merged;
-      saveLocal(KEYS.STUDENTS, merged);
-
-      // Re-sync back to Firestore if db is available
-      if (db) {
-        const dStudents = getDocStudents();
-        if (dStudents) {
-          setDoc(dStudents, sanitizeForFirestore({ items: merged })).catch(console.error);
-        }
-        merged.forEach(s => {
-          if (s && s.id) {
-            setDoc(doc(db, 'students_records', s.id), sanitizeForFirestore(s), { merge: true }).catch(console.error);
-          }
-        });
+    if (indStudents.length > 0) {
+      cachedStudents = indStudents;
+      saveLocal(KEYS.STUDENTS, indStudents);
+      const dStudents = getDocStudents();
+      if (dStudents && db) {
+        setDoc(dStudents, sanitizeForFirestore({ items: indStudents })).catch(console.error);
       }
-      return merged;
+      notifyListeners();
+      return indStudents;
     }
 
     return cachedStudents;
@@ -771,6 +728,38 @@ export const storageService = {
         details: `Menghapus akun siswa (${targetStudent.name} - ${targetStudent.email}) dan membebaskan email untuk pendaftaran ulang.`,
       });
     }
+    notifyListeners();
+    return updated;
+  },
+
+  async bulkDeleteStudents(studentIds: string[]): Promise<Student[]> {
+    if (!studentIds || studentIds.length === 0) return cachedStudents;
+
+    const idsToDelete = new Set(studentIds);
+    const targetStudents = cachedStudents.filter(s => idsToDelete.has(s.id));
+    const updated = cachedStudents.filter(s => !idsToDelete.has(s.id));
+
+    this.saveStudents(updated);
+
+    if (db) {
+      const deletePromises = studentIds.map(id =>
+        deleteDoc(doc(db, 'students_records', id)).catch(err => {
+          console.warn(`[STORAGE] Error deleting doc for student ${id}:`, err);
+        })
+      );
+      await Promise.all(deletePromises);
+    }
+
+    const names = targetStudents.map(s => s.name).slice(0, 5).join(', ');
+    const extraCount = targetStudents.length > 5 ? ` dan ${targetStudents.length - 5} siswa lainnya` : '';
+    this.addLog({
+      userName: 'Guru Admin',
+      userRole: 'guru',
+      action: 'Hapus Massal Siswa',
+      details: `Menghapus massal ${targetStudents.length} data akun siswa (${names}${extraCount}) dan membebaskan email untuk pendaftaran ulang.`,
+    });
+
+    notifyListeners();
     return updated;
   },
 

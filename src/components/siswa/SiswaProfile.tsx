@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Student, Materi } from '../../types';
 import { uploadToSupabaseStorage } from '../../lib/supabase';
 import { DetailedActivityLogView } from '../common/DetailedActivityLogView';
+import { storageService } from '../../services/storage';
 import {
   GraduationCap,
   Award,
@@ -82,13 +83,23 @@ export const SiswaProfile: React.FC<SiswaProfileProps> = ({
         setCredMsg({ type: 'error', text: 'Konfirmasi password baru tidak cocok' });
         return;
       }
+      const existingPw = (currentStudent.password || '123456').trim();
+      if (currentPassword && currentPassword.trim() !== existingPw) {
+        setCredMsg({ type: 'error', text: 'Kata sandi saat ini salah' });
+        return;
+      }
     }
+
+    const nextPassword = newPassword ? newPassword.trim() : (currentStudent.password || '123456').trim();
 
     const updatedStudent: Student = {
       ...currentStudent,
       email: studentEmail.trim(),
-      password: newPassword ? newPassword : (currentStudent.password || '123456'),
+      password: nextPassword,
     };
+
+    // Ensure immediate sync to local storage & Firestore student credentials
+    storageService.updateStudentCredentials(currentStudent.id, newPassword ? nextPassword : undefined, studentEmail.trim());
 
     if (onUpdateStudentProfile) {
       onUpdateStudentProfile(updatedStudent);

@@ -16,6 +16,7 @@ import { KosakataView } from './materi/KosakataView';
 import { MahfudzotView } from './materi/MahfudzotView';
 import { FlashcardModal, FlashcardItem } from '../common/FlashcardModal';
 import { MonitoringPemahamanView } from './materi/MonitoringPemahamanView';
+import { ConfirmationModal } from '../common/ConfirmationModal';
 
 interface MateriManagementProps {
   materiList: Materi[];
@@ -69,6 +70,8 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
     vocabId?: string;
     title: string;
     message: string;
+    itemName?: string;
+    itemDetails?: string[];
   }>({
     isOpen: false,
     type: 'materi',
@@ -83,6 +86,24 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
     (m.arabicTitle && m.arabicTitle.includes(searchTerm)) ||
     (m.description && m.description.toLowerCase().includes(searchTerm.toLowerCase()))
   );
+
+  /**
+   * Explicit filter function that correctly identifies the materi object by ID
+   * and removes it before updating the state and storage.
+   */
+  const filterMateriByIdAndRemove = (targetId: string, currentList: Materi[] = materiList): Materi[] => {
+    const cleanTargetId = String(targetId).trim();
+    if (!cleanTargetId) return currentList;
+    return currentList.filter(item => String(item.id).trim() !== cleanTargetId);
+  };
+
+  /**
+   * Explicit bulk filter function for multiple materi IDs.
+   */
+  const filterMateriByMultipleIdsAndRemove = (targetIds: string[], currentList: Materi[] = materiList): Materi[] => {
+    const idSet = new Set(targetIds.map(id => String(id).trim()));
+    return currentList.filter(item => !idSet.has(String(item.id).trim()));
+  };
 
   const handleOpenAddModal = () => {
     setEditingMateri(null);
@@ -113,18 +134,22 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
       isOpen: true,
       type: 'materi',
       materiId: materi.id,
-      title: `Hapus Materi "${materi.title}"`,
-      message: `Apakah Anda yakin ingin menghapus materi Bab ${materi.babNumber || 1} (${materi.category.toUpperCase()}) ini? Data materi yang dihapus tidak dapat dikembalikan.`,
+      itemName: `${materi.title} (Bab ${materi.babNumber || 1} - ${materi.category.toUpperCase()})`,
+      title: `Hapus Materi ${materi.category.toUpperCase()}`,
+      message: `Apakah Anda yakin ingin menghapus materi Bab ${materi.babNumber || 1} "${materi.title}"? Data target pembelajaran dan lampiran PDF pada materi ini akan dihapus secara permanen.`,
     });
   };
 
   const requestDeleteMultipleMateri = (ids: string[]) => {
+    const targetItems = materiList.filter(m => ids.includes(m.id));
+    const itemNames = targetItems.map(m => `Bab ${m.babNumber || 1}: ${m.title}`);
     setDeleteConfirmation({
       isOpen: true,
       type: 'multiple_materi',
       materiIds: ids,
       title: `Hapus ${ids.length} Materi Terpilih`,
       message: `Apakah Anda yakin ingin menghapus ${ids.length} materi terpilih secara massal? Tindakan ini tidak dapat dibatalkan.`,
+      itemDetails: itemNames.slice(0, 10),
     });
   };
 
@@ -136,8 +161,9 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
       type: 'vocab',
       materiId,
       vocabId,
-      title: `Hapus Kosakata "${vocab?.word || ''}"`,
-      message: `Apakah Anda yakin ingin menghapus kata "${vocab?.word || ''}" (${vocab?.meaning || ''}) dari modul bab ini?`,
+      itemName: `${vocab?.word || ''} - ${vocab?.meaning || ''}`,
+      title: `Hapus Kosakata`,
+      message: `Apakah Anda yakin ingin menghapus kosakata "${vocab?.word || ''}" dari modul Bab ${materi?.babNumber || 1}?`,
     });
   };
 
@@ -145,18 +171,19 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
     if (deleteConfirmation.type === 'clear_all') {
       onSaveMateri([]);
     } else if (deleteConfirmation.type === 'materi' && deleteConfirmation.materiId) {
-      const updated = materiList.filter(m => m.id !== deleteConfirmation.materiId);
+      const updated = filterMateriByIdAndRemove(deleteConfirmation.materiId, materiList);
       onSaveMateri(updated);
     } else if (deleteConfirmation.type === 'multiple_materi' && deleteConfirmation.materiIds) {
-      const idsToDelete = new Set(deleteConfirmation.materiIds);
-      const updated = materiList.filter(m => !idsToDelete.has(m.id));
+      const updated = filterMateriByMultipleIdsAndRemove(deleteConfirmation.materiIds, materiList);
       onSaveMateri(updated);
     } else if (deleteConfirmation.type === 'vocab' && deleteConfirmation.materiId && deleteConfirmation.vocabId) {
+      const cleanMateriId = String(deleteConfirmation.materiId).trim();
+      const cleanVocabId = String(deleteConfirmation.vocabId).trim();
       const updated = materiList.map(m => {
-        if (m.id === deleteConfirmation.materiId) {
+        if (String(m.id).trim() === cleanMateriId) {
           return {
             ...m,
-            vocabularies: (m.vocabularies || []).filter(v => v.id !== deleteConfirmation.vocabId),
+            vocabularies: (m.vocabularies || []).filter(v => String(v.id).trim() !== cleanVocabId),
             updatedAt: new Date().toISOString(),
           };
         }
@@ -681,69 +708,19 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
         </div>
       )}
 
-      {/* Custom Delete Confirmation Modal */}
-      <AnimatePresence>
-        {deleteConfirmation.isOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden space-y-0"
-            >
-              {/* Header */}
-              <div className="bg-rose-600 p-4 text-white flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5 text-rose-100" />
-                  <h3 className="font-extrabold text-sm">{deleteConfirmation.title}</h3>
-                </div>
-                <button
-                  onClick={() => setDeleteConfirmation(prev => ({ ...prev, isOpen: false }))}
-                  className="p-1 hover:bg-rose-700 rounded-lg transition-colors cursor-pointer text-white"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              {/* Body */}
-              <div className="p-5 space-y-4">
-                <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
-                  {deleteConfirmation.message}
-                </p>
-
-                <div className="p-3 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs text-rose-800 dark:text-rose-300 font-bold">
-                  ⚠️ Perhatian: Tindakan penghapusan ini tidak dapat dibatalkan (permanen).
-                </div>
-              </div>
-
-              {/* Footer Actions */}
-              <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setDeleteConfirmation(prev => ({ ...prev, isOpen: false }))}
-                  className="px-4 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 text-xs font-bold rounded-xl transition-colors cursor-pointer"
-                >
-                  Batal
-                </button>
-                <button
-                  type="button"
-                  onClick={handleConfirmDelete}
-                  className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-md transition-colors flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Trash2 size={14} /> Ya, Hapus Sekarang
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Universal Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={deleteConfirmation.isOpen}
+        onClose={() => setDeleteConfirmation(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={handleConfirmDelete}
+        title={deleteConfirmation.title}
+        message={deleteConfirmation.message}
+        itemName={deleteConfirmation.itemName}
+        itemDetails={deleteConfirmation.itemDetails}
+        confirmText="Ya, Hapus Sekarang"
+        cancelText="Batal"
+        variant="danger"
+      />
 
     </div>
   );

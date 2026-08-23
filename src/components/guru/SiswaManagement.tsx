@@ -41,6 +41,7 @@ import { SiswaActivityVisitsView } from './SiswaActivityVisitsView';
 import { ExportNilaiModal } from './ExportNilaiModal';
 import { SiswaCredentialsModal } from './SiswaCredentialsModal';
 import { ImportExcelSiswaModal } from './ImportExcelSiswaModal';
+import { ConfirmationModal } from '../common/ConfirmationModal';
 import { storageService } from '../../services/storage';
 
 export const getTingkatColorTheme = (tingkat?: TingkatType | string, className?: string) => {
@@ -143,13 +144,23 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
   const [syncNotice, setSyncNotice] = useState<string | null>(null);
   const quickExcelInputRef = useRef<HTMLInputElement>(null);
 
-  // Delete student modal state
+  // Confirmation modal state
   const [deleteConfirmation, setDeleteConfirmation] = useState<{
     isOpen: boolean;
+    type?: 'single' | 'bulk' | 'force_clean' | 'clean_rejected' | 'clean_deactivated' | 'approve_all';
     studentId?: string;
     studentName?: string;
+    targetStudent?: Student;
+    title: string;
+    message: string;
+    itemName?: string;
+    itemDetails?: string[];
+    confirmText?: string;
+    variant?: 'danger' | 'warning' | 'info';
   }>({
     isOpen: false,
+    title: '',
+    message: '',
   });
 
   const activeLogs = logs || storageService.getLogs();
@@ -240,17 +251,83 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
   const requestDeleteStudent = (student: Student) => {
     setDeleteConfirmation({
       isOpen: true,
+      type: 'single',
       studentId: student.id,
       studentName: student.name,
+      targetStudent: student,
+      itemName: `${student.name} (${student.email})`,
+      title: 'Konfirmasi Hapus Siswa',
+      message: `Apakah Anda yakin ingin menghapus data siswa "${student.name}"? Seluruh rekaman nilai, progres, dan aktivitas hafalan siswa ini akan dihapus secara permanen.`,
+      confirmText: 'Ya, Hapus Siswa',
+      variant: 'danger',
     });
   };
 
-  const handleConfirmDeleteStudent = () => {
-    if (deleteConfirmation.studentId) {
-      const updated = students.filter(s => s.id !== deleteConfirmation.studentId);
-      onSaveStudents(updated);
+  const handleExecuteConfirmedAction = async () => {
+    setIsSyncing(true);
+    try {
+      if (deleteConfirmation.type === 'single' && deleteConfirmation.studentId) {
+        const cleanTargetId = String(deleteConfirmation.studentId).trim();
+        const studentName = deleteConfirmation.studentName || '';
+        // 1. Explicitly filter the state array
+        const updated = students.filter(s => String(s.id).trim() !== cleanTargetId);
+        // 2. Delete in Firestore & storage
+        await storageService.deleteStudent(cleanTargetId);
+        // 3. Update parent state & trigger Firestore sync
+        onSaveStudents(updated);
+        setSyncNotice(`✅ Data siswa ${studentName} berhasil dihapus.`);
+        setTimeout(() => setSyncNotice(null), 3000);
+      } else if (deleteConfirmation.type === 'bulk') {
+        const count = selectedStudentIds.length;
+        const selectedIdSet = new Set(selectedStudentIds.map(id => String(id).trim()));
+        // 1. Explicitly filter the state array
+        const updated = students.filter(s => !selectedIdSet.has(String(s.id).trim()));
+        // 2. Perform bulk delete in storage & Firestore
+        await storageService.bulkDeleteStudents(selectedStudentIds);
+        // 3. Update parent state & trigger Firestore sync
+        onSaveStudents(updated);
+        setSelectedStudentIds([]);
+        setSyncNotice(`✅ Berhasil menghapus ${count} data siswa dan membebaskan akun untuk pendaftaran ulang!`);
+        setTimeout(() => setSyncNotice(null), 3500);
+      } else if (deleteConfirmation.type === 'force_clean' && deleteConfirmation.studentId) {
+        const targetId = String(deleteConfirmation.studentId).trim();
+        if (onForceCleanStudent) {
+          onForceCleanStudent(targetId);
+        } else {
+          const updated = students.filter(s => String(s.id).trim() !== targetId);
+          await storageService.deleteStudent(targetId);
+          onSaveStudents(updated);
+        }
+        setSyncNotice(`✅ Berkas pendaftaran telah dibersihkan dan email dibebaskan.`);
+        setTimeout(() => setSyncNotice(null), 3000);
+      } else if (deleteConfirmation.type === 'clean_rejected') {
+        const count = rejectedStudents.length;
+        await storageService.cleanRejectedOrInactiveStudents('ditolak');
+        const fresh = storageService.getStudents();
+        onSaveStudents(fresh);
+        setSyncNotice(`✅ Seluruh ${count} berkas siswa ditolak telah dibersihkan.`);
+        setTimeout(() => setSyncNotice(null), 3000);
+      } else if (deleteConfirmation.type === 'clean_deactivated') {
+        const count = deactivatedStudents.length;
+        await storageService.cleanRejectedOrInactiveStudents('nonaktif');
+        const fresh = storageService.getStudents();
+        onSaveStudents(fresh);
+        setSyncNotice(`✅ Seluruh ${count} berkas siswa nonaktif telah dibersihkan.`);
+        setTimeout(() => setSyncNotice(null), 3000);
+      } else if (deleteConfirmation.type === 'approve_all') {
+        const count = pendingStudents.length;
+        const updated = await storageService.approveAllPendingStudents();
+        onSaveStudents(updated);
+        setSyncNotice(`✅ Seluruh ${count} pendaftaran baru berhasil disetujui (ACC)!`);
+        setTimeout(() => setSyncNotice(null), 3000);
+      }
+    } catch (err) {
+      console.error('Error executing delete action:', err);
+      setSyncNotice('❌ Gagal memproses tindakan penghapusan.');
+    } finally {
+      setIsSyncing(false);
+      setDeleteConfirmation(prev => ({ ...prev, isOpen: false }));
     }
-    setDeleteConfirmation({ isOpen: false });
   };
 
   const handleImportExcelSuccess = async (newStudents: Student[]) => {
@@ -502,56 +579,62 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
 
   const handleBulkDelete = () => {
     if (selectedStudentIds.length === 0) return;
-    if (confirm(`Hapus ${selectedStudentIds.length} data siswa terpilih dan bebaskan email mereka untuk pendaftaran baru?`)) {
-      const updated = students.filter(s => !selectedStudentIds.includes(s.id));
-      onSaveStudents(updated);
-      setSelectedStudentIds([]);
-    }
+    const count = selectedStudentIds.length;
+    const selectedStudentsList = students.filter(s => selectedStudentIds.includes(s.id));
+    const selectedNames = selectedStudentsList.map(s => `${s.name} (${s.email})`);
+
+    setDeleteConfirmation({
+      isOpen: true,
+      type: 'bulk',
+      title: `Hapus Massal ${count} Siswa Terpilih`,
+      message: `Apakah Anda yakin ingin menghapus ${count} data siswa terpilih? Seluruh data riwayat, nilai, dan rekam progres akan dibersihkan, serta email akan dibebaskan untuk pendaftaran ulang.`,
+      itemDetails: selectedNames.slice(0, 10),
+      confirmText: `Hapus (${count}) Siswa`,
+      variant: 'danger',
+    });
   };
 
   const handleForceCleanSingle = (std: Student) => {
-    if (confirm(`Bersihkan berkas dan bebaskan email "${std.email}" milik siswa "${std.name}" agar dapat digunakan kembali untuk mendaftar?`)) {
-      if (onForceCleanStudent) {
-        onForceCleanStudent(std.id);
-      } else {
-        const updated = students.filter(s => s.id !== std.id);
-        onSaveStudents(updated);
-      }
-    }
+    setDeleteConfirmation({
+      isOpen: true,
+      type: 'force_clean',
+      studentId: std.id,
+      studentName: std.name,
+      targetStudent: std,
+      itemName: `${std.name} (${std.email})`,
+      title: 'Bersihkan Berkas Siswa',
+      message: `Apakah Anda ingin membersihkan berkas dan membebaskan email "${std.email}" milik siswa "${std.name}" agar dapat digunakan kembali untuk mendaftar?`,
+      confirmText: 'Bersihkan & Bebaskan',
+      variant: 'warning',
+    });
   };
 
-  const handleCleanAllRejected = async () => {
-    if (confirm(`Bersihkan seluruh ${rejectedStudents.length} berkas siswa yang ditolak dan bebaskan email mereka?`)) {
-      setIsSyncing(true);
-      try {
-        await storageService.cleanRejectedOrInactiveStudents('ditolak');
-        const fresh = storageService.getStudents();
-        onSaveStudents(fresh);
-        setSyncNotice(`✅ Seluruh ${rejectedStudents.length} berkas siswa ditolak telah dibersihkan.`);
-        setTimeout(() => setSyncNotice(null), 3000);
-      } catch (err) {
-        console.error('Error cleaning rejected students:', err);
-      } finally {
-        setIsSyncing(false);
-      }
-    }
+  const handleCleanAllRejected = () => {
+    if (rejectedStudents.length === 0) return;
+    const itemNames = rejectedStudents.map(s => `${s.name} (${s.email})`);
+    setDeleteConfirmation({
+      isOpen: true,
+      type: 'clean_rejected',
+      title: `Bersihkan ${rejectedStudents.length} Berkas Siswa Ditolak`,
+      message: `Apakah Anda yakin ingin membersihkan seluruh berkas siswa yang berstatus Ditolak? Email mereka akan dibebaskan untuk pendaftaran baru.`,
+      itemDetails: itemNames.slice(0, 10),
+      confirmText: `Bersihkan (${rejectedStudents.length}) Berkas`,
+      variant: 'warning',
+    });
   };
 
-  const handleCleanAllDeactivated = async () => {
-    if (confirm(`Bersihkan seluruh ${deactivatedStudents.length} berkas siswa yang dinonaktifkan?`)) {
-      setIsSyncing(true);
-      try {
-        await storageService.cleanRejectedOrInactiveStudents('nonaktif');
-        const fresh = storageService.getStudents();
-        onSaveStudents(fresh);
-        setSyncNotice(`✅ Seluruh berkas siswa nonaktif telah dibersihkan.`);
-        setTimeout(() => setSyncNotice(null), 3000);
-      } catch (err) {
-        console.error('Error cleaning deactivated students:', err);
-      } finally {
-        setIsSyncing(false);
-      }
-    }
+  const handleCleanAllDeactivated = () => {
+    if (deactivatedStudents.length === 0) return;
+    const itemNames = deactivatedStudents.map(s => `${s.name} (${s.email})`);
+    setDeleteConfirmation({
+      isOpen: true,
+      type: 'clean_deactivated',
+      title: `Bersihkan ${deactivatedStudents.length} Berkas Akun Nonaktif`,
+      message: `Apakah Anda yakin ingin membersihkan seluruh berkas siswa yang dinonaktifkan? Tindakan ini akan menghapus data dan membebaskan email mereka.`,
+      itemDetails: itemNames.slice(0, 10),
+      confirmText: `Bersihkan (${deactivatedStudents.length}) Berkas`,
+      variant: 'warning',
+    });
   };
 
   const handleSelectAllInSchool = (schoolName: string) => {
@@ -586,20 +669,18 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
     }
   };
 
-  const handleApproveAllPending = async () => {
-    if (confirm(`Setujui (ACC) seluruh ${pendingStudents.length} siswa pendaftar baru?`)) {
-      setIsSyncing(true);
-      try {
-        const updated = await storageService.approveAllPendingStudents();
-        onSaveStudents(updated);
-        setSyncNotice(`✅ Seluruh pendaftaran berhasil disetujui (ACC)!`);
-        setTimeout(() => setSyncNotice(null), 3000);
-      } catch (err) {
-        console.error('Error approving students:', err);
-      } finally {
-        setIsSyncing(false);
-      }
-    }
+  const handleApproveAllPending = () => {
+    if (pendingStudents.length === 0) return;
+    const itemNames = pendingStudents.map(s => `${s.name} (${s.email})`);
+    setDeleteConfirmation({
+      isOpen: true,
+      type: 'approve_all',
+      title: `Setujui (ACC) ${pendingStudents.length} Pendaftar Baru`,
+      message: `Apakah Anda yakin ingin menyetujui (ACC) sekaligus seluruh pendaftaran siswa baru yang berstatus Pending?`,
+      itemDetails: itemNames.slice(0, 10),
+      confirmText: `Setujui Semua (${pendingStudents.length})`,
+      variant: 'info',
+    });
   };
 
   const handleSaveStudentFromForm = async (data: {
@@ -2119,64 +2200,20 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
         )}
       </AnimatePresence>
 
-      {/* MODAL 3: DELETE CONFIRMATION SISWA */}
-      <AnimatePresence>
-        {deleteConfirmation.isOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50"
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-slate-100 my-auto space-y-0"
-            >
-              <div className="p-4 bg-rose-600 text-white flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle size={20} className="text-rose-100" />
-                  <h3 className="font-extrabold text-sm">Konfirmasi Hapus Siswa</h3>
-                </div>
-                <button
-                  onClick={() => setDeleteConfirmation({ isOpen: false })}
-                  className="p-1 hover:bg-rose-700 rounded-lg transition-colors cursor-pointer text-white"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              <div className="p-5 space-y-3">
-                <p className="text-xs text-slate-700 font-medium">
-                  Apakah Anda yakin ingin menghapus data siswa <strong className="text-slate-900 font-bold">{deleteConfirmation.studentName}</strong>?
-                </p>
-                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 font-semibold">
-                  ⚠️ Perhatian: Data progres dan riwayat siswa ini akan terhapus.
-                </div>
-              </div>
-
-              <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setDeleteConfirmation({ isOpen: false })}
-                  className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-xl cursor-pointer"
-                >
-                  Batal
-                </button>
-                <button
-                  type="button"
-                  onClick={handleConfirmDeleteStudent}
-                  className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-md cursor-pointer flex items-center gap-1.5"
-                >
-                  <Trash2 size={14} /> Ya, Hapus Siswa
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
+      {/* Universal Confirmation Modal for Single/Bulk/Clean Student Actions */}
+      <ConfirmationModal
+        isOpen={deleteConfirmation.isOpen}
+        onClose={() => setDeleteConfirmation(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={handleExecuteConfirmedAction}
+        title={deleteConfirmation.title}
+        message={deleteConfirmation.message}
+        itemName={deleteConfirmation.itemName}
+        itemDetails={deleteConfirmation.itemDetails}
+        confirmText={deleteConfirmation.confirmText || 'Ya, Hapus Sekarang'}
+        cancelText="Batal"
+        variant={deleteConfirmation.variant || 'danger'}
+        isLoading={isSyncing}
+      />
         {/* Modal Ceklis Hafalan Setoran Offline */}
         <CeklisHafalanModal
           isOpen={!!studentForHafalanChecklist}
@@ -2232,7 +2269,6 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
           initialSelectedStudentId={selectedStudentForCredentialsId}
           onSwitchToStudentSession={onSwitchToStudentSession}
         />
-      </AnimatePresence>
     </div>
   );
 };

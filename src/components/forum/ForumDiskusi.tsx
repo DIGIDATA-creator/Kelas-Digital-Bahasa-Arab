@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ForumPost, ForumReply, Role, Student, Materi, CategoryType } from '../../types';
 import { MessageSquare, Pin, ThumbsUp, CheckCircle, Shield, GraduationCap, Plus, Search, Filter, Trash2, Send, Tag, BookOpen, Clock, AlertCircle, ArrowLeft } from 'lucide-react';
 import { storageService } from '../../services/storage';
+import { ConfirmationModal } from '../common/ConfirmationModal';
 
 interface ForumDiskusiProps {
   currentRole: Role;
@@ -30,6 +31,10 @@ export const ForumDiskusi: React.FC<ForumDiskusiProps> = ({
 
   // Reply Form State
   const [replyContent, setReplyContent] = useState('');
+
+  // Delete confirmation state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [postToDelete, setPostToDelete] = useState<ForumPost | null>(null);
 
   // Filter posts
   const filteredPosts = forumPosts.filter(post => {
@@ -305,12 +310,10 @@ export const ForumDiskusi: React.FC<ForumDiskusiProps> = ({
                 {(currentRole === 'guru' || selectedPost.authorId === currentUserId) && (
                   <button
                     onClick={() => {
-                      if (confirm('Apakah Anda yakin ingin menghapus postingan diskusi ini?')) {
-                        storageService.deleteForumPost(selectedPost.id);
-                        setSelectedPostId(null);
-                      }
+                      setPostToDelete(selectedPost);
+                      setIsDeleteModalOpen(true);
                     }}
-                    className="p-2 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-xl transition-colors"
+                    className="p-2 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-xl transition-colors cursor-pointer"
                     title="Hapus Diskusi"
                   >
                     <Trash2 size={18} />
@@ -667,6 +670,31 @@ export const ForumDiskusi: React.FC<ForumDiskusiProps> = ({
           </div>
         </div>
       )}
+
+      {/* Universal Confirmation Modal for Forum Post Deletion */}
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setPostToDelete(null);
+        }}
+        onConfirm={() => {
+          if (postToDelete) {
+            storageService.deleteForumPost(postToDelete.id);
+            if (selectedPostId === postToDelete.id) {
+              setSelectedPostId(null);
+            }
+          }
+          setIsDeleteModalOpen(false);
+          setPostToDelete(null);
+        }}
+        title="Hapus Topik Diskusi"
+        message="Apakah Anda yakin ingin menghapus topik diskusi ini beserta seluruh tanggapan di dalamnya?"
+        itemName={postToDelete?.title}
+        confirmText="Ya, Hapus Diskusi"
+        cancelText="Batal"
+        variant="danger"
+      />
 
     </div>
   );

@@ -3,6 +3,7 @@ import { Penilaian, Question, AssessmentType, CategoryType, Student } from '../.
 import { Plus, Edit3, Trash2, Clock, Award, FileCheck2, CheckCircle2, HelpCircle, X, Sparkles, AlertCircle, FileSpreadsheet, Upload, Shuffle, Eye, Calendar, Layers, Hash } from 'lucide-react';
 import { notificationService } from '../../services/notificationService';
 import { ExportNilaiModal } from './ExportNilaiModal';
+import { ConfirmationModal } from '../common/ConfirmationModal';
 
 interface PenilaianManagementProps {
   penilaianList: Penilaian[];
@@ -27,6 +28,15 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
   // Bulk Sheet Upload Modal State
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [bulkSheetText, setBulkSheetText] = useState('');
+
+  // Delete confirmation modal state
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{
+    isOpen: boolean;
+    item?: Penilaian | null;
+  }>({
+    isOpen: false,
+    item: null,
+  });
 
   const [formData, setFormData] = useState({
     code: '',
@@ -111,10 +121,20 @@ export const PenilaianManagement: React.FC<PenilaianManagementProps> = ({
   };
 
   const handleDelete = (id: string) => {
-    if (confirm('Apakah Anda yakin ingin menghapus paket latihan/penilaian ini?')) {
-      const updated = penilaianList.filter(p => p.id !== id);
+    const targetItem = penilaianList.find(p => p.id === id);
+    setDeleteConfirmation({
+      isOpen: true,
+      item: targetItem || null,
+    });
+  };
+
+  const handleConfirmDelete = () => {
+    if (deleteConfirmation.item) {
+      const cleanTargetId = String(deleteConfirmation.item.id).trim();
+      const updated = penilaianList.filter(p => String(p.id).trim() !== cleanTargetId);
       onSavePenilaian(updated);
     }
+    setDeleteConfirmation({ isOpen: false, item: null });
   };
 
   const handleAddQuestion = () => {
@@ -815,6 +835,19 @@ Arti kata masjid | مَا مَعْنَى الْمَسْجِدِ؟ | Rumah | Masj
         onClose={() => setShowExportModal(false)}
         students={students}
         penilaianList={penilaianList}
+      />
+
+      {/* Confirmation Modal for Penilaian Deletion */}
+      <ConfirmationModal
+        isOpen={deleteConfirmation.isOpen}
+        onClose={() => setDeleteConfirmation({ isOpen: false, item: null })}
+        onConfirm={handleConfirmDelete}
+        title="Konfirmasi Hapus Paket Penilaian"
+        message="Apakah Anda yakin ingin menghapus paket latihan/penilaian ini? Semua butir soal yang ada di dalam paket ini akan dihapus secara permanen."
+        itemName={deleteConfirmation.item ? `${deleteConfirmation.item.code} - ${deleteConfirmation.item.title}` : undefined}
+        confirmText="Ya, Hapus Paket"
+        cancelText="Batal"
+        variant="danger"
       />
 
     </div>
