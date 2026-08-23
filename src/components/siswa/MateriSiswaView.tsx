@@ -62,21 +62,28 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
     const key = `${materiId}_target_${targetIdx}`;
     const currentSelf = currentStudent.hafalanProgress?.selfQowaidIds || {};
     const updatedSelf = { ...currentSelf, [key]: !currentSelf[key] };
+    const nowIso = new Date().toISOString();
 
     const updatedStudent: Student = {
       ...currentStudent,
+      updatedAt: nowIso,
+      lastActive: nowIso,
       hafalanProgress: {
         ...currentStudent.hafalanProgress,
         selfQowaidIds: updatedSelf,
       },
     };
 
+    // Update in memory and storage immediately
+    const allStudents = storageService.getStudents();
+    const updatedList = allStudents.map(s => s.id === updatedStudent.id ? updatedStudent : s);
+    if (!updatedList.some(s => s.id === updatedStudent.id)) {
+      updatedList.push(updatedStudent);
+    }
+    storageService.saveStudents(updatedList);
+
     if (onUpdateStudent) {
       onUpdateStudent(updatedStudent);
-    } else {
-      const allStudents = storageService.getStudents();
-      const updatedList = allStudents.map(s => s.id === updatedStudent.id ? updatedStudent : s);
-      storageService.saveStudents(updatedList);
     }
   };
 
@@ -84,84 +91,108 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
   const handleToggleSelfKosakata = (vocabId: string) => {
     const currentSelf = currentStudent.hafalanProgress?.selfKosakataIds || {};
     const updatedSelf = { ...currentSelf, [vocabId]: !currentSelf[vocabId] };
+    const nowIso = new Date().toISOString();
 
     const updatedStudent: Student = {
       ...currentStudent,
+      updatedAt: nowIso,
+      lastActive: nowIso,
       hafalanProgress: {
         ...currentStudent.hafalanProgress,
         selfKosakataIds: updatedSelf,
       },
     };
 
+    const allStudents = storageService.getStudents();
+    const updatedList = allStudents.map(s => s.id === updatedStudent.id ? updatedStudent : s);
+    if (!updatedList.some(s => s.id === updatedStudent.id)) {
+      updatedList.push(updatedStudent);
+    }
+    storageService.saveStudents(updatedList);
+
     if (onUpdateStudent) {
       onUpdateStudent(updatedStudent);
-    } else {
-      const allStudents = storageService.getStudents();
-      const updatedList = allStudents.map(s => s.id === updatedStudent.id ? updatedStudent : s);
-      storageService.saveStudents(updatedList);
     }
   };
 
   const handleToggleSelfMahfudzot = (materiId: string) => {
     const currentSelf = currentStudent.hafalanProgress?.selfMahfudzotIds || {};
     const updatedSelf = { ...currentSelf, [materiId]: !currentSelf[materiId] };
+    const nowIso = new Date().toISOString();
 
     const updatedStudent: Student = {
       ...currentStudent,
+      updatedAt: nowIso,
+      lastActive: nowIso,
       hafalanProgress: {
         ...currentStudent.hafalanProgress,
         selfMahfudzotIds: updatedSelf,
       },
     };
 
+    const allStudents = storageService.getStudents();
+    const updatedList = allStudents.map(s => s.id === updatedStudent.id ? updatedStudent : s);
+    if (!updatedList.some(s => s.id === updatedStudent.id)) {
+      updatedList.push(updatedStudent);
+    }
+    storageService.saveStudents(updatedList);
+
     if (onUpdateStudent) {
       onUpdateStudent(updatedStudent);
-    } else {
-      const allStudents = storageService.getStudents();
-      const updatedList = allStudents.map(s => s.id === updatedStudent.id ? updatedStudent : s);
-      storageService.saveStudents(updatedList);
     }
   };
 
   const handleToggleSelfQowaid = (materiId: string) => {
     const currentSelf = currentStudent.hafalanProgress?.selfQowaidIds || {};
     const updatedSelf = { ...currentSelf, [materiId]: !currentSelf[materiId] };
+    const nowIso = new Date().toISOString();
 
     const updatedStudent: Student = {
       ...currentStudent,
+      updatedAt: nowIso,
+      lastActive: nowIso,
       hafalanProgress: {
         ...currentStudent.hafalanProgress,
         selfQowaidIds: updatedSelf,
       },
     };
 
+    const allStudents = storageService.getStudents();
+    const updatedList = allStudents.map(s => s.id === updatedStudent.id ? updatedStudent : s);
+    if (!updatedList.some(s => s.id === updatedStudent.id)) {
+      updatedList.push(updatedStudent);
+    }
+    storageService.saveStudents(updatedList);
+
     if (onUpdateStudent) {
       onUpdateStudent(updatedStudent);
-    } else {
-      const allStudents = storageService.getStudents();
-      const updatedList = allStudents.map(s => s.id === updatedStudent.id ? updatedStudent : s);
-      storageService.saveStudents(updatedList);
     }
   };
 
   const handleToggleSelfHiwar = (materiId: string) => {
     const currentSelf = currentStudent.hafalanProgress?.selfHiwarIds || {};
     const updatedSelf = { ...currentSelf, [materiId]: !currentSelf[materiId] };
+    const nowIso = new Date().toISOString();
 
     const updatedStudent: Student = {
       ...currentStudent,
+      updatedAt: nowIso,
+      lastActive: nowIso,
       hafalanProgress: {
         ...currentStudent.hafalanProgress,
         selfHiwarIds: updatedSelf,
       },
     };
 
+    const allStudents = storageService.getStudents();
+    const updatedList = allStudents.map(s => s.id === updatedStudent.id ? updatedStudent : s);
+    if (!updatedList.some(s => s.id === updatedStudent.id)) {
+      updatedList.push(updatedStudent);
+    }
+    storageService.saveStudents(updatedList);
+
     if (onUpdateStudent) {
       onUpdateStudent(updatedStudent);
-    } else {
-      const allStudents = storageService.getStudents();
-      const updatedList = allStudents.map(s => s.id === updatedStudent.id ? updatedStudent : s);
-      storageService.saveStudents(updatedList);
     }
   };
   

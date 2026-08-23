@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Materi } from '../../../types';
 import { storageService } from '../../../services/storage';
-import { X, Plus, Trash2, UploadCloud, Loader2, Save, Video } from 'lucide-react';
+import { X, Plus, Trash2, UploadCloud, Loader2, Save, Video, ChevronUp, ChevronDown, Pencil, Check } from 'lucide-react';
 import { uploadToSupabaseStorage } from '../../../lib/supabase';
 
 interface QowaidFormModalProps {
@@ -40,6 +40,8 @@ export const QowaidFormModal: React.FC<QowaidFormModalProps> = ({
       : ['Memahami kaidah qowaid', 'Dapat mengidentifikasi contoh dalam kalimat']
   );
   const [newTargetInput, setNewTargetInput] = useState('');
+  const [editingTargetIdx, setEditingTargetIdx] = useState<number | null>(null);
+  const [editingTargetText, setEditingTargetText] = useState<string>('');
   const [content, setContent] = useState(editingMateri?.content || '');
   const [videoUrl, setVideoUrl] = useState(editingMateri?.videoUrl || '');
   const [pdfFileName, setPdfFileName] = useState(editingMateri?.pdfFileName || '');
@@ -48,6 +50,8 @@ export const QowaidFormModal: React.FC<QowaidFormModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
+      setEditingTargetIdx(null);
+      setEditingTargetText('');
       if (editingMateri) {
         setBabNumber(editingMateri.babNumber || 1);
         setTitle(editingMateri.title || '');
@@ -82,7 +86,61 @@ export const QowaidFormModal: React.FC<QowaidFormModalProps> = ({
   };
 
   const handleRemoveTarget = (index: number) => {
+    if (editingTargetIdx === index) {
+      setEditingTargetIdx(null);
+      setEditingTargetText('');
+    }
     setLearningTargets(learningTargets.filter((_, i) => i !== index));
+  };
+
+  const handleStartEditTarget = (index: number) => {
+    setEditingTargetIdx(index);
+    setEditingTargetText(learningTargets[index] || '');
+  };
+
+  const handleSaveEditTarget = (index: number) => {
+    if (editingTargetText.trim()) {
+      const updated = [...learningTargets];
+      updated[index] = editingTargetText.trim();
+      setLearningTargets(updated);
+    }
+    setEditingTargetIdx(null);
+    setEditingTargetText('');
+  };
+
+  const handleCancelEditTarget = () => {
+    setEditingTargetIdx(null);
+    setEditingTargetText('');
+  };
+
+  const handleMoveTargetUp = (index: number) => {
+    if (index <= 0) return;
+    const updated = [...learningTargets];
+    const temp = updated[index - 1];
+    updated[index - 1] = updated[index];
+    updated[index] = temp;
+    setLearningTargets(updated);
+
+    if (editingTargetIdx === index) {
+      setEditingTargetIdx(index - 1);
+    } else if (editingTargetIdx === index - 1) {
+      setEditingTargetIdx(index);
+    }
+  };
+
+  const handleMoveTargetDown = (index: number) => {
+    if (index >= learningTargets.length - 1) return;
+    const updated = [...learningTargets];
+    const temp = updated[index + 1];
+    updated[index + 1] = updated[index];
+    updated[index] = temp;
+    setLearningTargets(updated);
+
+    if (editingTargetIdx === index) {
+      setEditingTargetIdx(index + 1);
+    } else if (editingTargetIdx === index + 1) {
+      setEditingTargetIdx(index);
+    }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -239,22 +297,116 @@ export const QowaidFormModal: React.FC<QowaidFormModalProps> = ({
             />
           </div>
 
-          {/* Target Pembelajaran (Multi Input) */}
+          {/* Target Pembelajaran (Multi Input with Edit & Reorder) */}
           <div>
-            <label className="block font-bold text-slate-700 mb-1">
-              Target Pembelajaran
-            </label>
-            <div className="space-y-2 mb-2">
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block font-bold text-slate-700 text-xs sm:text-sm">
+                Target Pembelajaran / Poin Kaidah
+              </label>
+              <span className="text-[11px] text-slate-500 font-medium">
+                {learningTargets.length} Poin Target (Dapat diedit & diubah urutannya)
+              </span>
+            </div>
+
+            <div className="space-y-2 mb-2.5">
               {learningTargets.map((target, idx) => (
-                <div key={idx} className="flex items-center justify-between p-2.5 bg-emerald-50/60 border border-emerald-200 rounded-xl">
-                  <span className="font-semibold text-emerald-900">{idx + 1}. {target}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveTarget(idx)}
-                    className="p-1 text-slate-400 hover:text-rose-600 rounded-lg"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                <div key={idx}>
+                  {editingTargetIdx === idx ? (
+                    <div className="p-2.5 bg-emerald-100/80 border border-emerald-400 rounded-xl space-y-2 shadow-xs animate-in fade-in duration-150">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 bg-emerald-800 text-white rounded-md text-[11px] font-black shrink-0">
+                          #{idx + 1}
+                        </span>
+                        <input
+                          type="text"
+                          autoFocus
+                          value={editingTargetText}
+                          onChange={(e) => setEditingTargetText(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleSaveEditTarget(idx);
+                            } else if (e.key === 'Escape') {
+                              handleCancelEditTarget();
+                            }
+                          }}
+                          className="flex-1 px-3 py-1.5 bg-white border border-emerald-400 rounded-lg text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-emerald-500 text-emerald-950"
+                          placeholder="Perbaiki redaksi target materi..."
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleSaveEditTarget(idx)}
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer shrink-0 transition-colors"
+                          title="Simpan Redaksi Baru"
+                        >
+                          <Check size={14} /> Simpan
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCancelEditTarget}
+                          className="px-2 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold cursor-pointer shrink-0 transition-colors"
+                          title="Batal Edit"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="group flex items-center justify-between gap-2 p-2.5 bg-emerald-50/70 hover:bg-emerald-50 border border-emerald-200/90 rounded-xl transition-all shadow-2xs">
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <span className="w-6 h-6 rounded-lg bg-emerald-700 text-white flex items-center justify-center text-xs font-black shrink-0 shadow-2xs">
+                          {idx + 1}
+                        </span>
+                        <span className="font-semibold text-emerald-950 text-xs leading-snug break-words">
+                          {target}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        {/* Move Up */}
+                        <button
+                          type="button"
+                          onClick={() => handleMoveTargetUp(idx)}
+                          disabled={idx === 0}
+                          className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-100/70 disabled:opacity-25 disabled:hover:bg-transparent rounded-lg cursor-pointer transition-colors"
+                          title={idx === 0 ? 'Sudah di posisi teratas' : 'Pindah Urutan ke Atas'}
+                        >
+                          <ChevronUp size={16} />
+                        </button>
+
+                        {/* Move Down */}
+                        <button
+                          type="button"
+                          onClick={() => handleMoveTargetDown(idx)}
+                          disabled={idx === learningTargets.length - 1}
+                          className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-100/70 disabled:opacity-25 disabled:hover:bg-transparent rounded-lg cursor-pointer transition-colors"
+                          title={idx === learningTargets.length - 1 ? 'Sudah di posisi terbawah' : 'Pindah Urutan ke Bawah'}
+                        >
+                          <ChevronDown size={16} />
+                        </button>
+
+                        {/* Edit Redaksi */}
+                        <button
+                          type="button"
+                          onClick={() => handleStartEditTarget(idx)}
+                          className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg cursor-pointer transition-colors"
+                          title="Edit Redaksi Target (Tanpa Perlu Hapus)"
+                        >
+                          <Pencil size={14} />
+                        </button>
+
+                        {/* Delete */}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveTarget(idx)}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer transition-colors"
+                          title="Hapus Target"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -264,8 +416,8 @@ export const QowaidFormModal: React.FC<QowaidFormModalProps> = ({
                 type="text"
                 value={newTargetInput}
                 onChange={(e) => setNewTargetInput(e.target.value)}
-                placeholder="Tambah poin target pembelajaran..."
-                className="flex-1 px-3 py-2 border border-slate-300 rounded-xl focus:border-emerald-500"
+                placeholder="Ketik target pembelajaran baru lalu tekan Tambah / Enter..."
+                className="flex-1 px-3 py-2 border border-slate-300 rounded-xl focus:border-emerald-500 text-xs font-medium"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
@@ -276,9 +428,9 @@ export const QowaidFormModal: React.FC<QowaidFormModalProps> = ({
               <button
                 type="button"
                 onClick={handleAddTarget}
-                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl flex items-center gap-1 shrink-0"
+                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shrink-0 shadow-xs cursor-pointer transition-colors"
               >
-                <Plus size={16} /> Tambah Target
+                <Plus size={15} /> Tambah Target
               </button>
             </div>
           </div>

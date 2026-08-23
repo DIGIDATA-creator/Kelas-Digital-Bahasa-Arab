@@ -587,6 +587,47 @@ export const storageService = {
     }
   },
 
+  async bulkAddStudents(newStudents: Student[]): Promise<{ success: boolean; count: number; updatedList: Student[] }> {
+    try {
+      const timestamp = new Date().toISOString();
+      const currentStudents = this.getStudents();
+      const existingEmailSet = new Set(currentStudents.map(s => s.email?.toLowerCase().trim()));
+
+      const validNew: Student[] = [];
+      newStudents.forEach(s => {
+        const email = s.email?.toLowerCase().trim();
+        if (email && !existingEmailSet.has(email)) {
+          existingEmailSet.add(email);
+          validNew.push({
+            ...s,
+            registeredAt: s.registeredAt || timestamp,
+            updatedAt: timestamp,
+            lastActive: timestamp,
+          });
+        }
+      });
+
+      if (validNew.length === 0) {
+        return { success: true, count: 0, updatedList: currentStudents };
+      }
+
+      const updatedList = [...validNew, ...currentStudents];
+      this.saveStudents(updatedList);
+
+      this.addLog({
+        userName: 'Guru Admin',
+        userRole: 'guru',
+        action: 'Import Massal Siswa Excel',
+        details: `Berhasil mengimpor ${validNew.length} akun siswa baru dari file Excel/Spreadsheet.`,
+      });
+
+      return { success: true, count: validNew.length, updatedList };
+    } catch (err: any) {
+      console.error('Error in bulkAddStudents:', err);
+      return { success: false, count: 0, updatedList: this.getStudents() };
+    }
+  },
+
   async setStudentStatus(studentId: string, newStatus: StudentStatus): Promise<Student[]> {
     const timestamp = new Date().toISOString();
     const currentStudents = this.getStudents();

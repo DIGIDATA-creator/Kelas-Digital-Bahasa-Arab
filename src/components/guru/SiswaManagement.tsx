@@ -38,6 +38,7 @@ import { CeklisHafalanModal } from './CeklisHafalanModal';
 import { SiswaActivityVisitsView } from './SiswaActivityVisitsView';
 import { ExportNilaiModal } from './ExportNilaiModal';
 import { SiswaCredentialsModal } from './SiswaCredentialsModal';
+import { ImportExcelSiswaModal } from './ImportExcelSiswaModal';
 import { storageService } from '../../services/storage';
 
 export const getTingkatColorTheme = (tingkat?: TingkatType | string, className?: string) => {
@@ -172,6 +173,7 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
 
   // Form modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isExcelImportModalOpen, setIsExcelImportModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
 
   // Accordion collapsed state for grouped view
@@ -251,6 +253,25 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
       onSaveStudents(updated);
     }
     setDeleteConfirmation({ isOpen: false });
+  };
+
+  const handleImportExcelSuccess = async (newStudents: Student[]) => {
+    setIsSyncing(true);
+    try {
+      const result = await storageService.bulkAddStudents(newStudents);
+      onSaveStudents(result.updatedList);
+      setSyncNotice(`✅ Berhasil mengimpor dan menyimpan ${result.count} siswa baru dari file Excel.`);
+      setTimeout(() => setSyncNotice(null), 5000);
+    } catch (err: any) {
+      console.error('Error in handleImportExcelSuccess:', err);
+      // Fallback
+      const updated = [...newStudents, ...students];
+      onSaveStudents(updated);
+      setSyncNotice(`✅ Berhasil menambahkan ${newStudents.length} siswa baru.`);
+      setTimeout(() => setSyncNotice(null), 5000);
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const handleSetStudentStatus = async (id: string, newStatus: StudentStatus) => {
@@ -558,6 +579,13 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
             className="px-3.5 py-2.5 bg-slate-950 hover:bg-slate-900 text-emerald-300 border border-emerald-500/40 rounded-xl font-extrabold text-xs shadow-md flex items-center gap-1.5 transition-all cursor-pointer"
           >
             <KeyRound size={16} className="text-emerald-400" /> Akses Akun & Password Siswa
+          </button>
+
+          <button
+            onClick={() => setIsExcelImportModalOpen(true)}
+            className="px-3.5 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-emerald-100 border border-emerald-600/50 rounded-xl font-extrabold text-xs shadow-md flex items-center gap-1.5 transition-all cursor-pointer"
+          >
+            <FileSpreadsheet size={16} className="text-emerald-300" /> Import Excel Siswa
           </button>
 
           <button
@@ -1718,28 +1746,52 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18 }}
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50"
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 z-50 overflow-y-auto"
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-slate-100 my-auto"
+              className="bg-white rounded-3xl max-w-xl w-full overflow-hidden shadow-2xl border border-slate-100 my-auto max-h-[92vh] flex flex-col"
             >
-              <div className="p-5 bg-gradient-to-r from-emerald-800 to-teal-900 text-white flex items-center justify-between">
-                <h3 className="font-extrabold text-base">
-                  {editingStudent ? 'Edit Data Siswa' : 'Tambah Siswa Baru'}
-                </h3>
+              <div className="p-4 sm:p-5 bg-gradient-to-r from-emerald-800 to-teal-900 text-white flex items-center justify-between shrink-0 shadow-sm">
+                <div>
+                  <h3 className="font-extrabold text-base sm:text-lg">
+                    {editingStudent ? 'Edit Data Siswa' : 'Tambah Siswa Baru'}
+                  </h3>
+                  <p className="text-xs text-emerald-200">
+                    {editingStudent ? 'Perbarui informasi data siswa' : 'Isi formulir pendaftaran akun siswa baru'}
+                  </p>
+                </div>
                 <button
                   onClick={() => setIsModalOpen(false)}
-                  className="text-slate-200 hover:text-white p-1 rounded-lg cursor-pointer"
+                  className="text-slate-200 hover:text-white p-1.5 rounded-xl hover:bg-white/10 cursor-pointer transition-colors"
                 >
                   <X size={20} />
                 </button>
               </div>
 
-              <div className="p-5">
+              {!editingStudent && (
+                <div className="p-3 bg-emerald-50/90 border-b border-emerald-200/80 flex items-center justify-between gap-3 shrink-0">
+                  <div className="flex items-center gap-2 text-xs text-emerald-950 font-bold">
+                    <FileSpreadsheet size={16} className="text-emerald-700 shrink-0" />
+                    <span>Punya banyak siswa sekaligus?</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsModalOpen(false);
+                      setIsExcelImportModalOpen(true);
+                    }}
+                    className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs rounded-xl shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
+                  >
+                    <FileSpreadsheet size={13} /> Buka Import Excel ➔
+                  </button>
+                </div>
+              )}
+
+              <div className="p-4 sm:p-6 overflow-y-auto flex-1">
                 <PendaftaranSiswaForm
                   existingStudents={students}
                   initialStudent={editingStudent || undefined}
@@ -1972,6 +2024,14 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
           isOpen={showExportModal}
           onClose={() => setShowExportModal(false)}
           students={students}
+        />
+
+        {/* MODAL OVERLAY: Import Excel Siswa Massal */}
+        <ImportExcelSiswaModal
+          isOpen={isExcelImportModalOpen}
+          onClose={() => setIsExcelImportModalOpen(false)}
+          existingStudents={students}
+          onImportSuccess={handleImportExcelSuccess}
         />
 
         {/* MODAL OVERLAY: Akses Akun & Reset Kata Sandi Siswa */}
