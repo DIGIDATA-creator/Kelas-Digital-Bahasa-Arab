@@ -149,8 +149,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                               title="Uji Akses Akun Siswa (Demo)"
                             >
                               <option value="" disabled>🧪 Simulasi Akun Siswa...</option>
-                              {students.map(s => (
-                                <option key={s.id} value={s.id}>
+                              {students.map((s, sIdx) => (
+                                <option key={`${s.id || 'std'}-${sIdx}`} value={s.id}>
                                   {s.gender === 'Perempuan' ? '👩' : '👨'} {s.name} ({s.className})
                                 </option>
                               ))}

@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Student } from '../../types';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
-import { Building2, GraduationCap, BarChart3, Trophy, Filter, RefreshCw, Award, Users } from 'lucide-react';
+import { Building2, BarChart3, Trophy, Filter, Award } from 'lucide-react';
 
 interface DistribusiKemahiranChartProps {
   students: Student[];
@@ -10,6 +9,7 @@ interface DistribusiKemahiranChartProps {
 export const DistribusiKemahiranChart: React.FC<DistribusiKemahiranChartProps> = ({ students }) => {
   const [metricView, setMetricView] = useState<'nilai' | 'tingkat'>('nilai');
   const [selectedSchool, setSelectedSchool] = useState<string>('semua');
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   // Extract unique school names for filter
   const schoolNames = useMemo(() => {
@@ -44,7 +44,7 @@ export const DistribusiKemahiranChart: React.FC<DistribusiKemahiranChartProps> =
 
       if (!groups[key]) {
         groups[key] = {
-          label: `${school.length > 15 ? school.substring(0, 12) + '...' : school} (${cls})`,
+          label: `${school.length > 14 ? school.substring(0, 12) + '...' : school} (${cls})`,
           schoolName: school,
           className: cls,
           studentCount: 0,
@@ -75,7 +75,7 @@ export const DistribusiKemahiranChart: React.FC<DistribusiKemahiranChartProps> =
       if (t === 'Dasar') g.dasarCount += 1;
       else if (t === 'Menengah Pertama') g.menengahPertamaCount += 1;
       else if (t === 'Menengah Akhir') g.menengahAkhirCount += 1;
-      else if (t === 'Tinggi') g.tinggiCount += 1;
+      else if (t === 'Tinggi' || t === 'Umum') g.tinggiCount += 1;
       else g.dasarCount += 1;
     });
 
@@ -97,8 +97,10 @@ export const DistribusiKemahiranChart: React.FC<DistribusiKemahiranChartProps> =
     return [...chartData].sort((a, b) => b.avgScore - a.avgScore)[0];
   }, [chartData]);
 
-  // Custom colors for bars
   const barColors = ['#10b981', '#0284c7', '#8b5cf6', '#f59e0b', '#ec4899', '#14b8a6'];
+  const maxScore = 100;
+  const maxXP = Math.max(...chartData.map(d => d.avgXP), 500);
+  const maxStudents = Math.max(...chartData.map(d => d.studentCount), 10);
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs p-5 sm:p-6 space-y-5">
@@ -145,7 +147,7 @@ export const DistribusiKemahiranChart: React.FC<DistribusiKemahiranChartProps> =
               className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                 metricView === 'nilai'
                   ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
               Nilai & XP
@@ -155,7 +157,7 @@ export const DistribusiKemahiranChart: React.FC<DistribusiKemahiranChartProps> =
               className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
                 metricView === 'tingkat'
                   ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
               Jumlah Siswa per Tingkat
@@ -196,84 +198,180 @@ export const DistribusiKemahiranChart: React.FC<DistribusiKemahiranChartProps> =
         </div>
       )}
 
-      {/* Chart Canvas Container */}
-      <div className="w-full h-[320px] pt-2">
+      {/* Interactive Responsive SVG / Tailwind Chart */}
+      <div className="w-full pt-2">
         {chartData.length === 0 ? (
-          <div className="h-full flex items-center justify-center text-slate-400 text-xs font-medium">
+          <div className="h-64 flex items-center justify-center text-slate-400 text-xs font-medium border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
             Tidak ada data siswa untuk disajikan dalam grafik.
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height="100%">
-            {metricView === 'nilai' ? (
-              <BarChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 25 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis 
-                  dataKey="label" 
-                  tick={{ fontSize: 11, fill: '#64748b' }}
-                  interval={0}
-                  angle={-10}
-                  textAnchor="end"
-                />
-                <YAxis yAxisId="left" domain={[0, 100]} tick={{ fontSize: 11, fill: '#64748b' }} />
-                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: '#64748b' }} />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#0f172a', 
-                    borderRadius: '12px', 
-                    color: '#fff', 
-                    border: 'none', 
-                    fontSize: '12px',
-                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)'
-                  }}
-                  formatter={(value: any, name: any) => {
-                    if (name === 'Rata-rata Nilai') return [`${value} / 100`, 'Rerata Nilai Kuis'];
-                    if (name === 'Rata-rata XP') return [`${value} XP`, 'Rerata XP Siswa'];
-                    return [value, name];
-                  }}
-                  labelFormatter={(label, items) => {
-                    if (items && items[0]) {
-                      const p = items[0].payload;
-                      return `${p.schoolName} (${p.className}) - ${p.studentCount} Siswa`;
-                    }
-                    return label;
-                  }}
-                />
-                <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
-                <Bar yAxisId="left" dataKey="avgScore" name="Rata-rata Nilai" radius={[8, 8, 0, 0]}>
-                  {chartData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={barColors[index % barColors.length]} />
-                  ))}
-                </Bar>
-                <Bar yAxisId="right" dataKey="avgXP" name="Rata-rata XP" fill="#fbbf24" radius={[8, 8, 0, 0]} opacity={0.7} />
-              </BarChart>
-            ) : (
-              <BarChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 25 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis 
-                  dataKey="label" 
-                  tick={{ fontSize: 11, fill: '#64748b' }}
-                  interval={0}
-                  angle={-10}
-                  textAnchor="end"
-                />
-                <YAxis tick={{ fontSize: 11, fill: '#64748b' }} allowDecimals={false} />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#0f172a', 
-                    borderRadius: '12px', 
-                    color: '#fff', 
-                    border: 'none', 
-                    fontSize: '12px' 
-                  }}
-                />
-                <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
-                <Bar dataKey="dasarCount" name="Dasar" stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="menengahPertamaCount" name="Menengah Pertama" stackId="a" fill="#0284c7" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="menengahAkhirCount" name="Menengah Akhir" stackId="a" fill="#8b5cf6" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="tinggiCount" name="Tinggi" stackId="a" fill="#f59e0b" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            )}
-          </ResponsiveContainer>
+          <div className="space-y-4">
+            {/* Chart Area */}
+            <div className="h-64 flex items-end gap-3 sm:gap-6 px-2 sm:px-6 pt-6 pb-2 border-b border-slate-200 dark:border-slate-800 relative bg-slate-50/50 dark:bg-slate-950/30 rounded-xl">
+              {/* Horizontal Grid lines */}
+              <div className="absolute inset-x-0 top-6 bottom-8 flex flex-col justify-between pointer-events-none opacity-40">
+                <div className="border-b border-slate-200 dark:border-slate-800 w-full" />
+                <div className="border-b border-slate-200 dark:border-slate-800 w-full" />
+                <div className="border-b border-slate-200 dark:border-slate-800 w-full" />
+              </div>
+
+              {chartData.map((item, idx) => {
+                const scoreHeightPct = Math.min(100, Math.max(8, (item.avgScore / maxScore) * 100));
+                const xpHeightPct = Math.min(100, Math.max(8, (item.avgXP / maxXP) * 100));
+                const isHovered = hoveredIndex === idx;
+
+                return (
+                  <div
+                    key={idx}
+                    className="flex-1 flex flex-col items-center h-full justify-end relative group cursor-pointer"
+                    onMouseEnter={() => setHoveredIndex(idx)}
+                    onMouseLeave={() => setHoveredIndex(null)}
+                  >
+                    {/* Tooltip on Hover */}
+                    {isHovered && (
+                      <div className="absolute bottom-full mb-3 z-30 bg-slate-900 text-white text-xs p-3 rounded-xl shadow-xl min-w-[180px] pointer-events-none animate-fadeIn border border-slate-700">
+                        <div className="font-bold border-b border-slate-700 pb-1 mb-1.5 text-slate-200">
+                          {item.schoolName} ({item.className})
+                        </div>
+                        <div className="space-y-1 text-[11px]">
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Total Siswa:</span>
+                            <span className="font-bold text-white">{item.studentCount} Siswa</span>
+                          </div>
+                          {metricView === 'nilai' ? (
+                            <>
+                              <div className="flex justify-between">
+                                <span className="text-emerald-400">Rerata Nilai:</span>
+                                <span className="font-bold text-emerald-400">{item.avgScore} / 100</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-amber-400">Rerata XP:</span>
+                                <span className="font-bold text-amber-400">{item.avgXP} XP</span>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="flex justify-between">
+                                <span className="text-emerald-400">Dasar:</span>
+                                <span className="font-bold">{item.dasarCount}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-sky-400">Menengah Pertama:</span>
+                                <span className="font-bold">{item.menengahPertamaCount}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-purple-400">Menengah Akhir:</span>
+                                <span className="font-bold">{item.menengahAkhirCount}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-amber-400">Umum / Tinggi:</span>
+                                <span className="font-bold">{item.tinggiCount}</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Bars based on metric */}
+                    {metricView === 'nilai' ? (
+                      <div className="w-full flex items-end justify-center gap-1.5 sm:gap-2 h-full z-10">
+                        {/* Score Bar */}
+                        <div
+                          className="w-1/2 max-w-[28px] rounded-t-lg transition-all duration-300 relative group-hover:brightness-110"
+                          style={{
+                            height: `${scoreHeightPct}%`,
+                            backgroundColor: barColors[idx % barColors.length],
+                          }}
+                        >
+                          <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] font-extrabold text-slate-700 dark:text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {item.avgScore}
+                          </span>
+                        </div>
+                        {/* XP Bar */}
+                        <div
+                          className="w-1/2 max-w-[28px] rounded-t-lg bg-amber-400/80 transition-all duration-300 relative group-hover:brightness-110"
+                          style={{ height: `${xpHeightPct}%` }}
+                        >
+                          <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] font-extrabold text-amber-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {item.avgXP}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="w-full max-w-[36px] flex flex-col justify-end rounded-t-lg overflow-hidden transition-all duration-300 h-full z-10">
+                        {/* Stacked Bars */}
+                        {item.tinggiCount > 0 && (
+                          <div
+                            className="bg-amber-500 w-full"
+                            style={{ height: `${(item.tinggiCount / maxStudents) * 100}%` }}
+                          />
+                        )}
+                        {item.menengahAkhirCount > 0 && (
+                          <div
+                            className="bg-purple-500 w-full"
+                            style={{ height: `${(item.menengahAkhirCount / maxStudents) * 100}%` }}
+                          />
+                        )}
+                        {item.menengahPertamaCount > 0 && (
+                          <div
+                            className="bg-sky-500 w-full"
+                            style={{ height: `${(item.menengahPertamaCount / maxStudents) * 100}%` }}
+                          />
+                        )}
+                        {item.dasarCount > 0 && (
+                          <div
+                            className="bg-emerald-500 w-full"
+                            style={{ height: `${(item.dasarCount / maxStudents) * 100}%` }}
+                          />
+                        )}
+                      </div>
+                    )}
+
+                    {/* Label */}
+                    <div className="mt-2 text-[10px] sm:text-xs font-semibold text-slate-600 dark:text-slate-400 text-center truncate max-w-full">
+                      {item.label}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Legend */}
+            <div className="flex flex-wrap items-center justify-center gap-4 text-xs pt-1">
+              {metricView === 'nilai' ? (
+                <>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded-xs bg-emerald-500 inline-block" />
+                    <span className="text-slate-600 dark:text-slate-400 font-medium">Rata-rata Nilai (Skala 0-100)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded-xs bg-amber-400 inline-block" />
+                    <span className="text-slate-600 dark:text-slate-400 font-medium">Rata-rata XP Siswa</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded-xs bg-emerald-500 inline-block" />
+                    <span className="text-slate-600 dark:text-slate-400 font-medium">Dasar</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded-xs bg-sky-500 inline-block" />
+                    <span className="text-slate-600 dark:text-slate-400 font-medium">Menengah Pertama</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded-xs bg-purple-500 inline-block" />
+                    <span className="text-slate-600 dark:text-slate-400 font-medium">Menengah Akhir</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded-xs bg-amber-500 inline-block" />
+                    <span className="text-slate-600 dark:text-slate-400 font-medium">Umum / Tinggi</span>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         )}
       </div>
 

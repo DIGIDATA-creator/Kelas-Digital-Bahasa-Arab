@@ -695,7 +695,7 @@ export const MahfudzotView: React.FC<MahfudzotViewProps> = ({
 
                       return (
                         <div
-                          key={materi.id}
+                          key={`${materi.id || 'mahfudzot'}-${absoluteIndex}`}
                           className={`rounded-2xl border transition-all p-5 flex flex-col justify-between relative space-y-4 ${cardStyleClass}`}
                         >
                           {/* Card Header */}

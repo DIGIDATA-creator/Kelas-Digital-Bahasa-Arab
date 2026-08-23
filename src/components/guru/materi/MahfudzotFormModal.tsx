@@ -39,6 +39,14 @@ export const MahfudzotFormModal: React.FC<MahfudzotFormModalProps> = ({
   const [translation, setTranslation] = useState(editingMateri?.mahfudzot?.translation || editingMateri?.description || '');
   const [categoryTag, setCategoryTag] = useState(editingMateri?.mahfudzot?.categoryTag || editingMateri?.mahfudzotCategory || 'Akhlak');
 
+  // Sheet / Massal Upload State
+  const [fileName, setFileName] = useState<string>('');
+  const [parsedRows, setParsedRows] = useState<ParsedMahfudzotRow[]>([]);
+  const [importMode, setImportMode] = useState<'append' | 'overwrite'>('append');
+  const [, setIsProcessing] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     if (isOpen) {
       if (editingMateri) {
@@ -54,14 +62,6 @@ export const MahfudzotFormModal: React.FC<MahfudzotFormModalProps> = ({
       }
     }
   }, [isOpen, editingMateri]);
-
-  // Sheet / Massal Upload State
-  const [fileName, setFileName] = useState<string>('');
-  const [parsedRows, setParsedRows] = useState<ParsedMahfudzotRow[]>([]);
-  const [importMode, setImportMode] = useState<'append' | 'overwrite'>('append');
-  const [, setIsProcessing] = useState<boolean>(false);
-  const [errorMessage, setErrorMessage] = useState<string>('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Single Submit
   const handleSingleSubmit = (e: React.FormEvent) => {

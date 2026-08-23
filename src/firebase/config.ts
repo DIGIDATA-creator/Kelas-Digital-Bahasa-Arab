@@ -18,10 +18,12 @@ export const auth = getAuth(app);
 
 let firestoreDb: Firestore | null = null;
 try {
-  firestoreDb = getFirestore(app);
+  firestoreDb = initializeFirestore(app, {
+    experimentalAutoDetectLongPolling: true,
+  });
 } catch (err: any) {
   try {
-    firestoreDb = initializeFirestore(app, {});
+    firestoreDb = getFirestore(app);
   } catch (err2: any) {
     console.warn("⚠️ [FIREBASE CONFIG] Firestore service fallback note:", err2?.message || err2);
     firestoreDb = null;
@@ -46,7 +48,9 @@ if (!auth.currentUser) {
       console.log('🔑 [FIREBASE CONFIG] Anonymous Auth initialized successfully (UID:', cred.user.uid, ')');
     })
     .catch((err) => {
-      console.warn('⚠️ [FIREBASE CONFIG] Anonymous Auth note:', err?.message || err);
+      if (err?.code !== 'auth/network-request-failed') {
+        console.warn('⚠️ [FIREBASE CONFIG] Anonymous Auth note:', err?.message || err);
+      }
     });
 }
 

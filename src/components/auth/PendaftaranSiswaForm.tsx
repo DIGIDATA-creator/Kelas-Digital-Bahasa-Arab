@@ -124,7 +124,7 @@ export const PendaftaranSiswaForm: React.FC<PendaftaranSiswaFormProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 text-xs sm:text-sm">
+    <form onSubmit={handleSubmit} className="space-y-4 text-xs sm:text-sm pb-6">
       {/* 1. Nama Lengkap */}
       <div>
         <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
@@ -177,7 +177,7 @@ export const PendaftaranSiswaForm: React.FC<PendaftaranSiswaFormProps> = ({
       {/* 2. Alamat Email & Validasi Duplikasi */}
       <div>
         <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
-          Alamat Email <span className="text-rose-500">*</span>
+          Alamat Email / Akun Siswa <span className="text-rose-500">*</span>
         </label>
         <div className="relative">
           <Mail size={16} className="absolute left-3 top-2.5 text-slate-400" />
@@ -208,17 +208,17 @@ export const PendaftaranSiswaForm: React.FC<PendaftaranSiswaFormProps> = ({
       {/* 3. Password */}
       <div>
         <label className="block font-bold text-slate-800 dark:text-slate-200 mb-1">
-          Kata Sandi (Password) <span className="text-rose-500">*</span>
+          Kata Sandi (Password) {!isGuruAdminMode && <span className="text-rose-500">*</span>}
         </label>
         <div className="relative">
           <Lock size={16} className="absolute left-3 top-2.5 text-slate-400" />
           <input
             type={showPassword ? 'text' : 'password'}
-            required={!isGuruAdminMode}
+            required={!isGuruAdminMode && !initialStudent}
             minLength={6}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Minimal 6 Karakter"
+            placeholder={isGuruAdminMode && initialStudent ? "Kosongkan jika sandi tidak diubah" : "Minimal 6 Karakter (contoh: siswa123)"}
             className="w-full pl-9 pr-10 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-hidden focus:border-emerald-500 font-medium"
           />
           <button
@@ -241,7 +241,7 @@ export const PendaftaranSiswaForm: React.FC<PendaftaranSiswaFormProps> = ({
           <select
             value={tingkat}
             onChange={(e) => handleTingkatChange(e.target.value as TingkatType)}
-            className="w-full pl-9 pr-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-hidden focus:border-emerald-500 font-bold"
+            className="w-full pl-9 pr-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-hidden focus:border-emerald-500 font-bold cursor-pointer"
           >
             <option value="Dasar" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">Dasar (SD/MI)</option>
             <option value="Menengah Pertama" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">Menengah Pertama (SMP/MTs)</option>
@@ -294,7 +294,7 @@ export const PendaftaranSiswaForm: React.FC<PendaftaranSiswaFormProps> = ({
           <select
             value={className}
             onChange={(e) => setClassName(e.target.value)}
-            className="w-full px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-hidden focus:border-emerald-500 font-semibold"
+            className="w-full px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-hidden focus:border-emerald-500 font-semibold cursor-pointer"
           >
             {getGradeOptions(tingkat).map((g) => (
               <option key={g} value={g} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">{g}</option>
@@ -335,19 +335,25 @@ export const PendaftaranSiswaForm: React.FC<PendaftaranSiswaFormProps> = ({
       )}
 
       {/* Submit Button */}
-      <button
-        type="submit"
-        disabled={isLoading}
-        className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
-      >
-        {isLoading ? (
-          'Memproses...'
-        ) : isGuruAdminMode ? (
-          <><CheckCircle2 size={16} /> Tambah & Langsung ACC Siswa</>
-        ) : (
-          <><User size={16} /> Kirim Pendaftaran Siswa Baru</>
-        )}
-      </button>
+      <div className="pt-3">
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs sm:text-sm shadow-md shadow-emerald-900/15 transition-all flex items-center justify-center gap-2 cursor-pointer hover:shadow-lg active:scale-[0.99]"
+        >
+          {isLoading ? (
+            'Memproses...'
+          ) : isGuruAdminMode ? (
+            initialStudent ? (
+              <><CheckCircle2 size={18} /> Simpan Perubahan Data Siswa</>
+            ) : (
+              <><CheckCircle2 size={18} /> Simpan & Tambahkan Siswa Baru</>
+            )
+          ) : (
+            <><User size={18} /> Kirim Pendaftaran Siswa Baru</>
+          )}
+        </button>
+      </div>
     </form>
   );
 };

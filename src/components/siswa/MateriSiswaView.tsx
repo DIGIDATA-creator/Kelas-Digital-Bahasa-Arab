@@ -43,6 +43,23 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
   const initialValues = getInitialCategoryAndId();
   const [activeCategory, setActiveCategory] = useState<CategoryType>(initialValues.category);
   const [activeMateriId, setActiveMateriId] = useState<string>(initialValues.materiId);
+  const [previewPdfMateri, setPreviewPdfMateri] = useState<Materi | null>(null);
+  const [offlineToast, setOfflineToast] = useState<string | null>(null);
+  const [cachedIds, setCachedIds] = useState<string[]>([]);
+  const [isFocusMode, setIsFocusMode] = useState<boolean>(false);
+  const [readerFontSize, setReaderFontSize] = useState<'normal' | 'large' | 'xlarge'>('normal');
+  const [isLatihanBicaraOpen, setIsLatihanBicaraOpen] = useState(false);
+  const [readingTimeSecs, setReadingTimeSecs] = useState<number>(0);
+  const [sessionStartTime, setSessionStartTime] = useState<string>(new Date().toISOString());
+  const [flashcardModalState, setFlashcardModalState] = useState<{
+    isOpen: boolean;
+    title: string;
+    items: FlashcardItem[];
+  }>({
+    isOpen: false,
+    title: '',
+    items: [],
+  });
 
   useEffect(() => {
     if (selectedMateriId) {
@@ -53,159 +70,6 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
       }
     }
   }, [selectedMateriId, materiList]);
-
-  // Compute vocabulary verification streaks from student's quiz attempts
-  const penilaianList = storageService.getPenilaian();
-  const vocabStreakResult = calculateStudentVocabStreaks(currentStudent, materiList, penilaianList);
-
-  const handleToggleSelfQowaidTarget = (materiId: string, targetIdx: number) => {
-    const key = `${materiId}_target_${targetIdx}`;
-    const currentSelf = currentStudent.hafalanProgress?.selfQowaidIds || {};
-    const updatedSelf = { ...currentSelf, [key]: !currentSelf[key] };
-    const nowIso = new Date().toISOString();
-
-    const updatedStudent: Student = {
-      ...currentStudent,
-      updatedAt: nowIso,
-      lastActive: nowIso,
-      hafalanProgress: {
-        ...currentStudent.hafalanProgress,
-        selfQowaidIds: updatedSelf,
-      },
-    };
-
-    // Update in memory and storage immediately
-    const allStudents = storageService.getStudents();
-    const updatedList = allStudents.map(s => s.id === updatedStudent.id ? updatedStudent : s);
-    if (!updatedList.some(s => s.id === updatedStudent.id)) {
-      updatedList.push(updatedStudent);
-    }
-    storageService.saveStudents(updatedList);
-
-    if (onUpdateStudent) {
-      onUpdateStudent(updatedStudent);
-    }
-  };
-
-  // Self-marking handlers for Kosakata and Mahfudzot (0 XP)
-  const handleToggleSelfKosakata = (vocabId: string) => {
-    const currentSelf = currentStudent.hafalanProgress?.selfKosakataIds || {};
-    const updatedSelf = { ...currentSelf, [vocabId]: !currentSelf[vocabId] };
-    const nowIso = new Date().toISOString();
-
-    const updatedStudent: Student = {
-      ...currentStudent,
-      updatedAt: nowIso,
-      lastActive: nowIso,
-      hafalanProgress: {
-        ...currentStudent.hafalanProgress,
-        selfKosakataIds: updatedSelf,
-      },
-    };
-
-    const allStudents = storageService.getStudents();
-    const updatedList = allStudents.map(s => s.id === updatedStudent.id ? updatedStudent : s);
-    if (!updatedList.some(s => s.id === updatedStudent.id)) {
-      updatedList.push(updatedStudent);
-    }
-    storageService.saveStudents(updatedList);
-
-    if (onUpdateStudent) {
-      onUpdateStudent(updatedStudent);
-    }
-  };
-
-  const handleToggleSelfMahfudzot = (materiId: string) => {
-    const currentSelf = currentStudent.hafalanProgress?.selfMahfudzotIds || {};
-    const updatedSelf = { ...currentSelf, [materiId]: !currentSelf[materiId] };
-    const nowIso = new Date().toISOString();
-
-    const updatedStudent: Student = {
-      ...currentStudent,
-      updatedAt: nowIso,
-      lastActive: nowIso,
-      hafalanProgress: {
-        ...currentStudent.hafalanProgress,
-        selfMahfudzotIds: updatedSelf,
-      },
-    };
-
-    const allStudents = storageService.getStudents();
-    const updatedList = allStudents.map(s => s.id === updatedStudent.id ? updatedStudent : s);
-    if (!updatedList.some(s => s.id === updatedStudent.id)) {
-      updatedList.push(updatedStudent);
-    }
-    storageService.saveStudents(updatedList);
-
-    if (onUpdateStudent) {
-      onUpdateStudent(updatedStudent);
-    }
-  };
-
-  const handleToggleSelfQowaid = (materiId: string) => {
-    const currentSelf = currentStudent.hafalanProgress?.selfQowaidIds || {};
-    const updatedSelf = { ...currentSelf, [materiId]: !currentSelf[materiId] };
-    const nowIso = new Date().toISOString();
-
-    const updatedStudent: Student = {
-      ...currentStudent,
-      updatedAt: nowIso,
-      lastActive: nowIso,
-      hafalanProgress: {
-        ...currentStudent.hafalanProgress,
-        selfQowaidIds: updatedSelf,
-      },
-    };
-
-    const allStudents = storageService.getStudents();
-    const updatedList = allStudents.map(s => s.id === updatedStudent.id ? updatedStudent : s);
-    if (!updatedList.some(s => s.id === updatedStudent.id)) {
-      updatedList.push(updatedStudent);
-    }
-    storageService.saveStudents(updatedList);
-
-    if (onUpdateStudent) {
-      onUpdateStudent(updatedStudent);
-    }
-  };
-
-  const handleToggleSelfHiwar = (materiId: string) => {
-    const currentSelf = currentStudent.hafalanProgress?.selfHiwarIds || {};
-    const updatedSelf = { ...currentSelf, [materiId]: !currentSelf[materiId] };
-    const nowIso = new Date().toISOString();
-
-    const updatedStudent: Student = {
-      ...currentStudent,
-      updatedAt: nowIso,
-      lastActive: nowIso,
-      hafalanProgress: {
-        ...currentStudent.hafalanProgress,
-        selfHiwarIds: updatedSelf,
-      },
-    };
-
-    const allStudents = storageService.getStudents();
-    const updatedList = allStudents.map(s => s.id === updatedStudent.id ? updatedStudent : s);
-    if (!updatedList.some(s => s.id === updatedStudent.id)) {
-      updatedList.push(updatedStudent);
-    }
-    storageService.saveStudents(updatedList);
-
-    if (onUpdateStudent) {
-      onUpdateStudent(updatedStudent);
-    }
-  };
-  
-  // PDF Viewer Modal state
-  const [previewPdfMateri, setPreviewPdfMateri] = useState<Materi | null>(null);
-
-  // Offline Cache Notification
-  const [offlineToast, setOfflineToast] = useState<string | null>(null);
-  const [cachedIds, setCachedIds] = useState<string[]>([]);
-
-  // Focus Mode State
-  const [isFocusMode, setIsFocusMode] = useState<boolean>(false);
-  const [readerFontSize, setReaderFontSize] = useState<'normal' | 'large' | 'xlarge'>('normal');
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -220,13 +84,6 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
   useEffect(() => {
     setCachedIds(storageService.getOfflineCachedMateriIds());
   }, [activeMateriId]);
-
-  // AI Speech Practice Modal State
-  const [isLatihanBicaraOpen, setIsLatihanBicaraOpen] = useState(false);
-
-  // Material Reading Timer State
-  const [readingTimeSecs, setReadingTimeSecs] = useState<number>(0);
-  const [sessionStartTime, setSessionStartTime] = useState<string>(new Date().toISOString());
 
   // Start reading timer when a material is open
   useEffect(() => {
@@ -259,16 +116,153 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
     };
   }, [activeMateriId, readingTimeSecs, sessionStartTime, currentStudent.id]);
 
-  // Flashcard Modal State
-  const [flashcardModalState, setFlashcardModalState] = useState<{
-    isOpen: boolean;
-    title: string;
-    items: FlashcardItem[];
-  }>({
-    isOpen: false,
-    title: '',
-    items: [],
-  });
+  // Compute vocabulary verification streaks from student's quiz attempts
+  const penilaianList = storageService.getPenilaian();
+  const vocabStreakResult = calculateStudentVocabStreaks(currentStudent, materiList, penilaianList);
+
+  const handleToggleSelfQowaidTarget = (materiId: string, targetIdx: number) => {
+    const key = `${materiId}_target_${targetIdx}`;
+    const currentSelf = currentStudent.hafalanProgress?.selfQowaidIds || {};
+    const updatedSelf = { ...currentSelf, [key]: !currentSelf[key] };
+    const nowIso = new Date().toISOString();
+
+    const updatedProgress = {
+      ...currentStudent.hafalanProgress,
+      selfQowaidIds: updatedSelf,
+    };
+
+    const updatedStudent: Student = {
+      ...currentStudent,
+      updatedAt: nowIso,
+      lastActive: nowIso,
+      hafalanProgress: updatedProgress,
+    };
+
+    // Force sync immediately to memory, LocalStorage, and Firestore by student's ID
+    storageService.forceSyncStudentHafalanProgress(currentStudent.id, updatedProgress);
+
+    if (onUpdateStudent) {
+      onUpdateStudent(updatedStudent);
+    }
+  };
+
+  // Self-marking handlers for Kosakata and Mahfudzot (0 XP)
+  const handleToggleSelfKosakata = (vocabId: string) => {
+    const currentSelf = currentStudent.hafalanProgress?.selfKosakataIds || {};
+    const updatedSelf = { ...currentSelf, [vocabId]: !currentSelf[vocabId] };
+    const nowIso = new Date().toISOString();
+
+    const updatedProgress = {
+      ...currentStudent.hafalanProgress,
+      selfKosakataIds: updatedSelf,
+    };
+
+    const updatedStudent: Student = {
+      ...currentStudent,
+      updatedAt: nowIso,
+      lastActive: nowIso,
+      hafalanProgress: updatedProgress,
+    };
+
+    // Force sync immediately to memory, LocalStorage, and Firestore by student's ID
+    storageService.forceSyncStudentHafalanProgress(currentStudent.id, updatedProgress);
+
+    if (onUpdateStudent) {
+      onUpdateStudent(updatedStudent);
+    }
+  };
+
+  const handleToggleSelfMahfudzot = (materiId: string) => {
+    const currentSelf = currentStudent.hafalanProgress?.selfMahfudzotIds || {};
+    const updatedSelf = { ...currentSelf, [materiId]: !currentSelf[materiId] };
+    const nowIso = new Date().toISOString();
+
+    const updatedProgress = {
+      ...currentStudent.hafalanProgress,
+      selfMahfudzotIds: updatedSelf,
+    };
+
+    const updatedStudent: Student = {
+      ...currentStudent,
+      updatedAt: nowIso,
+      lastActive: nowIso,
+      hafalanProgress: updatedProgress,
+    };
+
+    // Force sync immediately to memory, LocalStorage, and Firestore by student's ID
+    storageService.forceSyncStudentHafalanProgress(currentStudent.id, updatedProgress);
+
+    if (onUpdateStudent) {
+      onUpdateStudent(updatedStudent);
+    }
+  };
+
+  const handleToggleSelfQowaid = (materiId: string) => {
+    const currentSelf = currentStudent.hafalanProgress?.selfQowaidIds || {};
+    const updatedSelf = { ...currentSelf, [materiId]: !currentSelf[materiId] };
+    const nowIso = new Date().toISOString();
+
+    const updatedProgress = {
+      ...currentStudent.hafalanProgress,
+      selfQowaidIds: updatedSelf,
+    };
+
+    const updatedStudent: Student = {
+      ...currentStudent,
+      updatedAt: nowIso,
+      lastActive: nowIso,
+      hafalanProgress: updatedProgress,
+    };
+
+    // Force sync immediately to memory, LocalStorage, and Firestore by student's ID
+    storageService.forceSyncStudentHafalanProgress(currentStudent.id, updatedProgress);
+
+    if (onUpdateStudent) {
+      onUpdateStudent(updatedStudent);
+    }
+  };
+
+  const handleToggleSelfHiwar = (materiId: string) => {
+    const currentSelf = currentStudent.hafalanProgress?.selfHiwarIds || {};
+    const updatedSelf = { ...currentSelf, [materiId]: !currentSelf[materiId] };
+    const nowIso = new Date().toISOString();
+
+    const updatedProgress = {
+      ...currentStudent.hafalanProgress,
+      selfHiwarIds: updatedSelf,
+    };
+
+    const updatedStudent: Student = {
+      ...currentStudent,
+      updatedAt: nowIso,
+      lastActive: nowIso,
+      hafalanProgress: updatedProgress,
+    };
+
+    // Force sync immediately to memory, LocalStorage, and Firestore by student's ID
+    storageService.forceSyncStudentHafalanProgress(currentStudent.id, updatedProgress);
+
+    if (onUpdateStudent) {
+      onUpdateStudent(updatedStudent);
+    }
+  };
+
+  const handleCompleteMaterialDirectly = (materiId: string) => {
+    onMarkComplete(materiId);
+    if (!currentStudent.completedMaterials.includes(materiId)) {
+      const updatedCompleted = [...currentStudent.completedMaterials, materiId];
+      storageService.forceSyncCompletedMaterials(currentStudent.id, updatedCompleted);
+      if (onUpdateStudent) {
+        onUpdateStudent({
+          ...currentStudent,
+          completedMaterials: updatedCompleted,
+          totalXP: (currentStudent.totalXP || 0) + 50,
+          updatedAt: new Date().toISOString(),
+          lastActive: new Date().toISOString(),
+        });
+      }
+    }
+  };
 
   const categoryFiltered = materiList.filter(m => m.category === activeCategory);
   const currentMateri = materiList.find(m => m.id === activeMateriId) || categoryFiltered[0] || materiList[0];
@@ -552,7 +546,7 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
                     </span>
                   ) : (
                     <button
-                      onClick={() => onMarkComplete(currentMateri.id)}
+                      onClick={() => handleCompleteMaterialDirectly(currentMateri.id)}
                       className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition-all shadow-md flex items-center gap-1.5"
                     >
                       <CheckCircle2 size={16} /> Tandai Selesai Membaca (+50 XP)
@@ -781,7 +775,7 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
                           const isTargetChecked = !!currentStudent.hafalanProgress?.selfQowaidIds?.[`${currentMateri.id}_target_${idx}`];
                           return (
                             <button
-                              key={idx}
+                              key={`${currentMateri.id}-target-${idx}`}
                               type="button"
                               onClick={() => handleToggleSelfQowaidTarget(currentMateri.id, idx)}
                               className={`w-full text-left flex items-start gap-2.5 p-3 rounded-xl border transition-all cursor-pointer shadow-2xs ${
@@ -1047,7 +1041,7 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
                 </span>
               ) : (
                 <button
-                  onClick={() => onMarkComplete(currentMateri.id)}
+                  onClick={() => handleCompleteMaterialDirectly(currentMateri.id)}
                   className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 shadow-md cursor-pointer"
                 >
                   <CheckCircle2 size={16} /> Tandai Selesai (+50 XP)
@@ -1108,7 +1102,7 @@ export const MateriSiswaView: React.FC<MateriSiswaViewProps> = ({
                       </div>
                       <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-emerald-100 font-medium">
                         {currentMateri.learningTargets.map((target, idx) => (
-                          <li key={idx} className="flex items-start gap-2 bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                          <li key={`${currentMateri.id}-focus-tgt-${idx}`} className="flex items-start gap-2 bg-slate-900/80 p-3 rounded-xl border border-slate-800">
                             <CheckCircle2 size={16} className="text-emerald-400 shrink-0 mt-0.5" />
                             <span className="leading-snug">{target}</span>
                           </li>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Materi, DialogueTurnPair } from '../../../types';
 import { toArabicNumber } from '../../common/ArabicUtils';
@@ -81,7 +81,7 @@ export const HiwarFormModal: React.FC<HiwarFormModalProps> = ({
   const [isSheetModalOpen, setIsSheetModalOpen] = useState(false);
   const [sheetText, setSheetText] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
-  const modalScrollRef = React.useRef<HTMLDivElement>(null);
+  const modalScrollRef = useRef<HTMLDivElement>(null);
 
   // Synchronize modal fields whenever isOpen or editingMateri changes
   useEffect(() => {

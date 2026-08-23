@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Materi, CategoryType, VocabularyItem, Student } from '../../types';
-import { Plus, Edit3, Trash2, Eye, FileText, BookOpen, Quote, List, Sparkles, Play, Search, CheckCircle, MessageSquare, AlertTriangle, X, FileSpreadsheet, BarChart3 } from 'lucide-react';
+import { Plus, Edit3, Trash2, Eye, FileText, BookOpen, Quote, List, Sparkles, Play, Search, CheckCircle, MessageSquare, AlertTriangle, X, FileSpreadsheet, BarChart3, Target, ListOrdered, SlidersHorizontal } from 'lucide-react';
 import { PdfViewerModal } from '../common/PdfViewerModal';
 import { notificationService } from '../../services/notificationService';
 import { storageService } from '../../services/storage';
@@ -9,6 +9,7 @@ import { QowaidFormModal } from './materi/QowaidFormModal';
 import { HiwarFormModal } from './materi/HiwarFormModal';
 import { KosakataFormModal } from './materi/KosakataFormModal';
 import { MahfudzotFormModal } from './materi/MahfudzotFormModal';
+import { ManageTargetsModal } from './materi/ManageTargetsModal';
 import { HiwarView } from './materi/HiwarView';
 import { KosakataTableView } from './materi/KosakataTableView';
 import { KosakataView } from './materi/KosakataView';
@@ -44,6 +45,10 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
   // Currently Editing Item
   const [editingMateri, setEditingMateri] = useState<Materi | null>(null);
 
+  // Manage Targets Modal State
+  const [isTargetModalOpen, setIsTargetModalOpen] = useState(false);
+  const [targetModalMateri, setTargetModalMateri] = useState<Materi | null>(null);
+
   // Flashcard Modal State
   const [flashcardModalState, setFlashcardModalState] = useState<{
     isOpen: boolean;
@@ -53,6 +58,22 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
     isOpen: false,
     title: '',
     items: [],
+  });
+
+  // Delete confirmation modal state
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{
+    isOpen: boolean;
+    type: 'materi' | 'vocab' | 'clear_all' | 'multiple_materi';
+    materiId?: string;
+    materiIds?: string[];
+    vocabId?: string;
+    title: string;
+    message: string;
+  }>({
+    isOpen: false,
+    type: 'materi',
+    title: '',
+    message: '',
   });
 
   // Filtered by category and search
@@ -86,22 +107,6 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
     else if (materi.category === 'kosakata') setIsKosakataModalOpen(true);
     else if (materi.category === 'mahfudzot') setIsMahfudzotModalOpen(true);
   };
-
-  // Delete confirmation modal state
-  const [deleteConfirmation, setDeleteConfirmation] = useState<{
-    isOpen: boolean;
-    type: 'materi' | 'vocab' | 'clear_all' | 'multiple_materi';
-    materiId?: string;
-    materiIds?: string[];
-    vocabId?: string;
-    title: string;
-    message: string;
-  }>({
-    isOpen: false,
-    type: 'materi',
-    title: '',
-    message: '',
-  });
 
   const requestDeleteMateri = (materi: Materi) => {
     setDeleteConfirmation({
@@ -242,6 +247,27 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
         targetCategory: newMateri.category,
       });
     }
+  };
+
+  // Open Manage Targets Modal for a Materi
+  const handleOpenManageTargets = (materi: Materi) => {
+    setTargetModalMateri(materi);
+    setIsTargetModalOpen(true);
+  };
+
+  // Save updated targets directly from ManageTargetsModal
+  const handleSaveTargets = (materiId: string, updatedTargets: string[]) => {
+    const updated = materiList.map((m) => {
+      if (m.id === materiId) {
+        return {
+          ...m,
+          learningTargets: updatedTargets,
+          updatedAt: new Date().toISOString(),
+        };
+      }
+      return m;
+    });
+    onSaveMateri(updated);
   };
 
   // Launch Flashcards for a Kosakata Bab
@@ -432,11 +458,20 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenManageTargets(materi)}
+                          className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                          title="Kelola & Atur Urutan Target Pembelajaran"
+                        >
+                          <Target size={13} className="text-emerald-600" />
+                          <span>Target ({materi.learningTargets?.length || 0})</span>
+                        </button>
                         <button
                           onClick={() => handleOpenEditModal(materi)}
                           className="p-1.5 text-slate-400 hover:text-emerald-600 rounded-lg hover:bg-slate-50 cursor-pointer"
-                          title="Edit Qowaid"
+                          title="Edit Materi Lengkap"
                         >
                           <Edit3 size={16} />
                         </button>
@@ -467,17 +502,49 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
                       )}
                     </div>
 
-                    {/* Target Pembelajaran */}
-                    {materi.learningTargets && materi.learningTargets.length > 0 && (
-                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-1 text-xs">
-                        <span className="font-bold text-slate-700 block">Target Pembelajaran:</span>
-                        <ul className="list-disc list-inside text-slate-600 space-y-0.5">
-                          {materi.learningTargets.map((t, idx) => (
-                            <li key={idx}>{t}</li>
-                          ))}
-                        </ul>
+                    {/* Target Pembelajaran / Capaian Materi */}
+                    <div className="p-3.5 bg-gradient-to-br from-slate-50 to-emerald-50/40 rounded-2xl border border-emerald-100/80 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 text-xs font-black text-slate-800">
+                          <Target size={14} className="text-emerald-700" />
+                          <span>Target Pembelajaran</span>
+                          <span className="px-1.5 py-0.2 bg-emerald-200/80 text-emerald-900 text-[10px] rounded-md font-bold">
+                            {materi.learningTargets?.length || 0}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenManageTargets(materi)}
+                          className="text-[11px] font-extrabold text-emerald-700 hover:text-emerald-900 hover:underline flex items-center gap-1 cursor-pointer bg-white px-2 py-0.5 rounded-lg border border-emerald-200 shadow-2xs"
+                        >
+                          <SlidersHorizontal size={11} /> Atur & Urutkan Target
+                        </button>
                       </div>
-                    )}
+
+                      {materi.learningTargets && materi.learningTargets.length > 0 ? (
+                        <div className="space-y-1 pt-1">
+                          {materi.learningTargets.map((t, idx) => (
+                            <div key={idx} className="flex items-start gap-2 text-xs text-slate-700 bg-white/80 px-2 py-1.5 rounded-xl border border-slate-100">
+                              <span className="w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[9px] font-black shrink-0 mt-0.5">
+                                {idx + 1}
+                              </span>
+                              <span className="font-medium leading-tight">{t}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-2">
+                          <p className="text-[11px] text-slate-400 mb-1.5">Belum ada poin target pembelajaran</p>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenManageTargets(materi)}
+                            className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1 shadow-2xs cursor-pointer"
+                          >
+                            <Plus size={12} /> Buat Target Baru
+                          </button>
+                        </div>
+                      )}
+                    </div>
 
                     {/* Content Explanation */}
                     <p className="text-xs text-slate-600 line-clamp-3 leading-relaxed">
@@ -580,6 +647,17 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
         existingMateriList={materiList}
         onSave={handleSaveModalMateri}
         defaultTab={mahfudzotModalTab}
+      />
+
+      {/* Manage Targets & Reorder Modal */}
+      <ManageTargetsModal
+        isOpen={isTargetModalOpen}
+        onClose={() => {
+          setIsTargetModalOpen(false);
+          setTargetModalMateri(null);
+        }}
+        materi={targetModalMateri}
+        onSaveTargets={handleSaveTargets}
       />
 
       {/* Flashcard Player Modal */}

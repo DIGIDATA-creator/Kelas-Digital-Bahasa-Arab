@@ -800,14 +800,14 @@ export const PenilaianSiswaView: React.FC<PenilaianSiswaViewProps> = ({
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filteredList.map((p) => {
+            {filteredList.map((p, pIdx) => {
               const attempts = currentStudent.attempts.filter(a => a.penilaianId === p.id);
               const lastAttempt = attempts[attempts.length - 1];
               const hasPassed = attempts.some(a => a.passed);
 
               return (
                 <div
-                  key={p.id}
+                  key={`${p.id || 'eval'}-${pIdx}`}
                   className="bg-white rounded-2xl border border-slate-200 shadow-xs hover:shadow-md transition-all p-5 flex flex-col justify-between space-y-4"
                 >
                   <div className="space-y-2">

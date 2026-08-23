@@ -43,8 +43,15 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(event.request.url);
 
-  // Ignore browser extensions or websocket/HMR requests
-  if (url.protocol === 'chrome-extension:' || url.pathname.includes('vite') || url.pathname.includes('@vite')) {
+  // Ignore browser extensions or websocket/HMR requests or dev modules
+  if (
+    url.protocol === 'chrome-extension:' ||
+    url.pathname.includes('vite') ||
+    url.pathname.includes('@vite') ||
+    url.pathname.includes('@fs') ||
+    url.pathname.includes('node_modules') ||
+    url.pathname.startsWith('/src/')
+  ) {
     return;
   }
 

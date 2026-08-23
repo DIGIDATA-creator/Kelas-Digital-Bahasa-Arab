@@ -3,7 +3,16 @@ import { Materi } from '../types';
 
 export function registerServiceWorker() {
   if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
-    console.log('[ServiceWorker] Service Workers are not supported in this browser.');
+    return;
+  }
+
+  // In development / preview mode, unregister any stale service workers to prevent cache conflicts
+  if (import.meta.env.DEV) {
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      for (const registration of registrations) {
+        registration.unregister();
+      }
+    }).catch(() => {});
     return;
   }
 
@@ -11,8 +20,6 @@ export function registerServiceWorker() {
     navigator.serviceWorker
       .register('/sw.js')
       .then((registration) => {
-        console.log('[ServiceWorker] Registered successfully with scope:', registration.scope);
-
         // Check for updates
         registration.onupdatefound = () => {
           const installingWorker = registration.installing;
@@ -21,9 +28,7 @@ export function registerServiceWorker() {
           installingWorker.onstatechange = () => {
             if (installingWorker.state === 'installed') {
               if (navigator.serviceWorker.controller) {
-                console.log('[ServiceWorker] New content is available; please refresh.');
-              } else {
-                console.log('[ServiceWorker] Content is cached for offline use.');
+                console.log('[ServiceWorker] New content available; please refresh.');
               }
             }
           };

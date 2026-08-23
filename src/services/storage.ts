@@ -1342,10 +1342,12 @@ export const storageService = {
       if (!student.completedMaterials.includes(materiId)) {
         student.completedMaterials.push(materiId);
         student.totalXP += 50;
-        student.lastActive = new Date().toISOString();
+        const nowIso = new Date().toISOString();
+        student.lastActive = nowIso;
+        student.updatedAt = nowIso;
 
         const materi = this.getMateri().find(m => m.id === materiId);
-        const completedAt = new Date().toISOString();
+        const completedAt = nowIso;
         const durationSeconds = sessionDurationSecs || (student.materialReadingTimeSeconds?.[materiId] || 60);
         const startedAt = new Date(new Date(completedAt).getTime() - durationSeconds * 1000).toISOString();
 
@@ -1365,12 +1367,84 @@ export const storageService = {
 
         this.saveStudents(students);
 
+        // Explicit direct force sync to student's Firestore document
+        if (db && student.id) {
+          setDoc(doc(db, 'students_records', student.id), sanitizeForFirestore(student), { merge: true }).catch(err =>
+            console.error('Error force syncing completed material to Firestore students_records:', err)
+          );
+        }
+
         this.addLog({
           userName: student.name,
           userRole: 'siswa',
           action: 'Selesai Membaca Materi',
           details: `Menyelesaikan materi: ${materi?.title || materiId} (+50 XP)`,
         });
+      }
+    }
+  },
+
+  forceSyncCompletedMaterials(studentId: string, completedMaterials: string[]): void {
+    if (!studentId) return;
+    const students = JSON.parse(JSON.stringify(this.getStudents())) as Student[];
+    const student = students.find(s => s.id === studentId);
+    if (student) {
+      student.completedMaterials = Array.from(new Set(completedMaterials));
+      student.updatedAt = new Date().toISOString();
+      student.lastActive = new Date().toISOString();
+      this.saveStudents(students);
+
+      if (db) {
+        setDoc(doc(db, 'students_records', studentId), sanitizeForFirestore({
+          completedMaterials: student.completedMaterials,
+          updatedAt: student.updatedAt,
+          lastActive: student.lastActive,
+        }), { merge: true }).catch(err => console.error('Error force syncing completedMaterials array to Firestore:', err));
+      }
+    }
+  },
+
+  forceSyncStudentHafalanProgress(studentId: string, hafalanProgress: any): void {
+    if (!studentId) return;
+    const students = JSON.parse(JSON.stringify(this.getStudents())) as Student[];
+    const student = students.find(s => s.id === studentId);
+    if (student) {
+      student.hafalanProgress = {
+        ...student.hafalanProgress,
+        ...hafalanProgress,
+      };
+      student.updatedAt = new Date().toISOString();
+      student.lastActive = new Date().toISOString();
+      this.saveStudents(students);
+
+      if (db) {
+        setDoc(doc(db, 'students_records', studentId), sanitizeForFirestore({
+          hafalanProgress: student.hafalanProgress,
+          updatedAt: student.updatedAt,
+          lastActive: student.lastActive,
+        }), { merge: true }).catch(err => console.error('Error force syncing hafalanProgress to Firestore:', err));
+      }
+    }
+  },
+
+  forceSyncStudentProgress(studentId: string, updates: Partial<Student>): void {
+    if (!studentId) return;
+    const students = JSON.parse(JSON.stringify(this.getStudents())) as Student[];
+    const student = students.find(s => s.id === studentId);
+    if (student) {
+      const updatedStudent: Student = {
+        ...student,
+        ...updates,
+        updatedAt: new Date().toISOString(),
+        lastActive: new Date().toISOString(),
+      };
+      const updatedList = students.map(s => s.id === studentId ? updatedStudent : s);
+      this.saveStudents(updatedList);
+
+      if (db) {
+        setDoc(doc(db, 'students_records', studentId), sanitizeForFirestore(updatedStudent), { merge: true }).catch(err =>
+          console.error('Error force syncing student progress to Firestore:', err)
+        );
       }
     }
   },

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Student, StudentStatus } from '../../types';
 import {
@@ -63,7 +63,7 @@ export const SiswaCredentialsModal: React.FC<SiswaCredentialsModalProps> = ({
   const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // When initialSelectedStudentId changes, open that student
-  React.useEffect(() => {
+  useEffect(() => {
     if (initialSelectedStudentId && isOpen) {
       const target = students.find(s => s.id === initialSelectedStudentId);
       if (target) {

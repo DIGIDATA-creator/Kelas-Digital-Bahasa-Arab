@@ -40,6 +40,10 @@ export const KosakataFormModal: React.FC<KosakataFormModalProps> = ({
   const [fiilMudhari, setFiilMudhari] = useState('');
   const [fiilAmr, setFiilAmr] = useState('');
 
+  // Mass upload / spreadsheet modal
+  const [isSheetModalOpen, setIsSheetModalOpen] = useState(false);
+  const [sheetText, setSheetText] = useState('');
+
   // Synchronize modal state whenever isOpen or editingMateri changes
   useEffect(() => {
     if (isOpen) {
@@ -68,10 +72,6 @@ export const KosakataFormModal: React.FC<KosakataFormModalProps> = ({
       setFiilAmr('');
     }
   }, [isOpen, editingMateri, existingMateriList]);
-
-  // Mass upload / spreadsheet modal
-  const [isSheetModalOpen, setIsSheetModalOpen] = useState(false);
-  const [sheetText, setSheetText] = useState('');
 
   const handleAddWord = () => {
     if (vocabCategory === 'فِعل') {

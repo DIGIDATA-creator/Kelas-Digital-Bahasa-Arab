@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Role, Student, TingkatType } from '../../types';
 import { storageService, UserSession } from '../../services/storage';
@@ -61,11 +61,11 @@ export const LoginView: React.FC<LoginViewProps> = ({
   const [successMsg, setSuccessMsg] = useState('');
   const [liveStudents, setLiveStudents] = useState<Student[]>(students);
 
-  React.useEffect(() => {
+  useEffect(() => {
     setLiveStudents(students);
   }, [students]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     storageService.fetchLatestStudentsData().then(fresh => {
       if (fresh && fresh.length > 0) setLiveStudents(fresh);
     });

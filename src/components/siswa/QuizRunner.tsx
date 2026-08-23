@@ -475,7 +475,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({
 
                           return (
                             <button
-                              key={optIdx}
+                              key={`${currentQ.id}-opt-${optIdx}`}
                               onClick={() => handleSelectAnswer(optIdx)}
                               className={`w-full text-left p-3.5 sm:p-4 rounded-xl border-2 transition-all text-xs sm:text-sm font-medium flex items-center justify-between cursor-pointer ${
                                 isSelected

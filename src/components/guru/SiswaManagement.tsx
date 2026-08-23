@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import * as XLSX from 'xlsx';
 import { Student, StudentStatus, Materi, TingkatType, ActivityLog } from '../../types';
 import {
   UserPlus,
@@ -31,7 +32,8 @@ import {
   Activity,
   RefreshCw,
   FileSpreadsheet,
-  KeyRound
+  KeyRound,
+  Upload
 } from 'lucide-react';
 import { PendaftaranSiswaForm } from '../auth/PendaftaranSiswaForm';
 import { CeklisHafalanModal } from './CeklisHafalanModal';
@@ -130,13 +132,30 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
   const [showExportModal, setShowExportModal] = useState(false);
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
   const [selectedStudentForCredentialsId, setSelectedStudentForCredentialsId] = useState<string | undefined>(undefined);
+  const [selectedStudentForDetail, setSelectedStudentForDetail] = useState<Student | null>(null);
+  const [studentForHafalanChecklist, setStudentForHafalanChecklist] = useState<Student | null>(null);
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isExcelImportModalOpen, setIsExcelImportModalOpen] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [collapsedSchools, setCollapsedSchools] = useState<Record<string, boolean>>({});
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncNotice, setSyncNotice] = useState<string | null>(null);
+  const quickExcelInputRef = useRef<HTMLInputElement>(null);
+
+  // Delete student modal state
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{
+    isOpen: boolean;
+    studentId?: string;
+    studentName?: string;
+  }>({
+    isOpen: false,
+  });
 
   const activeLogs = logs || storageService.getLogs();
 
-  const [selectedStudentForDetail, setSelectedStudentForDetail] = useState<Student | null>(null);
-
   // Automatically open student detail modal when navigated with initialSelectedStudentId
-  React.useEffect(() => {
+  useEffect(() => {
     if (initialSelectedStudentId) {
       const target = students.find(s => s.id === initialSelectedStudentId);
       if (target) {
@@ -146,14 +165,13 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
   }, [initialSelectedStudentId, students]);
 
   // Silently refresh latest students from server on mount to ensure real-time accuracy of registrations
-  React.useEffect(() => {
+  useEffect(() => {
     storageService.fetchLatestStudentsData().then(fresh => {
       if (fresh && fresh.length > 0) {
         onSaveStudents(fresh);
       }
     }).catch(console.warn);
   }, []);
-  const [studentForHafalanChecklist, setStudentForHafalanChecklist] = useState<Student | null>(null);
 
   // Predictive search calculation
   const studentPredictions = useMemo(() => {
@@ -167,17 +185,6 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
       (s.rombelName || '').toLowerCase().includes(q)
     ).slice(0, 6);
   }, [students, searchTerm]);
-
-  // Bulk selection state
-  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
-
-  // Form modal state
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isExcelImportModalOpen, setIsExcelImportModalOpen] = useState(false);
-  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
-
-  // Accordion collapsed state for grouped view
-  const [collapsedSchools, setCollapsedSchools] = useState<Record<string, boolean>>({});
 
   const toggleSchoolCollapse = (schoolKey: string) => {
     setCollapsedSchools(prev => ({ ...prev, [schoolKey]: !prev[schoolKey] }));
@@ -230,15 +237,6 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
     setIsModalOpen(true);
   };
 
-  // Delete student modal state
-  const [deleteConfirmation, setDeleteConfirmation] = useState<{
-    isOpen: boolean;
-    studentId?: string;
-    studentName?: string;
-  }>({
-    isOpen: false,
-  });
-
   const requestDeleteStudent = (student: Student) => {
     setDeleteConfirmation({
       isOpen: true,
@@ -271,6 +269,178 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
       setTimeout(() => setSyncNotice(null), 5000);
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  const handleQuickExcelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsSyncing(true);
+    setSyncNotice(`⏳ Sedang membaca dan memproses file "${file.name}"...`);
+
+    try {
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { type: 'array' });
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      const jsonRows: any[] = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+      if (jsonRows.length === 0) {
+        setSyncNotice(`❌ File "${file.name}" tidak memiliki baris data yang valid.`);
+        setTimeout(() => setSyncNotice(null), 4000);
+        return;
+      }
+
+      const existingEmails = new Set(students.map(s => (s.email || '').trim().toLowerCase()));
+      const newStudentsToCreate: Student[] = [];
+
+      jsonRows.forEach((row, index) => {
+        const name = (
+          row['Nama Lengkap'] ||
+          row['Nama Siswa'] ||
+          row['Nama'] ||
+          row['name'] ||
+          row['Full Name'] ||
+          ''
+        ).toString().trim();
+
+        if (!name) return;
+
+        const rawGender = (
+          row['Jenis Kelamin (L/P)'] ||
+          row['Jenis Kelamin'] ||
+          row['Gender'] ||
+          row['gender'] ||
+          'L'
+        ).toString().trim().toUpperCase();
+
+        const gender: 'Laki-laki' | 'Perempuan' =
+          rawGender.startsWith('P') || rawGender.includes('PEREMPUAN') || rawGender.includes('WANITA')
+            ? 'Perempuan'
+            : 'Laki-laki';
+
+        const rawEmail = (
+          row['Email / Akun'] ||
+          row['Email'] ||
+          row['email'] ||
+          row['Username'] ||
+          ''
+        ).toString().trim().toLowerCase();
+
+        const safeSlug = name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 15) || `siswa${index + 1}`;
+        let email = rawEmail;
+        if (!email || !email.includes('@')) {
+          email = `${safeSlug}${Math.floor(100 + Math.random() * 900)}@sekolah.sch.id`;
+        }
+
+        if (existingEmails.has(email)) {
+          email = `${safeSlug}.${Date.now().toString().slice(-4)}${index}@sekolah.sch.id`;
+        }
+        existingEmails.add(email);
+
+        const password = (
+          row['Password (Opsional)'] ||
+          row['Password'] ||
+          row['password'] ||
+          row['Sandi'] ||
+          '123456'
+        ).toString().trim() || '123456';
+
+        const rawTingkat = (
+          row['Tingkat Pendidikan'] ||
+          row['Tingkat'] ||
+          row['tingkat'] ||
+          'Dasar'
+        ).toString().trim();
+
+        let tingkat: TingkatType = 'Dasar';
+        if (/smp|mts|menengah pertama|7|8|9/i.test(rawTingkat)) {
+          tingkat = 'Menengah Pertama';
+        } else if (/sma|ma|smk|menengah akhir|10|11|12/i.test(rawTingkat)) {
+          tingkat = 'Menengah Akhir';
+        } else if (/tinggi|kuliah|universitas|umum/i.test(rawTingkat)) {
+          tingkat = 'Umum';
+        }
+
+        const schoolName = (
+          row['Asal Sekolah'] ||
+          row['Sekolah'] ||
+          row['schoolName'] ||
+          row['School'] ||
+          'SD / MI Terpadu'
+        ).toString().trim();
+
+        const className = (
+          row['Kelas Utama'] ||
+          row['Kelas'] ||
+          row['className'] ||
+          row['Class'] ||
+          'Kelas 5'
+        ).toString().trim();
+
+        const rombelName = (
+          row['Rombel / Sub-Kelas'] ||
+          row['Rombel'] ||
+          row['rombelName'] ||
+          row['Sub-Kelas'] ||
+          '5A'
+        ).toString().trim();
+
+        const studentId = `std-xl-${Date.now()}-${index}-${Math.floor(Math.random() * 1000)}`;
+        const nisn = `2026${Math.floor(100000 + Math.random() * 900000)}`;
+        const avatar = gender === 'Perempuan'
+          ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
+          : 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80';
+
+        newStudentsToCreate.push({
+          id: studentId,
+          name,
+          email,
+          password,
+          gender,
+          tingkat,
+          schoolName,
+          className,
+          rombelName,
+          nisn,
+          avatar,
+          totalXP: 0,
+          completedMaterials: [],
+          attempts: [],
+          status: 'aktif',
+          registeredAt: new Date().toISOString(),
+          lastActive: new Date().toISOString(),
+          hafalanProgress: {
+            kosakataIds: {},
+            selfKosakataIds: {},
+            selfMahfudzotIds: {},
+            selfQowaidIds: {},
+            selfHiwarIds: {},
+            mahfudzotChecklist: {},
+          },
+        });
+      });
+
+      if (newStudentsToCreate.length === 0) {
+        setSyncNotice(`❌ Tidak ada baris nama siswa yang dapat diimpor dari file.`);
+        setTimeout(() => setSyncNotice(null), 4000);
+        return;
+      }
+
+      const result = await storageService.bulkAddStudents(newStudentsToCreate);
+      onSaveStudents(result.updatedList);
+      setSyncNotice(`✅ Berhasil mengimpor ${result.count} siswa baru dari file "${file.name}" secara otomatis!`);
+      setTimeout(() => setSyncNotice(null), 5000);
+    } catch (err: any) {
+      console.error('Error in handleQuickExcelUpload:', err);
+      setSyncNotice(`❌ Gagal membaca file Excel/CSV: ${err.message || 'Format file tidak sesuai'}`);
+      setTimeout(() => setSyncNotice(null), 5000);
+    } finally {
+      setIsSyncing(false);
+      if (quickExcelInputRef.current) {
+        quickExcelInputRef.current.value = '';
+      }
     }
   };
 
@@ -398,9 +568,6 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
     }
   };
 
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncNotice, setSyncNotice] = useState<string | null>(null);
-
   const handleManualSync = async () => {
     setIsSyncing(true);
     setSyncNotice(null);
@@ -521,7 +688,16 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-y-auto max-h-full pb-8">
+      {/* Hidden File Input for XLSX/CSV Bulk Upload */}
+      <input
+        type="file"
+        ref={quickExcelInputRef}
+        accept=".xlsx,.xls,.csv"
+        onChange={handleQuickExcelUpload}
+        className="hidden"
+      />
+
       {/* Header & Main Bar */}
       <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-4">
         <div>
@@ -581,12 +757,22 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
             <KeyRound size={16} className="text-emerald-400" /> Akses Akun & Password Siswa
           </button>
 
-          <button
-            onClick={() => setIsExcelImportModalOpen(true)}
-            className="px-3.5 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-emerald-100 border border-emerald-600/50 rounded-xl font-extrabold text-xs shadow-md flex items-center gap-1.5 transition-all cursor-pointer"
-          >
-            <FileSpreadsheet size={16} className="text-emerald-300" /> Import Excel Siswa
-          </button>
+          <div className="flex items-center gap-1 bg-emerald-800/10 p-0.5 rounded-xl border border-emerald-600/30">
+            <button
+              onClick={() => quickExcelInputRef.current?.click()}
+              className="px-3 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg font-extrabold text-xs shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
+              title="Unggah langsung file .xlsx, .xls, atau .csv untuk mendaftarkan siswa secara massal"
+            >
+              <Upload size={15} /> Upload CSV/Excel
+            </button>
+            <button
+              onClick={() => setIsExcelImportModalOpen(true)}
+              className="px-3 py-2 bg-emerald-800 hover:bg-emerald-900 text-emerald-100 rounded-lg font-extrabold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+              title="Buka Wizard Import Excel Lengkap (Download Template, Preview Kolom & Salin-Tempel)"
+            >
+              <FileSpreadsheet size={15} className="text-emerald-300" /> Wizard
+            </button>
+          </div>
 
           <button
             onClick={handleOpenAddModal}
@@ -1746,14 +1932,14 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18 }}
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 z-50 overflow-y-auto"
+            className="fixed inset-0 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto"
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="bg-white rounded-3xl max-w-xl w-full overflow-hidden shadow-2xl border border-slate-100 my-auto max-h-[92vh] flex flex-col"
+              className="bg-white rounded-3xl max-w-xl w-full shadow-2xl border border-slate-100 my-auto max-h-[90vh] flex flex-col overflow-hidden"
             >
               <div className="p-4 sm:p-5 bg-gradient-to-r from-emerald-800 to-teal-900 text-white flex items-center justify-between shrink-0 shadow-sm">
                 <div>
@@ -1791,7 +1977,7 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
                 </div>
               )}
 
-              <div className="p-4 sm:p-6 overflow-y-auto flex-1">
+              <div className="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0 overscroll-contain">
                 <PendaftaranSiswaForm
                   existingStudents={students}
                   initialStudent={editingStudent || undefined}

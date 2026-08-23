@@ -235,7 +235,7 @@ export const MonitoringPemahamanView: React.FC<MonitoringPemahamanViewProps> = (
                           </span>
                           <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                             {materi.learningTargets.map((tgt, i) => (
-                              <li key={i} className="flex items-center gap-1.5 text-[11px] text-slate-700">
+                              <li key={`${materi.id}-tgt-${i}`} className="flex items-center gap-1.5 text-[11px] text-slate-700">
                                 <span className="text-emerald-600 font-bold">•</span>
                                 <span>{tgt}</span>
                               </li>
@@ -254,8 +254,8 @@ export const MonitoringPemahamanView: React.FC<MonitoringPemahamanViewProps> = (
                             <p className="text-[11px] text-slate-400 italic">Belum ada siswa yang menandai.</p>
                           ) : (
                             <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                              {studentsUnderstood.map(s => (
-                                <div key={s.id} className="p-2 bg-white rounded-lg border border-emerald-100 flex items-center justify-between text-[11px]">
+                              {studentsUnderstood.map((s, sIdx) => (
+                                <div key={`${materi.id}-qowaid-done-${s.id}-${sIdx}`} className="p-2 bg-white rounded-lg border border-emerald-100 flex items-center justify-between text-[11px]">
                                   <span className="font-extrabold text-slate-900">{s.name}</span>
                                   <span className="text-slate-500">{s.className} • {s.rombelName || 'Umum'}</span>
                                 </div>
@@ -273,8 +273,8 @@ export const MonitoringPemahamanView: React.FC<MonitoringPemahamanViewProps> = (
                             <p className="text-[11px] text-emerald-700 font-bold">Seluruh siswa sudah menandai dipahami!</p>
                           ) : (
                             <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                              {activeStudents.filter(s => !s.hafalanProgress?.selfQowaidIds?.[materi.id]).map(s => (
-                                <div key={s.id} className="p-2 bg-white rounded-lg border border-slate-200 flex items-center justify-between text-[11px]">
+                              {activeStudents.filter(s => !s.hafalanProgress?.selfQowaidIds?.[materi.id]).map((s, sIdx) => (
+                                <div key={`${materi.id}-qowaid-pending-${s.id}-${sIdx}`} className="p-2 bg-white rounded-lg border border-slate-200 flex items-center justify-between text-[11px]">
                                   <span className="font-bold text-slate-700">{s.name}</span>
                                   <span className="text-slate-400">{s.className}</span>
                                 </div>
@@ -339,8 +339,8 @@ export const MonitoringPemahamanView: React.FC<MonitoringPemahamanViewProps> = (
                       <div className="p-3 bg-sky-50 border border-sky-200 rounded-xl space-y-2">
                         <span className="font-extrabold text-sky-900 block">Daftar Siswa Sudah Menandai Hiwar Dipahami:</span>
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                          {studentsUnderstood.map(s => (
-                            <div key={s.id} className="p-2 bg-white rounded-lg border border-sky-100 font-bold text-slate-800">
+                          {studentsUnderstood.map((s, sIdx) => (
+                            <div key={`${materi.id}-hiwar-student-${s.id}-${sIdx}`} className="p-2 bg-white rounded-lg border border-sky-100 font-bold text-slate-800">
                               {s.name} ({s.className})
                             </div>
                           ))}
@@ -418,11 +418,11 @@ export const MonitoringPemahamanView: React.FC<MonitoringPemahamanViewProps> = (
                     <div className="p-5 bg-slate-50 border-t border-slate-200 space-y-3 text-xs">
                       <span className="font-extrabold text-slate-800 block">Rincian Progress Siswa per Kata ({totalVocabCount} Kata):</span>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-60 overflow-y-auto">
-                        {vocabs.map((v) => {
+                        {vocabs.map((v, vIdx) => {
                           const selfCount = activeStudents.filter(s => !!s.hafalanProgress?.selfKosakataIds?.[v.id]).length;
                           const verifiedCount = activeStudents.filter(s => !!s.hafalanProgress?.kosakataIds?.[v.id] || !!s.hafalanProgress?.quizVerifiedKosakataIds?.[v.id]).length;
                           return (
-                            <div key={v.id} className="p-2.5 bg-white rounded-xl border border-slate-200 flex items-center justify-between">
+                            <div key={`${materi.id}-vocab-stat-${v.id || vIdx}-${vIdx}`} className="p-2.5 bg-white rounded-xl border border-slate-200 flex items-center justify-between">
                               <div>
                                 <span className="font-arabic font-extrabold text-slate-900 text-sm block dir-rtl">{v.word}</span>
                                 <span className="text-[11px] text-slate-500 font-medium">{v.meaning}</span>
@@ -500,8 +500,8 @@ export const MonitoringPemahamanView: React.FC<MonitoringPemahamanViewProps> = (
                       <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-xl space-y-2">
                         <span className="font-extrabold text-indigo-900 block">Ditandai Hafal oleh Siswa ({selfCount} Siswa):</span>
                         <div className="space-y-1 max-h-40 overflow-y-auto">
-                          {selfMarkedStudents.map(s => (
-                            <div key={s.id} className="p-2 bg-white rounded-lg border border-indigo-100 font-bold text-slate-800">
+                          {selfMarkedStudents.map((s, sIdx) => (
+                            <div key={`${materi.id}-mahfudzot-self-${s.id}-${sIdx}`} className="p-2 bg-white rounded-lg border border-indigo-100 font-bold text-slate-800">
                               {s.name} ({s.className})
                             </div>
                           ))}
@@ -512,10 +512,10 @@ export const MonitoringPemahamanView: React.FC<MonitoringPemahamanViewProps> = (
                       <div className="p-3 bg-purple-50 border border-purple-200 rounded-xl space-y-2">
                         <span className="font-extrabold text-purple-900 block">Diceklis oleh Guru ({verifiedCount} Siswa):</span>
                         <div className="space-y-1 max-h-40 overflow-y-auto">
-                          {verifiedStudents.map(s => {
+                          {verifiedStudents.map((s, sIdx) => {
                             const chk = s.hafalanProgress?.mahfudzotChecklist?.[materi.id];
                             return (
-                              <div key={s.id} className="p-2 bg-white rounded-lg border border-purple-100 flex items-center justify-between text-[11px]">
+                              <div key={`${materi.id}-mahfudzot-vfd-${s.id}-${sIdx}`} className="p-2 bg-white rounded-lg border border-purple-100 flex items-center justify-between text-[11px]">
                                 <span className="font-bold text-slate-800">{s.name}</span>
                                 <span className="text-[10px] text-purple-800 font-mono">
                                   {[chk?.hafalanArab && 'Arab', chk?.hafalanTerjemah && 'Terjemah', chk?.pengetahuanKosakata && 'Vocab', chk?.pemahamanMateri && 'Hikmah'].filter(Boolean).join(', ')}

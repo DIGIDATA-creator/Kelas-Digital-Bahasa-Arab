@@ -233,9 +233,9 @@ export const DuelLobby: React.FC<DuelLobbyProps> = ({
               </div>
             ) : (
               <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
-                {publicRooms.map((rm) => (
+                {publicRooms.map((rm, rmIdx) => (
                   <div
-                    key={rm.id}
+                    key={`${rm.id || 'room'}-${rmIdx}`}
                     className="p-3.5 bg-slate-50 dark:bg-slate-800/60 hover:bg-amber-50 dark:hover:bg-amber-950/20 rounded-xl border border-slate-200 dark:border-slate-700/80 flex items-center justify-between transition-all"
                   >
                     <div className="flex items-center gap-3">
@@ -289,9 +289,9 @@ export const DuelLobby: React.FC<DuelLobbyProps> = ({
             </div>
 
             <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-              {availableStudents.slice(0, 5).map((std) => (
+              {availableStudents.slice(0, 5).map((std, stdIdx) => (
                 <div
-                  key={std.id}
+                  key={`${std.id || 'std'}-${stdIdx}`}
                   className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 flex items-center justify-between"
                 >
                   <div className="flex items-center gap-2.5">

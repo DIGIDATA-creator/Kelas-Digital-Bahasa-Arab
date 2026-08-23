@@ -876,7 +876,7 @@ export const HiwarView: React.FC<HiwarViewProps> = ({
 
                     return (
                       <div
-                        key={pair.id || idx}
+                        key={`${materi.id}-pair-${pair.id || idx}-${idx}`}
                         className={`bg-white dark:bg-slate-900 rounded-2xl border p-4 shadow-2xs space-y-3 transition-all ${
                           isFocusMode ? 'border-emerald-300 dark:border-emerald-800 ring-1 ring-emerald-500/10' : 'border-slate-200 dark:border-slate-800 hover:border-sky-300'
                         }`}

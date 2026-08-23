@@ -205,9 +205,9 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
                 <p>Tidak ada pemberitahuan {filter === 'unread' ? 'belum dibaca' : ''}.</p>
               </div>
             ) : (
-              filteredList.map(notif => (
+              filteredList.map((notif, nIdx) => (
                 <div
-                  key={notif.id}
+                  key={`${notif.id || 'notif'}-${nIdx}`}
                   onClick={() => handleSelectNotif(notif)}
                   className={`p-3.5 transition-all cursor-pointer flex items-start gap-3 relative group ${
                     notif.read

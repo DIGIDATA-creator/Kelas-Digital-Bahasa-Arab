@@ -57,23 +57,6 @@ export default function App() {
     }
   });
 
-  useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-    try {
-      localStorage.setItem('lms_dark_mode', String(isDarkMode));
-    } catch {
-      // ignore
-    }
-  }, [isDarkMode]);
-
-  const handleToggleDarkMode = () => {
-    setIsDarkMode(prev => !prev);
-  };
-
   // State loaded from LocalStorage & synchronized with Firestore
   const [materiList, setMateriList] = useState<Materi[]>(() => storageService.getMateri());
   const [penilaianList, setPenilaianList] = useState<Penilaian[]>(() => storageService.getPenilaian());
@@ -93,6 +76,23 @@ export default function App() {
 
   // Toast Notification System
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    try {
+      localStorage.setItem('lms_dark_mode', String(isDarkMode));
+    } catch {
+      // ignore
+    }
+  }, [isDarkMode]);
+
+  const handleToggleDarkMode = () => {
+    setIsDarkMode(prev => !prev);
+  };
 
   const addToast = (toast: Omit<ToastItem, 'id' | 'timestamp'>) => {
     const newToast: ToastItem = {
