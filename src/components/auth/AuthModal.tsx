@@ -131,8 +131,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         onClose();
       }, 1200);
     } catch (err: any) {
-      console.error("Google Auth error:", err);
-      setErrorMsg(err.message || 'Gagal masuk dengan Google.');
+      console.warn("Google Auth note:", err?.code || err?.message || err);
+      if (err?.code === 'auth/api-key-not-valid' || err?.message?.includes('API key')) {
+        setErrorMsg('Integrasi Google Identity Platform sedang dalam konfigurasi. Silakan masuk menggunakan Email & Kata Sandi di bawah.');
+      } else {
+        setErrorMsg(err.message || 'Gagal masuk dengan Google.');
+      }
     } finally {
       setLoading(false);
     }

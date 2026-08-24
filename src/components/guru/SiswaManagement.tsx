@@ -33,7 +33,8 @@ import {
   RefreshCw,
   FileSpreadsheet,
   KeyRound,
-  Upload
+  Upload,
+  Download
 } from 'lucide-react';
 import { PendaftaranSiswaForm } from '../auth/PendaftaranSiswaForm';
 import { CeklisHafalanModal } from './CeklisHafalanModal';
@@ -126,8 +127,8 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
   const [showPredictions, setShowPredictions] = useState(false);
   const [selectedClass, setSelectedClass] = useState('semua');
   const [selectedSchoolFilter, setSelectedSchoolFilter] = useState('semua');
-  const [activeMainSection, setActiveMainSection] = useState<'acc' | 'aktif' | 'semua'>('acc');
-  const [statusTab, setStatusTab] = useState<'semua' | 'pending' | 'disetujui' | 'ditolak' | 'nonaktif'>('pending');
+  const [activeMainSection, setActiveMainSection] = useState<'acc' | 'aktif' | 'semua'>('semua');
+  const [statusTab, setStatusTab] = useState<'semua' | 'pending' | 'disetujui' | 'ditolak' | 'nonaktif'>('semua');
   const [viewMode, setViewMode] = useState<'cards' | 'grouped' | 'flat'>('cards');
   const [showLogsVisitsModal, setShowLogsVisitsModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
@@ -335,14 +336,18 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
     try {
       const result = await storageService.bulkAddStudents(newStudents);
       onSaveStudents(result.updatedList);
-      setSyncNotice(`✅ Berhasil mengimpor dan menyimpan ${result.count} siswa baru dari file Excel.`);
+      setStatusTab('semua');
+      setActiveMainSection('semua');
+      setSyncNotice(`✅ Berhasil mengimpor dan menyimpan ${result.count} akun siswa baru dari file Excel. Seluruh akun LANGSUNG AKTIF tanpa perlu menunggu ACC.`);
       setTimeout(() => setSyncNotice(null), 5000);
     } catch (err: any) {
       console.error('Error in handleImportExcelSuccess:', err);
       // Fallback
       const updated = [...newStudents, ...students];
       onSaveStudents(updated);
-      setSyncNotice(`✅ Berhasil menambahkan ${newStudents.length} siswa baru.`);
+      setStatusTab('semua');
+      setActiveMainSection('semua');
+      setSyncNotice(`✅ Berhasil menambahkan ${newStudents.length} siswa baru (Status: LANGSUNG AKTIF).`);
       setTimeout(() => setSyncNotice(null), 5000);
     } finally {
       setIsSyncing(false);
@@ -507,7 +512,9 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
 
       const result = await storageService.bulkAddStudents(newStudentsToCreate);
       onSaveStudents(result.updatedList);
-      setSyncNotice(`✅ Berhasil mengimpor ${result.count} siswa baru dari file "${file.name}" secara otomatis!`);
+      setStatusTab('semua');
+      setActiveMainSection('semua');
+      setSyncNotice(`✅ Berhasil mengimpor ${result.count} siswa baru dari file "${file.name}" secara otomatis! Seluruh akun LANGSUNG AKTIF.`);
       setTimeout(() => setSyncNotice(null), 5000);
     } catch (err: any) {
       console.error('Error in handleQuickExcelUpload:', err);
@@ -740,6 +747,10 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
         if (res.success) {
           const fresh = storageService.getStudents();
           onSaveStudents(fresh);
+          setStatusTab('semua');
+          setActiveMainSection('semua');
+          setSyncNotice(`✅ Akun siswa "${newStudent.name}" berhasil ditambahkan dan LANGSUNG AKTIF tanpa perlu menunggu ACC.`);
+          setTimeout(() => setSyncNotice(null), 5000);
         }
       }
     } catch (err) {
@@ -836,6 +847,26 @@ export const SiswaManagement: React.FC<SiswaManagementProps> = ({
             className="px-3.5 py-2.5 bg-slate-950 hover:bg-slate-900 text-emerald-300 border border-emerald-500/40 rounded-xl font-extrabold text-xs shadow-md flex items-center gap-1.5 transition-all cursor-pointer"
           >
             <KeyRound size={16} className="text-emerald-400" /> Akses Akun & Password Siswa
+          </button>
+
+          <button
+            onClick={() => {
+              const jsonStr = storageService.exportStudentsJSON();
+              const dateStr = new Date().toISOString().split('T')[0];
+              const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8' });
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = `backup_data_siswa_${dateStr}.json`;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              URL.revokeObjectURL(url);
+            }}
+            className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 rounded-xl font-extrabold text-xs shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
+            title="Ekspor seluruh data siswa ke format file JSON cadangan"
+          >
+            <Download size={15} className="text-slate-700" /> Ekspor Siswa (JSON)
           </button>
 
           <div className="flex items-center gap-1 bg-emerald-800/10 p-0.5 rounded-xl border border-emerald-600/30">

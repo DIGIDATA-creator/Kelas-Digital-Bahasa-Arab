@@ -19,21 +19,34 @@ export const signInWithGoogle = async () => {
     const result = await signInWithPopup(auth, googleProvider);
     return result.user;
   } catch (error: any) {
-    console.error("Firebase Google Auth error:", error);
+    console.warn("ℹ️ [FIREBASE AUTH] Google Popup Auth note:", error?.code || error?.message || error);
     if (error?.code === 'auth/unauthorized-domain') {
       const domain = typeof window !== 'undefined' ? window.location.hostname : 'domain Anda';
-      throw new Error(
-        `Domain "${domain}" belum terdaftar di Authorized Domains Firebase Console (atau proses sinkronisasi domain Google butuh waktu 5-10 menit). Silakan pastikan domain "${domain}" sudah ditambahkan di Firebase Console (Authentication > Settings > Authorized domains), atau gunakan Login Email / Username di bawah.`
+      const customErr = new Error(
+        `Domain "${domain}" belum terdaftar di Authorized Domains Firebase Console. Silakan gunakan Login Email / Username di bawah atau masuk lewat Verifikasi Akun Google.`
       );
+      (customErr as any).code = 'auth/unauthorized-domain';
+      throw customErr;
     }
-    if (error?.code === 'auth/api-key-not-valid' || error?.message?.includes('API key not valid')) {
-      throw new Error("API Key Firebase tidak valid. Silakan gunakan Login Email/Password atau perbarui API Key di Firebase Console.");
+    if (
+      error?.code === 'auth/api-key-not-valid' ||
+      error?.code === 'auth/invalid-api-key' ||
+      error?.message?.includes('API key not valid') ||
+      error?.message?.includes('api-key-not-valid')
+    ) {
+      const customErr = new Error("Firebase Auth API Key belum aktif di Google Cloud/Firebase Console.");
+      (customErr as any).code = 'auth/api-key-not-valid';
+      throw customErr;
     }
     if (error?.code === 'auth/popup-closed-by-user') {
-      throw new Error("Proses login dibatalkan karena jendela pop-up Google ditutup.");
+      const customErr = new Error("Proses login dibatalkan karena jendela pop-up Google ditutup.");
+      (customErr as any).code = 'auth/popup-closed-by-user';
+      throw customErr;
     }
     if (error?.code === 'auth/popup-blocked') {
-      throw new Error("Pop-up Google diblokir oleh browser. Harap izinkan pop-up untuk situs ini.");
+      const customErr = new Error("Pop-up Google diblokir oleh browser. Harap izinkan pop-up untuk situs ini.");
+      (customErr as any).code = 'auth/popup-blocked';
+      throw customErr;
     }
     throw error;
   }

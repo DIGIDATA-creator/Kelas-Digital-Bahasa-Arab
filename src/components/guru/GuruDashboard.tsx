@@ -1,12 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { Materi, Penilaian, Student, ActivityLog } from '../../types';
-import { Users, BookOpen, FileCheck2, Award, Plus, FileUp, Sparkles, TrendingUp, Clock, CheckCircle2, UserCheck, GraduationCap, ArrowRight, Search, X, Eye, Activity, FileSpreadsheet, KeyRound } from 'lucide-react';
+import { Users, BookOpen, FileCheck2, Award, Plus, FileUp, Sparkles, TrendingUp, Clock, CheckCircle2, UserCheck, GraduationCap, ArrowRight, Search, X, Eye, Activity, FileSpreadsheet, KeyRound, Database, Download, RotateCcw, ShieldCheck, HardDrive } from 'lucide-react';
 import { DistribusiKemahiranChart } from './DistribusiKemahiranChart';
 import { GuruDashboardSkeleton } from '../common/Skeleton';
 import { MahfudzotOfTheDayCard } from '../common/MahfudzotOfTheDayCard';
 import { SiswaActivityVisitsView } from './SiswaActivityVisitsView';
 import { ExportNilaiModal } from './ExportNilaiModal';
 import { SiswaCredentialsModal } from './SiswaCredentialsModal';
+import { BackupRestoreModal } from './BackupRestoreModal';
+import { storageService } from '../../services/storage';
 
 interface GuruDashboardProps {
   materiList: Materi[];
@@ -36,6 +38,52 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({
   const [showLogsVisitsModal, setShowLogsVisitsModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+  const [showBackupRestoreModal, setShowBackupRestoreModal] = useState(false);
+  const [isRestoringDirect, setIsRestoringDirect] = useState(false);
+  const [restoreFeedback, setRestoreFeedback] = useState<string | null>(null);
+
+  // Quick 1-click restore handler from IndexedDB
+  const handleQuickRestore = async () => {
+    const confirm = window.confirm(
+      'Apakah Anda ingin memeriksa dan memulihkan data terakhir dari cadangan IndexedDB lokal ke sistem utama?'
+    );
+    if (!confirm) return;
+
+    setIsRestoringDirect(true);
+    setRestoreFeedback(null);
+    try {
+      const res = await storageService.restoreFromIndexedDBBackup();
+      if (res.success) {
+        setRestoreFeedback(`✅ ${res.message}`);
+        setTimeout(() => setRestoreFeedback(null), 7000);
+      } else {
+        setRestoreFeedback(`⚠️ ${res.message}`);
+        setTimeout(() => setRestoreFeedback(null), 7000);
+      }
+    } catch (e: any) {
+      setRestoreFeedback(`❌ Gagal: ${e?.message || 'Error'}`);
+      setTimeout(() => setRestoreFeedback(null), 7000);
+    } finally {
+      setIsRestoringDirect(false);
+    }
+  };
+
+  // Quick export JSON
+  const handleQuickExportJSON = () => {
+    const jsonStr = storageService.exportFullBackupJSON();
+    const dateStr = new Date().toISOString().split('T')[0];
+    const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `backup_lms_lengkap_${dateStr}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setRestoreFeedback('✅ Berkas cadangan JSON lengkap berhasil diunduh ke komputer Anda.');
+    setTimeout(() => setRestoreFeedback(null), 6000);
+  };
 
   // Predictive student lookup
   const studentPredictions = useMemo(() => {
@@ -99,6 +147,29 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({
               className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs sm:text-sm font-bold transition-all backdrop-blur-xs flex items-center gap-2 border border-white/20 cursor-pointer"
             >
               <Plus size={16} /> Buat Kuis / Ujian
+            </button>
+            <button
+              onClick={() => setShowBackupRestoreModal(true)}
+              className="px-4 py-2.5 bg-teal-400 hover:bg-teal-300 text-slate-950 rounded-xl text-xs sm:text-sm font-black transition-all shadow-md flex items-center gap-2 cursor-pointer"
+              title="Buka Pusat Cadangan & Pemulihan Data (IndexedDB / Ekspor-Impor JSON)"
+            >
+              <Database size={16} className="text-slate-950" /> Pusat Cadangan & Pemulihan
+            </button>
+            <button
+              onClick={handleQuickRestore}
+              disabled={isRestoringDirect}
+              className="px-4 py-2.5 bg-slate-900/90 hover:bg-slate-900 text-emerald-300 border border-emerald-400/50 rounded-xl text-xs sm:text-sm font-black transition-all shadow-md flex items-center gap-2 cursor-pointer"
+              title="Pulihkan data materi & siswa dari cadangan IndexedDB lokal jika terjadi reset mendadak"
+            >
+              <RotateCcw size={16} className={`text-emerald-400 ${isRestoringDirect ? 'animate-spin' : ''}`} />
+              <span>Pulihkan Data Terakhir</span>
+            </button>
+            <button
+              onClick={handleQuickExportJSON}
+              className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-emerald-200 border border-emerald-300/30 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer"
+              title="Ekspor seluruh data ke file JSON sebagai cadangan lokal"
+            >
+              <Download size={16} /> Ekspor Data (JSON)
             </button>
             <button
               onClick={() => setShowExportModal(true)}
@@ -573,6 +644,25 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({
         onClose={() => setShowExportModal(false)}
         students={students}
         penilaianList={penilaianList}
+      />
+
+      {/* Feedback Toast Notification */}
+      {restoreFeedback && (
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-emerald-500/60 flex items-center gap-3 animate-slideUp text-xs sm:text-sm font-bold">
+          <span>{restoreFeedback}</span>
+          <button
+            onClick={() => setRestoreFeedback(null)}
+            className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white cursor-pointer"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* MODAL OVERLAY: Backup & Restore (IndexedDB / JSON) */}
+      <BackupRestoreModal
+        isOpen={showBackupRestoreModal}
+        onClose={() => setShowBackupRestoreModal(false)}
       />
 
       {/* MODAL OVERLAY: Akses Akun & Reset Kata Sandi Siswa */}

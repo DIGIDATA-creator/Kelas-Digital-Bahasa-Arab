@@ -324,7 +324,7 @@ export const ImportExcelSiswaModal: React.FC<ImportExcelSiswaModalProps> = ({
           avatar,
           totalXP: 0,
           completedMaterials: [],
-          status: 'disetujui', // Directly approved when imported by Teacher / Admin
+          status: 'aktif', // Directly active without waiting for approval when imported by Teacher / Admin
           registeredAt: nowISO,
           updatedAt: nowISO,
           lastActive: nowISO,

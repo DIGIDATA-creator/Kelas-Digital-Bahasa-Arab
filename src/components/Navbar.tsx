@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Role, Student } from '../types';
-import { UserSession } from '../services/storage';
+import { UserSession, storageService, SyncStatusInfo } from '../services/storage';
 import { NotificationDropdown } from './common/NotificationDropdown';
 import {
   GraduationCap,
@@ -16,6 +16,7 @@ import {
   Cloud,
   CloudOff,
   RefreshCw,
+  CheckCircle,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -49,8 +50,30 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSwitchToStudentSession,
   onOpenTour,
   onOpenGlossary,
-  isSyncing,
+  isSyncing: propIsSyncing,
 }) => {
+  const [syncStatus, setSyncStatus] = useState<SyncStatusInfo>(() => storageService.getSyncStatus());
+  const [isManualSyncing, setIsManualSyncing] = useState(false);
+
+  useEffect(() => {
+    const unsub = storageService.onSyncStatusChange((status) => {
+      setSyncStatus(status);
+    });
+    return () => unsub();
+  }, []);
+
+  const effectiveIsSyncing = propIsSyncing ?? (syncStatus.isSyncing || isManualSyncing);
+
+  const handleManualSyncClick = async () => {
+    if (effectiveIsSyncing) return;
+    setIsManualSyncing(true);
+    try {
+      await storageService.syncAllNow();
+    } finally {
+      setIsManualSyncing(false);
+    }
+  };
+
   const currentStudent = students.find(s => s.id === currentStudentId) || students[0];
 
   const guruTabs = [
@@ -239,18 +262,51 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             )}
             
-            {/* Sync Status Indicator */}
-            {userSession && typeof isSyncing === 'boolean' && (
-              <div 
-                className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-800/50 rounded-xl border border-slate-700/50"
-                title={isSyncing ? "Menyinkronkan dengan Cloud..." : "Tersinkronisasi dengan Cloud"}
+            {/* Cloud & IndexedDB Sync Status Indicator Badge */}
+            {userSession && (
+              <button
+                type="button"
+                onClick={handleManualSyncClick}
+                disabled={effectiveIsSyncing}
+                className={`flex items-center gap-1.5 px-2.5 py-1 sm:py-1.5 rounded-xl border text-[11px] font-bold transition-all shadow-xs cursor-pointer ${
+                  effectiveIsSyncing
+                    ? 'bg-amber-500/15 text-amber-300 border-amber-500/40 hover:bg-amber-500/25'
+                    : !syncStatus.isOnline
+                    ? 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-750'
+                    : 'bg-emerald-950/60 text-emerald-300 border-emerald-600/50 hover:bg-emerald-900/60 hover:border-emerald-500'
+                }`}
+                title={
+                  effectiveIsSyncing
+                    ? 'Sedang menyinkronkan data dengan Cloud Firestore...'
+                    : !syncStatus.isOnline
+                    ? 'Mode Offline: Data tersimpan di IndexedDB browser'
+                    : `Data Terkini: Tersinkronisasi dengan Firestore (${
+                        syncStatus.lastSyncedAt
+                          ? new Date(syncStatus.lastSyncedAt).toLocaleTimeString('id-ID', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                          : 'Baru saja'
+                      }). Klik untuk segarkan.`
+                }
               >
-                {isSyncing ? (
-                  <RefreshCw size={14} className="text-amber-400 animate-spin" />
+                {effectiveIsSyncing ? (
+                  <>
+                    <RefreshCw size={13} className="text-amber-400 animate-spin shrink-0" />
+                    <span className="inline">Menyinkronkan...</span>
+                  </>
+                ) : !syncStatus.isOnline ? (
+                  <>
+                    <CloudOff size={13} className="text-slate-400 shrink-0" />
+                    <span className="hidden sm:inline">Offline</span>
+                  </>
                 ) : (
-                  <Cloud size={14} className="text-emerald-400" />
+                  <>
+                    <Cloud size={13} className="text-emerald-400 shrink-0" />
+                    <span className="hidden xs:inline">Data Terkini</span>
+                  </>
                 )}
-              </div>
+              </button>
             )}
 
             {/* Desktop Dark Mode Button */}

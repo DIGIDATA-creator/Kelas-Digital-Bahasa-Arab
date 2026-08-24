@@ -154,6 +154,44 @@ let cachedStudents: Student[] = [];
 let cachedLogs: ActivityLog[] = [];
 let cachedForum: ForumPost[] = [];
 
+export interface SyncStatusInfo {
+  isSyncing: boolean;
+  lastSyncedAt: string | null;
+  statusText: string;
+  isOnline: boolean;
+  error: string | null;
+}
+
+let currentSyncStatus: SyncStatusInfo = {
+  isSyncing: false,
+  lastSyncedAt: new Date().toISOString(),
+  statusText: 'Data Terkini',
+  isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
+  error: null,
+};
+
+let syncStatusListeners: Array<(status: SyncStatusInfo) => void> = [];
+
+export function updateSyncStatus(patch: Partial<SyncStatusInfo>) {
+  currentSyncStatus = { ...currentSyncStatus, ...patch };
+  syncStatusListeners.forEach(fn => {
+    try {
+      fn(currentSyncStatus);
+    } catch (e) {
+      console.warn('Sync status listener error:', e);
+    }
+  });
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => {
+    updateSyncStatus({ isOnline: true, statusText: 'Data Terkini' });
+  });
+  window.addEventListener('offline', () => {
+    updateSyncStatus({ isOnline: false, statusText: 'Tersimpan Offline' });
+  });
+}
+
 type SyncCallback = (data: {
   materiList: Materi[];
   penilaianList: Penilaian[];
@@ -164,6 +202,8 @@ type SyncCallback = (data: {
 
 let syncListeners: SyncCallback[] = [];
 
+let snapshotDebounceTimer: any = null;
+
 function notifyListeners() {
   const data = {
     materiList: cachedMateri,
@@ -173,6 +213,19 @@ function notifyListeners() {
     forumPosts: cachedForum,
   };
   syncListeners.forEach(cb => cb(data));
+
+  // Automatically update IndexedDB snapshot in background with slight debounce
+  if (snapshotDebounceTimer) clearTimeout(snapshotDebounceTimer);
+  snapshotDebounceTimer = setTimeout(() => {
+    offlineCacheService.saveFullSnapshot({
+      materiList: cachedMateri,
+      students: cachedStudents,
+      penilaianList: cachedPenilaian,
+      logs: cachedLogs,
+      forumPosts: cachedForum,
+      guruProfile: cachedGuruProfile,
+    }).catch(console.warn);
+  }, 400);
 }
 
 // Firestore collection document getters (safe lazy getters)
@@ -276,24 +329,45 @@ export const storageService = {
 
     const unsubs: Array<() => void> = [];
 
-    // 1. Listen to Materi
+    // 1a. Listen to individual Materi records collection
+    try {
+      if (db) {
+        unsubs.push(onSnapshot(collection(db, 'materi_records'), (snap) => {
+          const colItems: Materi[] = [];
+          snap.forEach(d => {
+            if (d.exists()) colItems.push(d.data() as Materi);
+          });
+          if (colItems.length > 0) {
+            colItems.sort((a, b) => (a.babNumber || 0) - (b.babNumber || 0));
+            cachedMateri = colItems;
+            saveLocal(KEYS.MATERI, colItems);
+            offlineCacheService.cacheAllMateriAndKosakata(colItems).catch(console.warn);
+            notifyListeners();
+          }
+        }, (err) => console.warn('Materi records collection snapshot warning:', err)));
+      }
+    } catch (err) {
+      console.warn('Materi records collection snapshot init warning:', err);
+    }
+
+    // 1b. Listen to master Materi document
     try {
       const dMateri = getDocMateri();
       if (dMateri) {
         unsubs.push(onSnapshot(dMateri, (docSnap) => {
-          if (docSnap.exists() && docSnap.data().items) {
+          if (docSnap.exists() && docSnap.data()?.items) {
             const remoteItems = docSnap.data().items as Materi[];
-            cachedMateri = remoteItems;
-            saveLocal(KEYS.MATERI, remoteItems);
-            offlineCacheService.cacheAllMateriAndKosakata(remoteItems).catch(console.warn);
-            notifyListeners();
-          } else if (!docSnap.exists() && cachedMateri.length > 0) {
-            setDoc(dMateri, sanitizeForFirestore({ items: cachedMateri })).catch(console.error);
+            if (Array.isArray(remoteItems) && remoteItems.length > 0) {
+              cachedMateri = remoteItems;
+              saveLocal(KEYS.MATERI, remoteItems);
+              offlineCacheService.cacheAllMateriAndKosakata(remoteItems).catch(console.warn);
+              notifyListeners();
+            }
           }
-        }, (err) => console.warn('Materi snapshot warning:', err)));
+        }, (err) => console.warn('Materi master snapshot warning:', err)));
       }
     } catch (err) {
-      console.warn('Materi snapshot init warning:', err);
+      console.warn('Materi master snapshot init warning:', err);
     }
 
     // 2. Listen to Penilaian
@@ -301,7 +375,7 @@ export const storageService = {
       const dPenilaian = getDocPenilaian();
       if (dPenilaian) {
         unsubs.push(onSnapshot(dPenilaian, (docSnap) => {
-          if (docSnap.exists() && docSnap.data().items) {
+          if (docSnap.exists() && docSnap.data()?.items) {
             const rawItems = docSnap.data().items as Penilaian[];
             const filtered = rawItems.filter(p => !SYSTEM_SAMPLE_QUIZ_IDS.includes(p.id));
             cachedPenilaian = filtered;
@@ -311,8 +385,6 @@ export const storageService = {
             if (rawItems.length !== filtered.length) {
               setDoc(dPenilaian, sanitizeForFirestore({ items: filtered })).catch(console.error);
             }
-          } else {
-            setDoc(dPenilaian, sanitizeForFirestore({ items: cachedPenilaian })).catch(console.error);
           }
         }, (err) => console.warn('Penilaian snapshot warning:', err)));
       }
@@ -505,7 +577,7 @@ export const storageService = {
         registeredAt: newStudent.registeredAt || timestamp,
         updatedAt: timestamp,
         lastActive: newStudent.lastActive || timestamp,
-        status: newStudent.status || 'pending',
+        status: newStudent.status || 'aktif',
       };
 
       const updatedList = [studentToSave, ...cleanList];
@@ -527,11 +599,14 @@ export const storageService = {
         ]);
       }
 
+      const isDirectActive = studentToSave.status === 'aktif' || studentToSave.status === 'disetujui';
       this.addLog({
-        userName: studentToSave.name,
-        userRole: 'siswa',
-        action: 'Pendaftaran Siswa Baru',
-        details: `Mengirimkan berkas pendaftaran akun siswa (${studentToSave.schoolName || 'Umum'} - ${studentToSave.className || 'Umum'}) - Status: MENUNGGU ACC`,
+        userName: isDirectActive ? 'Guru Admin' : studentToSave.name,
+        userRole: isDirectActive ? 'guru' : 'siswa',
+        action: isDirectActive ? 'Penambahan Akun Siswa Aktif' : 'Pendaftaran Siswa Baru',
+        details: isDirectActive
+          ? `Menambahkan akun siswa (${studentToSave.name} - ${studentToSave.schoolName || 'Umum'} - ${studentToSave.className || 'Umum'}) - Status: LANGSUNG AKTIF`
+          : `Mengirimkan berkas pendaftaran akun siswa (${studentToSave.schoolName || 'Umum'} - ${studentToSave.className || 'Umum'}) - Status: MENUNGGU ACC`,
       });
 
       return { success: true, student: studentToSave };
@@ -557,6 +632,7 @@ export const storageService = {
           existingEmailSet.add(email);
           validNew.push({
             ...s,
+            status: s.status || 'aktif',
             registeredAt: s.registeredAt || timestamp,
             updatedAt: timestamp,
             lastActive: timestamp,
@@ -935,18 +1011,96 @@ export const storageService = {
     return cachedMateri;
   },
 
+  async fetchLatestMateriData(): Promise<Materi[]> {
+    if (!db) return cachedMateri;
+    try {
+      // 1. Try querying from materi_records collection
+      const snap = await getDocs(collection(db, 'materi_records'));
+      const items: Materi[] = [];
+      snap.forEach(d => {
+        if (d.exists()) items.push(d.data() as Materi);
+      });
+
+      if (items.length > 0) {
+        items.sort((a, b) => (a.babNumber || 0) - (b.babNumber || 0));
+        cachedMateri = items;
+        saveLocal(KEYS.MATERI, items);
+        offlineCacheService.cacheAllMateriAndKosakata(items).catch(console.warn);
+        notifyListeners();
+        return items;
+      }
+
+      // 2. Fallback to master doc
+      const dMateri = getDocMateri();
+      if (dMateri) {
+        const docSnap = await getDoc(dMateri);
+        if (docSnap.exists() && docSnap.data()?.items && docSnap.data().items.length > 0) {
+          const remoteItems = docSnap.data().items as Materi[];
+          cachedMateri = remoteItems;
+          saveLocal(KEYS.MATERI, remoteItems);
+          offlineCacheService.cacheAllMateriAndKosakata(remoteItems).catch(console.warn);
+          notifyListeners();
+          return remoteItems;
+        }
+      }
+    } catch (err) {
+      console.warn('Error fetching latest materi from Firestore:', err);
+    }
+    return cachedMateri;
+  },
+
   saveMateri(list: Materi[]): void {
+    const previousList = [...cachedMateri];
     cachedMateri = list;
     saveLocal(KEYS.MATERI, list);
     offlineCacheService.cacheAllMateriAndKosakata(list).catch(console.warn);
+
     const dMateri = getDocMateri();
     if (dMateri) {
-      setDoc(dMateri, sanitizeForFirestore({ items: list })).catch(err => console.error('Error syncing Materi to Firestore:', err));
+      setDoc(dMateri, sanitizeForFirestore({ items: list, updatedAt: new Date().toISOString() })).catch(err => console.error('Error syncing Materi master doc:', err));
     }
+
+    // Persist each individual materi item in materi_records collection and cleanup deleted items
+    if (db) {
+      const newIds = new Set(list.map(m => m.id));
+      previousList.forEach(oldM => {
+        if (oldM && oldM.id && !newIds.has(oldM.id)) {
+          deleteDoc(doc(db, 'materi_records', oldM.id)).catch(console.error);
+        }
+      });
+
+      list.forEach(m => {
+        if (m && m.id) {
+          setDoc(doc(db, 'materi_records', m.id), sanitizeForFirestore(m), { merge: true }).catch(console.error);
+        }
+      });
+    }
+
     notifyListeners();
   },
 
   getPenilaian(): Penilaian[] {
+    return cachedPenilaian;
+  },
+
+  async fetchLatestPenilaianData(): Promise<Penilaian[]> {
+    if (!db) return cachedPenilaian;
+    try {
+      const dPenilaian = getDocPenilaian();
+      if (dPenilaian) {
+        const docSnap = await getDoc(dPenilaian);
+        if (docSnap.exists() && docSnap.data()?.items) {
+          const rawItems = docSnap.data().items as Penilaian[];
+          const filtered = rawItems.filter(p => !SYSTEM_SAMPLE_QUIZ_IDS.includes(p.id));
+          cachedPenilaian = filtered;
+          saveLocal(KEYS.PENILAIAN, cachedPenilaian);
+          notifyListeners();
+          return filtered;
+        }
+      }
+    } catch (err) {
+      console.warn('Error fetching latest penilaian from Firestore:', err);
+    }
     return cachedPenilaian;
   },
 
@@ -955,7 +1109,7 @@ export const storageService = {
     saveLocal(KEYS.PENILAIAN, list);
     const dPenilaian = getDocPenilaian();
     if (dPenilaian) {
-      setDoc(dPenilaian, sanitizeForFirestore({ items: list })).catch(err => console.error('Error syncing Penilaian to Firestore:', err));
+      setDoc(dPenilaian, sanitizeForFirestore({ items: list, updatedAt: new Date().toISOString() })).catch(err => console.error('Error syncing Penilaian to Firestore:', err));
     }
     notifyListeners();
   },
@@ -1556,5 +1710,336 @@ export const storageService = {
     if (dForum) setDoc(dForum, sanitizeForFirestore({ items: INITIAL_FORUM_POSTS })).catch(console.error);
 
     notifyListeners();
+  },
+
+  // Get current sync status info
+  getSyncStatus(): SyncStatusInfo {
+    return currentSyncStatus;
+  },
+
+  // Subscribe to sync status changes
+  onSyncStatusChange(callback: (status: SyncStatusInfo) => void): () => void {
+    syncStatusListeners.push(callback);
+    callback(currentSyncStatus);
+    return () => {
+      syncStatusListeners = syncStatusListeners.filter(cb => cb !== callback);
+    };
+  },
+
+  // Trigger full immediate sync across all Firestore collections
+  async syncAllNow(): Promise<{ success: boolean; message: string }> {
+    updateSyncStatus({ isSyncing: true, statusText: 'Menyinkronkan...' });
+    try {
+      const [freshMateri, freshStudents, freshPenilaian, freshGuru] = await Promise.all([
+        this.fetchLatestMateriData(),
+        this.fetchLatestStudentsData(),
+        this.fetchLatestPenilaianData(),
+        this.fetchLatestGuruData(),
+      ]);
+
+      updateSyncStatus({
+        isSyncing: false,
+        lastSyncedAt: new Date().toISOString(),
+        statusText: 'Data Terkini',
+        error: null,
+      });
+
+      // Save complete snapshot to IndexedDB
+      offlineCacheService.saveFullSnapshot({
+        materiList: freshMateri,
+        students: freshStudents,
+        penilaianList: freshPenilaian,
+        logs: cachedLogs,
+        forumPosts: cachedForum,
+        guruProfile: freshGuru.profile,
+      }).catch(console.warn);
+
+      return {
+        success: true,
+        message: `Sinkronisasi berhasil! Memuat ${freshMateri.length} materi & ${freshStudents.length} siswa terbaru dari cloud Firestore.`,
+      };
+    } catch (err: any) {
+      console.warn('Manual syncAllNow error:', err);
+      updateSyncStatus({
+        isSyncing: false,
+        statusText: 'Tersimpan Offline',
+        error: err?.message || 'Gagal tersambung ke cloud Firestore',
+      });
+      return {
+        success: false,
+        message: `Gagal menyinkronkan: ${err?.message || 'Koneksi jaringan terputus'}`,
+      };
+    }
+  },
+
+  // Restore latest full snapshot from IndexedDB backup
+  async restoreFromIndexedDBBackup(): Promise<{
+    success: boolean;
+    countMateri: number;
+    countStudents: number;
+    countPenilaian: number;
+    backupTimestamp: string;
+    message: string;
+  }> {
+    try {
+      const snapshot = await offlineCacheService.getLatestSnapshot();
+      if (!snapshot) {
+        return {
+          success: false,
+          countMateri: 0,
+          countStudents: 0,
+          countPenilaian: 0,
+          backupTimestamp: '',
+          message: 'Tidak ditemukan data cadangan di IndexedDB atau penyimpanan lokal.',
+        };
+      }
+
+      if (snapshot.materiList && snapshot.materiList.length > 0) {
+        cachedMateri = snapshot.materiList;
+        saveLocal(KEYS.MATERI, snapshot.materiList);
+        this.saveMateri(snapshot.materiList);
+      }
+
+      if (snapshot.students && snapshot.students.length > 0) {
+        cachedStudents = snapshot.students;
+        saveLocal(KEYS.STUDENTS, snapshot.students);
+        this.saveStudents(snapshot.students);
+      }
+
+      if (snapshot.penilaianList && snapshot.penilaianList.length > 0) {
+        cachedPenilaian = snapshot.penilaianList;
+        saveLocal(KEYS.PENILAIAN, snapshot.penilaianList);
+        this.savePenilaian(snapshot.penilaianList);
+      }
+
+      if (snapshot.logs && snapshot.logs.length > 0) {
+        cachedLogs = snapshot.logs;
+        saveLocal(KEYS.LOGS, snapshot.logs);
+      }
+
+      if (snapshot.forumPosts && snapshot.forumPosts.length > 0) {
+        cachedForum = snapshot.forumPosts;
+        saveLocal(KEYS.FORUM, snapshot.forumPosts);
+      }
+
+      notifyListeners();
+
+      this.addLog({
+        userName: 'Guru Admin',
+        userRole: 'guru',
+        action: 'Pemulihan Cadangan IndexedDB',
+        details: `Berhasil memulihkan ${snapshot.materiList?.length || 0} materi, ${snapshot.students?.length || 0} siswa dari cadangan IndexedDB (${new Date(snapshot.timestamp).toLocaleString('id-ID')})`,
+      });
+
+      return {
+        success: true,
+        countMateri: snapshot.materiList?.length || 0,
+        countStudents: snapshot.students?.length || 0,
+        countPenilaian: snapshot.penilaianList?.length || 0,
+        backupTimestamp: snapshot.timestamp,
+        message: `Berhasil memulihkan ${snapshot.materiList?.length || 0} materi dan ${snapshot.students?.length || 0} siswa dari cadangan IndexedDB!`,
+      };
+    } catch (err: any) {
+      console.error('Error in restoreFromIndexedDBBackup:', err);
+      return {
+        success: false,
+        countMateri: 0,
+        countStudents: 0,
+        countPenilaian: 0,
+        backupTimestamp: '',
+        message: `Gagal memulihkan data: ${err?.message || 'Terjadi kesalahan sistem'}`,
+      };
+    }
+  },
+
+  // Export full application state as JSON
+  exportFullBackupJSON(): string {
+    const backupData = {
+      app: 'LMS Bahasa Arab Digital',
+      version: '2.0',
+      exportedAt: new Date().toISOString(),
+      materiList: this.getMateri(),
+      students: this.getStudents(),
+      penilaianList: this.getPenilaian(),
+      logs: this.getLogs(),
+      forumPosts: this.getForumPosts(),
+      guruProfile: this.getGuruProfile(),
+    };
+    return JSON.stringify(backupData, null, 2);
+  },
+
+  // Export specifically Materi list as JSON
+  exportMateriJSON(): string {
+    const data = {
+      app: 'LMS Bahasa Arab Digital',
+      type: 'materi_backup',
+      version: '2.0',
+      exportedAt: new Date().toISOString(),
+      count: this.getMateri().length,
+      materiList: this.getMateri(),
+    };
+    return JSON.stringify(data, null, 2);
+  },
+
+  // Export specifically Students list as JSON
+  exportStudentsJSON(): string {
+    const data = {
+      app: 'LMS Bahasa Arab Digital',
+      type: 'students_backup',
+      version: '2.0',
+      exportedAt: new Date().toISOString(),
+      count: this.getStudents().length,
+      students: this.getStudents(),
+    };
+    return JSON.stringify(data, null, 2);
+  },
+
+  // Import and restore from JSON backup string
+  async importBackupJSON(jsonString: string, mode: 'merge' | 'replace' = 'merge'): Promise<{
+    success: boolean;
+    countMateri: number;
+    countStudents: number;
+    countPenilaian: number;
+    message: string;
+  }> {
+    try {
+      const parsed = JSON.parse(jsonString);
+      if (!parsed || typeof parsed !== 'object') {
+        throw new Error('Format berkas JSON tidak valid.');
+      }
+
+      let restoredMateriCount = 0;
+      let restoredStudentsCount = 0;
+      let restoredPenilaianCount = 0;
+
+      // 1. Restore Materi
+      if (Array.isArray(parsed.materiList)) {
+        const incomingMateri: Materi[] = parsed.materiList;
+        if (mode === 'replace') {
+          this.saveMateri(incomingMateri);
+          restoredMateriCount = incomingMateri.length;
+        } else {
+          // Merge by ID or title
+          const current = this.getMateri();
+          const existingIds = new Set(current.map(m => m.id));
+          const existingTitles = new Set(current.map(m => m.title.trim().toLowerCase()));
+
+          const merged = [...current];
+          incomingMateri.forEach(im => {
+            if (!existingIds.has(im.id) && !existingTitles.has(im.title.trim().toLowerCase())) {
+              merged.push(im);
+              restoredMateriCount++;
+            }
+          });
+          this.saveMateri(merged);
+        }
+      } else if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].category && parsed[0].title) {
+        // Direct array of Materi
+        const incomingMateri: Materi[] = parsed;
+        if (mode === 'replace') {
+          this.saveMateri(incomingMateri);
+          restoredMateriCount = incomingMateri.length;
+        } else {
+          const current = this.getMateri();
+          const existingIds = new Set(current.map(m => m.id));
+          const merged = [...current];
+          incomingMateri.forEach(im => {
+            if (!existingIds.has(im.id)) {
+              merged.push(im);
+              restoredMateriCount++;
+            }
+          });
+          this.saveMateri(merged);
+        }
+      }
+
+      // 2. Restore Students
+      if (Array.isArray(parsed.students)) {
+        const incomingStudents: Student[] = parsed.students;
+        if (mode === 'replace') {
+          this.saveStudents(incomingStudents);
+          restoredStudentsCount = incomingStudents.length;
+        } else {
+          const current = this.getStudents();
+          const existingEmails = new Set(current.map(s => s.email.trim().toLowerCase()));
+          const existingNisns = new Set(current.map(s => s.nisn.trim()));
+
+          const merged = [...current];
+          incomingStudents.forEach(st => {
+            const email = (st.email || '').trim().toLowerCase();
+            const nisn = (st.nisn || '').trim();
+            if (!existingEmails.has(email) && !existingNisns.has(nisn)) {
+              merged.push({ ...st, status: st.status || 'aktif' });
+              restoredStudentsCount++;
+            }
+          });
+          this.saveStudents(merged);
+        }
+      } else if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].nisn && parsed[0].className) {
+        // Direct array of Students
+        const incomingStudents: Student[] = parsed;
+        if (mode === 'replace') {
+          this.saveStudents(incomingStudents);
+          restoredStudentsCount = incomingStudents.length;
+        } else {
+          const current = this.getStudents();
+          const existingEmails = new Set(current.map(s => s.email.trim().toLowerCase()));
+          const merged = [...current];
+          incomingStudents.forEach(st => {
+            if (!existingEmails.has((st.email || '').trim().toLowerCase())) {
+              merged.push({ ...st, status: st.status || 'aktif' });
+              restoredStudentsCount++;
+            }
+          });
+          this.saveStudents(merged);
+        }
+      }
+
+      // 3. Restore Penilaian if present
+      if (Array.isArray(parsed.penilaianList)) {
+        const incomingPenilaian: Penilaian[] = parsed.penilaianList;
+        if (mode === 'replace') {
+          this.savePenilaian(incomingPenilaian);
+          restoredPenilaianCount = incomingPenilaian.length;
+        } else {
+          const current = this.getPenilaian();
+          const existingIds = new Set(current.map(p => p.id));
+          const merged = [...current];
+          incomingPenilaian.forEach(ip => {
+            if (!existingIds.has(ip.id)) {
+              merged.push(ip);
+              restoredPenilaianCount++;
+            }
+          });
+          this.savePenilaian(merged);
+        }
+      }
+
+      notifyListeners();
+
+      this.addLog({
+        userName: 'Guru Admin',
+        userRole: 'guru',
+        action: 'Impor Cadangan JSON',
+        details: `Berhasil mengimpor data JSON (${mode === 'replace' ? 'Timpa Penuh' : 'Gabungkan'}): ${restoredMateriCount} materi baru, ${restoredStudentsCount} siswa baru, ${restoredPenilaianCount} penilaian baru`,
+      });
+
+      return {
+        success: true,
+        countMateri: restoredMateriCount,
+        countStudents: restoredStudentsCount,
+        countPenilaian: restoredPenilaianCount,
+        message: `Impor JSON berhasil! Berhasil memuat ${restoredMateriCount} materi dan ${restoredStudentsCount} siswa (${mode === 'replace' ? 'Mode Timpa' : 'Mode Gabung'}).`,
+      };
+    } catch (err: any) {
+      console.error('Error importing backup JSON:', err);
+      return {
+        success: false,
+        countMateri: 0,
+        countStudents: 0,
+        countPenilaian: 0,
+        message: `Gagal membaca atau memproses berkas JSON: ${err?.message || 'Format tidak sesuai'}`,
+      };
+    }
   }
 };

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Materi, CategoryType, VocabularyItem, Student } from '../../types';
-import { Plus, Edit3, Trash2, Eye, FileText, BookOpen, Quote, List, Sparkles, Play, Search, CheckCircle, MessageSquare, AlertTriangle, X, FileSpreadsheet, BarChart3, Target, ListOrdered, SlidersHorizontal } from 'lucide-react';
+import { Plus, Edit3, Trash2, Eye, FileText, BookOpen, Quote, List, Sparkles, Play, Search, CheckCircle, MessageSquare, AlertTriangle, X, FileSpreadsheet, BarChart3, Target, ListOrdered, SlidersHorizontal, Download } from 'lucide-react';
 import { PdfViewerModal } from '../common/PdfViewerModal';
 import { notificationService } from '../../services/notificationService';
 import { storageService } from '../../services/storage';
@@ -78,6 +78,15 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
     title: '',
     message: '',
   });
+
+  // Proactively fetch latest materi from Firestore on mount
+  useEffect(() => {
+    storageService.fetchLatestMateriData().then(fresh => {
+      if (fresh && fresh.length > 0) {
+        onSaveMateri(fresh);
+      }
+    }).catch(console.warn);
+  }, []);
 
   // Filtered by category and search
   const categoryFiltered = materiList.filter(m => m.category === activeCategory);
@@ -376,6 +385,28 @@ export const MateriManagement: React.FC<MateriManagementProps> = ({
                 className="px-3.5 py-2.5 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
               >
                 <FileSpreadsheet size={16} className="text-purple-700" /> Upload Sheet Massal
+              </button>
+            )}
+
+            {viewSubMode === 'materi' && (
+              <button
+                onClick={() => {
+                  const jsonStr = storageService.exportMateriJSON();
+                  const dateStr = new Date().toISOString().split('T')[0];
+                  const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8' });
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = `backup_materi_bahasa_arab_${dateStr}.json`;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  URL.revokeObjectURL(url);
+                }}
+                className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                title="Ekspor seluruh materi pembelajaran ke format JSON cadangan"
+              >
+                <Download size={15} className="text-slate-700" /> Ekspor Materi (JSON)
               </button>
             )}
 

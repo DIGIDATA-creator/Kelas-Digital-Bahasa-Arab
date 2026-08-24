@@ -135,6 +135,21 @@ export default function App() {
       setForumPosts(forumPosts);
       setIsLoadingData(false);
     });
+
+    // Proactively fetch latest materi from Firestore records
+    storageService.fetchLatestMateriData().then(freshMateri => {
+      if (freshMateri && freshMateri.length > 0) {
+        setMateriList(freshMateri);
+      }
+    }).catch(console.warn);
+
+    // Proactively fetch latest students from Firestore records
+    storageService.fetchLatestStudentsData().then(freshStudents => {
+      if (freshStudents && freshStudents.length > 0) {
+        setStudents(freshStudents);
+      }
+    }).catch(console.warn);
+
     // Fallback timer if offline or fast local storage load
     const timer = setTimeout(() => setIsLoadingData(false), 800);
     return () => {
